@@ -65,6 +65,9 @@
     "vue": "^3.2.45"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.2.8",
+    "@fontsource-variable/geist-mono": "^5.2.7",
+    "@hufe921/canvas-editor-plugin-docx": "^0.0.5",
     "prismjs": "^1.27.0"
   },
   "simple-git-hooks": {
