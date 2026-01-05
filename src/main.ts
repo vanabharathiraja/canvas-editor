@@ -1,6 +1,7 @@
 import { commentList, data, options } from './mock'
 import './style.css'
 import prism from 'prismjs'
+import docxPlugin from '@hufe921/canvas-editor-plugin-docx'
 import Editor, {
   BlockType,
   Command,
@@ -62,6 +63,8 @@ window.onload = function () {
     },
     options
   )
+  // Register docx plugin
+  instance.use(docxPlugin as any)
   console.log('Instance: ', instance)
   // For Cypress testing
   Reflect.set(window, 'editor', instance)
@@ -1248,6 +1251,35 @@ window.onload = function () {
   printDom.onclick = function () {
     console.log('print')
     instance.command.executePrint()
+  }
+
+  // Import DOCX
+  const importDocxDom = document.querySelector<HTMLDivElement>('.menu-item__import-docx')!
+  const importDocxFileDom = document.querySelector<HTMLInputElement>('#import-docx')!
+  importDocxDom.onclick = function () {
+    importDocxFileDom.click()
+  }
+  importDocxFileDom.onchange = function () {
+    const file = importDocxFileDom.files![0]
+    if (!file) return
+    const fileReader = new FileReader()
+    fileReader.readAsArrayBuffer(file)
+    fileReader.onload = function () {
+      const arrayBuffer = fileReader.result as ArrayBuffer
+      ;(instance.command as any).executeImportDocx({
+        arrayBuffer
+      })
+      importDocxFileDom.value = ''
+    }
+  }
+
+  // Export DOCX
+  const exportDocxDom = document.querySelector<HTMLDivElement>('.menu-item__export-docx')!
+  exportDocxDom.onclick = function () {
+    console.log('export docx')
+    ;(instance.command as any).executeExportDocx({
+      fileName: 'canvas-editor-export'
+    })
   }
 
   // 6. Catalog Show/Hide | Page Mode | Paper Scale | Paper Size | Paper Direction | Page Margin | Fullscreen | Settings
