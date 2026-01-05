@@ -162,7 +162,7 @@ export function mergeOption(
 
   return {
     mode: EditorMode.EDIT,
-    locale: 'zhCN',
+    locale: 'en',
     defaultType: 'TEXT',
     defaultColor: '#000000',
     defaultFont: 'Microsoft YaHei',

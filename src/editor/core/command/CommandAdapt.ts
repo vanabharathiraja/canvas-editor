@@ -2006,6 +2006,10 @@ export class CommandAdapt {
     return this.i18n.getLocale()
   }
 
+  public isRTL(): boolean {
+    return this.i18n.isRTL()
+  }
+
   public getCatalog(): Promise<ICatalog | null> {
     return this.workerManager.getCatalog()
   }

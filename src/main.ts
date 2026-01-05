@@ -31,19 +31,19 @@ window.onload = function () {
   const isApple =
     typeof navigator !== 'undefined' && /Mac OS X/.test(navigator.userAgent)
 
-  // 1. 初始化编辑器
+  // 1. Initialize Editor
   const container = document.querySelector<HTMLDivElement>('.editor')!
   const instance = new Editor(
     container,
     {
       header: [
         {
-          value: '第一人民医院',
+          value: 'First People\'s Hospital',
           size: 32,
           rowFlex: RowFlex.CENTER
         },
         {
-          value: '\n门诊病历',
+          value: '\nOutpatient Medical Record',
           size: 18,
           rowFlex: RowFlex.CENTER
         },
@@ -62,11 +62,11 @@ window.onload = function () {
     },
     options
   )
-  console.log('实例: ', instance)
-  // cypress使用
+  console.log('Instance: ', instance)
+  // For Cypress testing
   Reflect.set(window, 'editor', instance)
 
-  // 菜单弹窗销毁
+  // Menu popup destroy
   window.addEventListener(
     'click',
     evt => {
@@ -79,16 +79,16 @@ window.onload = function () {
     }
   )
 
-  // 2. | 撤销 | 重做 | 格式刷 | 清除格式 |
+  // 2. | Undo | Redo | Format Painter | Clear Format |
   const undoDom = document.querySelector<HTMLDivElement>('.menu-item__undo')!
-  undoDom.title = `撤销(${isApple ? '⌘' : 'Ctrl'}+Z)`
+  undoDom.title = `Undo (${isApple ? '⌘' : 'Ctrl'}+Z)`
   undoDom.onclick = function () {
     console.log('undo')
     instance.command.executeUndo()
   }
 
   const redoDom = document.querySelector<HTMLDivElement>('.menu-item__redo')!
-  redoDom.title = `重做(${isApple ? '⌘' : 'Ctrl'}+Y)`
+  redoDom.title = `Redo (${isApple ? '⌘' : 'Ctrl'}+Y)`
   redoDom.onclick = function () {
     console.log('redo')
     instance.command.executeRedo()
@@ -130,7 +130,7 @@ window.onload = function () {
       instance.command.executeFormat()
     }
 
-  // 3. | 字体 | 字体变大 | 字体变小 | 加粗 | 斜体 | 下划线 | 删除线 | 上标 | 下标 | 字体颜色 | 背景色 |
+  // 3. | Font | Font Size Up | Font Size Down | Bold | Italic | Underline | Strikeout | Superscript | Subscript | Font Color | Background |
   const fontDom = document.querySelector<HTMLDivElement>('.menu-item__font')!
   const fontSelectDom = fontDom.querySelector<HTMLDivElement>('.select')!
   const fontOptionDom = fontDom.querySelector<HTMLDivElement>('.options')!
@@ -146,7 +146,7 @@ window.onload = function () {
   const sizeSetDom = document.querySelector<HTMLDivElement>('.menu-item__size')!
   const sizeSelectDom = sizeSetDom.querySelector<HTMLDivElement>('.select')!
   const sizeOptionDom = sizeSetDom.querySelector<HTMLDivElement>('.options')!
-  sizeSetDom.title = `设置字号`
+  sizeSetDom.title = `Set Font Size`
   sizeSetDom.onclick = function () {
     console.log('size')
     sizeOptionDom.classList.toggle('visible')
@@ -159,7 +159,7 @@ window.onload = function () {
   const sizeAddDom = document.querySelector<HTMLDivElement>(
     '.menu-item__size-add'
   )!
-  sizeAddDom.title = `增大字号(${isApple ? '⌘' : 'Ctrl'}+[)`
+  sizeAddDom.title = `Increase Font Size (${isApple ? '⌘' : 'Ctrl'}+[)`
   sizeAddDom.onclick = function () {
     console.log('size-add')
     instance.command.executeSizeAdd()
@@ -168,14 +168,14 @@ window.onload = function () {
   const sizeMinusDom = document.querySelector<HTMLDivElement>(
     '.menu-item__size-minus'
   )!
-  sizeMinusDom.title = `减小字号(${isApple ? '⌘' : 'Ctrl'}+])`
+  sizeMinusDom.title = `Decrease Font Size (${isApple ? '⌘' : 'Ctrl'}+])`
   sizeMinusDom.onclick = function () {
     console.log('size-minus')
     instance.command.executeSizeMinus()
   }
 
   const boldDom = document.querySelector<HTMLDivElement>('.menu-item__bold')!
-  boldDom.title = `加粗(${isApple ? '⌘' : 'Ctrl'}+B)`
+  boldDom.title = `Bold (${isApple ? '⌘' : 'Ctrl'}+B)`
   boldDom.onclick = function () {
     console.log('bold')
     instance.command.executeBold()
@@ -183,7 +183,7 @@ window.onload = function () {
 
   const italicDom =
     document.querySelector<HTMLDivElement>('.menu-item__italic')!
-  italicDom.title = `斜体(${isApple ? '⌘' : 'Ctrl'}+I)`
+  italicDom.title = `Italic (${isApple ? '⌘' : 'Ctrl'}+I)`
   italicDom.onclick = function () {
     console.log('italic')
     instance.command.executeItalic()
@@ -192,7 +192,7 @@ window.onload = function () {
   const underlineDom = document.querySelector<HTMLDivElement>(
     '.menu-item__underline'
   )!
-  underlineDom.title = `下划线(${isApple ? '⌘' : 'Ctrl'}+U)`
+  underlineDom.title = `Underline (${isApple ? '⌘' : 'Ctrl'}+U)`
   const underlineOptionDom =
     underlineDom.querySelector<HTMLDivElement>('.options')!
   underlineDom.querySelector<HTMLSpanElement>('.select')!.onclick =
@@ -226,7 +226,7 @@ window.onload = function () {
   const superscriptDom = document.querySelector<HTMLDivElement>(
     '.menu-item__superscript'
   )!
-  superscriptDom.title = `上标(${isApple ? '⌘' : 'Ctrl'}+Shift+,)`
+  superscriptDom.title = `Superscript (${isApple ? '⌘' : 'Ctrl'}+Shift+,)`
   superscriptDom.onclick = function () {
     console.log('superscript')
     instance.command.executeSuperscript()
@@ -235,7 +235,7 @@ window.onload = function () {
   const subscriptDom = document.querySelector<HTMLDivElement>(
     '.menu-item__subscript'
   )!
-  subscriptDom.title = `下标(${isApple ? '⌘' : 'Ctrl'}+Shift+.)`
+  subscriptDom.title = `Subscript (${isApple ? '⌘' : 'Ctrl'}+Shift+.)`
   subscriptDom.onclick = function () {
     console.log('subscript')
     instance.command.executeSubscript()
@@ -284,7 +284,7 @@ window.onload = function () {
   }
 
   const leftDom = document.querySelector<HTMLDivElement>('.menu-item__left')!
-  leftDom.title = `左对齐(${isApple ? '⌘' : 'Ctrl'}+L)`
+  leftDom.title = `Left Align (${isApple ? '⌘' : 'Ctrl'}+L)`
   leftDom.onclick = function () {
     console.log('left')
     instance.command.executeRowFlex(RowFlex.LEFT)
@@ -292,14 +292,14 @@ window.onload = function () {
 
   const centerDom =
     document.querySelector<HTMLDivElement>('.menu-item__center')!
-  centerDom.title = `居中对齐(${isApple ? '⌘' : 'Ctrl'}+E)`
+  centerDom.title = `Center Align (${isApple ? '⌘' : 'Ctrl'}+E)`
   centerDom.onclick = function () {
     console.log('center')
     instance.command.executeRowFlex(RowFlex.CENTER)
   }
 
   const rightDom = document.querySelector<HTMLDivElement>('.menu-item__right')!
-  rightDom.title = `右对齐(${isApple ? '⌘' : 'Ctrl'}+R)`
+  rightDom.title = `Right Align (${isApple ? '⌘' : 'Ctrl'}+R)`
   rightDom.onclick = function () {
     console.log('right')
     instance.command.executeRowFlex(RowFlex.RIGHT)
@@ -308,7 +308,7 @@ window.onload = function () {
   const alignmentDom = document.querySelector<HTMLDivElement>(
     '.menu-item__alignment'
   )!
-  alignmentDom.title = `两端对齐(${isApple ? '⌘' : 'Ctrl'}+J)`
+  alignmentDom.title = `Justify (${isApple ? '⌘' : 'Ctrl'}+J)`
   alignmentDom.onclick = function () {
     console.log('alignment')
     instance.command.executeRowFlex(RowFlex.ALIGNMENT)
@@ -317,7 +317,7 @@ window.onload = function () {
   const justifyDom = document.querySelector<HTMLDivElement>(
     '.menu-item__justify'
   )!
-  justifyDom.title = `分散对齐(${isApple ? '⌘' : 'Ctrl'}+Shift+J)`
+  justifyDom.title = `Distribute (${isApple ? '⌘' : 'Ctrl'}+Shift+J)`
   justifyDom.onclick = function () {
     console.log('justify')
     instance.command.executeRowFlex(RowFlex.JUSTIFY)
@@ -337,7 +337,7 @@ window.onload = function () {
   }
 
   const listDom = document.querySelector<HTMLDivElement>('.menu-item__list')!
-  listDom.title = `列表(${isApple ? '⌘' : 'Ctrl'}+Shift+U)`
+  listDom.title = `List (${isApple ? '⌘' : 'Ctrl'}+Shift+U)`
   const listOptionDom = listDom.querySelector<HTMLDivElement>('.options')!
   listDom.onclick = function () {
     console.log('list')
@@ -350,7 +350,7 @@ window.onload = function () {
     instance.command.executeList(listType, listStyle)
   }
 
-  // 4. | 表格 | 图片 | 超链接 | 分割线 | 水印 | 代码块 | 分隔符 | 控件 | 复选框 | LaTeX | 日期选择器
+  // 4. | Table | Image | Hyperlink | Separator | Watermark | Code Block | Page Break | Control | Checkbox | LaTeX | Date Picker
   const tableDom = document.querySelector<HTMLDivElement>('.menu-item__table')!
   const tablePanelContainer = document.querySelector<HTMLDivElement>(
     '.menu-item__table__collapse'
@@ -358,7 +358,7 @@ window.onload = function () {
   const tableClose = document.querySelector<HTMLDivElement>('.table-close')!
   const tableTitle = document.querySelector<HTMLDivElement>('.table-select')!
   const tablePanel = document.querySelector<HTMLDivElement>('.table-panel')!
-  // 绘制行列
+  // Draw rows and columns
   const tableCellList: HTMLDivElement[][] = []
   for (let i = 0; i < 10; i++) {
     const tr = document.createElement('tr')
@@ -375,24 +375,24 @@ window.onload = function () {
   }
   let colIndex = 0
   let rowIndex = 0
-  // 移除所有格选择
+  // Remove all cell selection
   function removeAllTableCellSelect() {
     tableCellList.forEach(tr => {
       tr.forEach(td => td.classList.remove('active'))
     })
   }
-  // 设置标题内容
+  // Set title content
   function setTableTitle(payload: string) {
     tableTitle.innerText = payload
   }
-  // 恢复初始状态
+  // Recovery to initial state
   function recoveryTable() {
-    // 还原选择样式、标题、选择行列
+    // Reset selection style, title, selected rows/cols
     removeAllTableCellSelect()
-    setTableTitle('插入')
+    setTableTitle('Insert')
     colIndex = 0
     rowIndex = 0
-    // 隐藏panel
+    // Hide panel
     tablePanelContainer.style.display = 'none'
   }
   tableDom.onclick = function () {
@@ -404,11 +404,11 @@ window.onload = function () {
     const rowMarginTop = 10
     const celMarginRight = 6
     const { offsetX, offsetY } = evt
-    // 移除所有选择
+    // Remove all selection
     removeAllTableCellSelect()
     colIndex = Math.ceil(offsetX / (celSize + celMarginRight)) || 1
     rowIndex = Math.ceil(offsetY / (celSize + rowMarginTop)) || 1
-    // 改变选择样式
+    // Change selection style
     tableCellList.forEach((tr, trIndex) => {
       tr.forEach((td, tdIndex) => {
         if (tdIndex < colIndex && trIndex < rowIndex) {
@@ -416,14 +416,14 @@ window.onload = function () {
         }
       })
     })
-    // 改变表格标题
+    // Change table title
     setTableTitle(`${rowIndex}×${colIndex}`)
   }
   tableClose.onclick = function () {
     recoveryTable()
   }
   tablePanel.onclick = function () {
-    // 应用选择
+    // Apply selection
     instance.command.executeInsertTable(rowIndex, colIndex)
     recoveryTable()
   }
@@ -438,7 +438,7 @@ window.onload = function () {
     const fileReader = new FileReader()
     fileReader.readAsDataURL(file)
     fileReader.onload = function () {
-      // 计算宽高
+      // Calculate dimensions
       const image = new Image()
       const value = fileReader.result as string
       image.src = value
@@ -459,22 +459,22 @@ window.onload = function () {
   hyperlinkDom.onclick = function () {
     console.log('hyperlink')
     new Dialog({
-      title: '超链接',
+      title: 'Hyperlink',
       data: [
         {
           type: 'text',
-          label: '文本',
+          label: 'Text',
           name: 'name',
           required: true,
-          placeholder: '请输入文本',
+          placeholder: 'Please enter text',
           value: instance.command.getRangeText()
         },
         {
           type: 'text',
-          label: '链接',
+          label: 'Link',
           name: 'url',
           required: true,
-          placeholder: '请输入链接'
+          placeholder: 'Please enter link'
         }
       ],
       onConfirm: payload => {
@@ -538,63 +538,63 @@ window.onload = function () {
     watermarkOptionDom.classList.toggle('visible')
     if (menu === 'add') {
       new Dialog({
-        title: '水印',
+        title: 'Watermark',
         data: [
           {
             type: 'text',
-            label: '内容',
+            label: 'Content',
             name: 'data',
             required: true,
-            placeholder: '请输入内容'
+            placeholder: 'Please enter content'
           },
           {
             type: 'color',
-            label: '颜色',
+            label: 'Color',
             name: 'color',
             required: true,
             value: '#AEB5C0'
           },
           {
             type: 'number',
-            label: '字体大小',
+            label: 'Font Size',
             name: 'size',
             required: true,
             value: '120'
           },
           {
             type: 'number',
-            label: '透明度',
+            label: 'Opacity',
             name: 'opacity',
             required: true,
             value: '0.3'
           },
           {
             type: 'select',
-            label: '重复',
+            label: 'Repeat',
             name: 'repeat',
             value: '0',
             required: false,
             options: [
               {
-                label: '不重复',
+                label: 'No Repeat',
                 value: '0'
               },
               {
-                label: '重复',
+                label: 'Repeat',
                 value: '1'
               }
             ]
           },
           {
             type: 'number',
-            label: '水平间隔',
+            label: 'Horizontal Gap',
             name: 'horizontalGap',
             required: false,
             value: '10'
           },
           {
             type: 'number',
-            label: '垂直间隔',
+            label: 'Vertical Gap',
             name: 'verticalGap',
             required: false,
             value: '10'
@@ -635,12 +635,12 @@ window.onload = function () {
   codeblockDom.onclick = function () {
     console.log('codeblock')
     new Dialog({
-      title: '代码块',
+      title: 'Code Block',
       data: [
         {
           type: 'textarea',
           name: 'codeblock',
-          placeholder: '请输入代码',
+          placeholder: 'Please enter code',
           width: 500,
           height: 300
         }
@@ -694,20 +694,20 @@ window.onload = function () {
     switch (type) {
       case ControlType.TEXT:
         new Dialog({
-          title: '文本控件',
+          title: 'Text Control',
           data: [
             {
               type: 'text',
-              label: '占位符',
+              label: 'Placeholder',
               name: 'placeholder',
               required: true,
-              placeholder: '请输入占位符'
+              placeholder: 'Please enter placeholder'
             },
             {
               type: 'text',
-              label: '默认值',
+              label: 'Default Value',
               name: 'value',
-              placeholder: '请输入默认值'
+              placeholder: 'Please enter default value'
             }
           ],
           onConfirm: payload => {
@@ -736,28 +736,28 @@ window.onload = function () {
         break
       case ControlType.SELECT:
         new Dialog({
-          title: '列举控件',
+          title: 'Select Control',
           data: [
             {
               type: 'text',
-              label: '占位符',
+              label: 'Placeholder',
               name: 'placeholder',
               required: true,
-              placeholder: '请输入占位符'
+              placeholder: 'Please enter placeholder'
             },
             {
               type: 'text',
-              label: '默认值',
+              label: 'Default Value',
               name: 'code',
-              placeholder: '请输入默认值'
+              placeholder: 'Please enter default value'
             },
             {
               type: 'textarea',
-              label: '值集',
+              label: 'Value Set',
               name: 'valueSets',
               required: true,
               height: 100,
-              placeholder: `请输入值集JSON，例：\n[{\n"value":"有",\n"code":"98175"\n}]`
+              placeholder: `Please enter value set JSON, e.g.:\n[{\n"value":"Yes",\n"code":"98175"\n}]`
             }
           ],
           onConfirm: payload => {
@@ -784,21 +784,21 @@ window.onload = function () {
         break
       case ControlType.CHECKBOX:
         new Dialog({
-          title: '复选框控件',
+          title: 'Checkbox Control',
           data: [
             {
               type: 'text',
-              label: '默认值',
+              label: 'Default Value',
               name: 'code',
-              placeholder: '请输入默认值，多个值以英文逗号分割'
+              placeholder: 'Please enter default value, separate multiple values with commas'
             },
             {
               type: 'textarea',
-              label: '值集',
+              label: 'Value Set',
               name: 'valueSets',
               required: true,
               height: 100,
-              placeholder: `请输入值集JSON，例：\n[{\n"value":"有",\n"code":"98175"\n}]`
+              placeholder: `Please enter value set JSON, e.g.:\n[{\n"value":"Yes",\n"code":"98175"\n}]`
             }
           ],
           onConfirm: payload => {
@@ -820,21 +820,21 @@ window.onload = function () {
         break
       case ControlType.RADIO:
         new Dialog({
-          title: '单选框控件',
+          title: 'Radio Control',
           data: [
             {
               type: 'text',
-              label: '默认值',
+              label: 'Default Value',
               name: 'code',
-              placeholder: '请输入默认值'
+              placeholder: 'Please enter default value'
             },
             {
               type: 'textarea',
-              label: '值集',
+              label: 'Value Set',
               name: 'valueSets',
               required: true,
               height: 100,
-              placeholder: `请输入值集JSON，例：\n[{\n"value":"有",\n"code":"98175"\n}]`
+              placeholder: `Please enter value set JSON, e.g.:\n[{\n"value":"Yes",\n"code":"98175"\n}]`
             }
           ],
           onConfirm: payload => {
@@ -856,24 +856,24 @@ window.onload = function () {
         break
       case ControlType.DATE:
         new Dialog({
-          title: '日期控件',
+          title: 'Date Control',
           data: [
             {
               type: 'text',
-              label: '占位符',
+              label: 'Placeholder',
               name: 'placeholder',
               required: true,
-              placeholder: '请输入占位符'
+              placeholder: 'Please enter placeholder'
             },
             {
               type: 'text',
-              label: '默认值',
+              label: 'Default Value',
               name: 'value',
-              placeholder: '请输入默认值'
+              placeholder: 'Please enter default value'
             },
             {
               type: 'select',
-              label: '日期格式',
+              label: 'Date Format',
               name: 'dateFormat',
               value: 'yyyy-MM-dd hh:mm:ss',
               required: true,
@@ -918,20 +918,20 @@ window.onload = function () {
         break
       case ControlType.NUMBER:
         new Dialog({
-          title: '数值控件',
+          title: 'Number Control',
           data: [
             {
               type: 'text',
-              label: '占位符',
+              label: 'Placeholder',
               name: 'placeholder',
               required: true,
-              placeholder: '请输入占位符'
+              placeholder: 'Please enter placeholder'
             },
             {
               type: 'text',
-              label: '默认值',
+              label: 'Default Value',
               name: 'value',
-              placeholder: '请输入默认值'
+              placeholder: 'Please enter default value'
             }
           ],
           onConfirm: payload => {
@@ -1003,7 +1003,7 @@ window.onload = function () {
           type: 'textarea',
           height: 100,
           name: 'value',
-          placeholder: '请输入LaTeX文本'
+          placeholder: 'Please enter LaTeX text'
         }
       ],
       onConfirm: payload => {
@@ -1024,7 +1024,7 @@ window.onload = function () {
   dateDom.onclick = function () {
     console.log('date')
     dateDomOptionDom.classList.toggle('visible')
-    // 定位调整
+    // Position adjustment
     const bodyRect = document.body.getBoundingClientRect()
     const dateDomOptionRect = dateDomOptionDom.getBoundingClientRect()
     if (dateDomOptionRect.left + dateDomOptionRect.width > bodyRect.width) {
@@ -1034,7 +1034,7 @@ window.onload = function () {
       dateDomOptionDom.style.right = 'unset'
       dateDomOptionDom.style.left = '0px'
     }
-    // 当前日期
+    // Current date
     const date = new Date()
     const year = date.getFullYear().toString()
     const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -1071,44 +1071,44 @@ window.onload = function () {
   blockDom.onclick = function () {
     console.log('block')
     new Dialog({
-      title: '内容块',
+      title: 'Content Block',
       data: [
         {
           type: 'select',
-          label: '类型',
+          label: 'Type',
           name: 'type',
           value: 'iframe',
           required: true,
           options: [
             {
-              label: '网址',
+              label: 'URL',
               value: 'iframe'
             },
             {
-              label: '视频',
+              label: 'Video',
               value: 'video'
             }
           ]
         },
         {
           type: 'number',
-          label: '宽度',
+          label: 'Width',
           name: 'width',
-          placeholder: '请输入宽度（默认页面内宽度）'
+          placeholder: 'Please enter width (default is page inner width)'
         },
         {
           type: 'number',
-          label: '高度',
+          label: 'Height',
           name: 'height',
           required: true,
-          placeholder: '请输入高度'
+          placeholder: 'Please enter height'
         },
         {
           type: 'input',
-          label: '地址',
+          label: 'Address',
           name: 'src',
           required: false,
-          placeholder: '请输入地址'
+          placeholder: 'Please enter address'
         },
         {
           type: 'textarea',
@@ -1116,7 +1116,7 @@ window.onload = function () {
           height: 100,
           name: 'srcdoc',
           required: false,
-          placeholder: '请输入HTML代码（仅网址类型有效）'
+          placeholder: 'Please enter HTML code (only valid for URL type)'
         }
       ],
       onConfirm: payload => {
@@ -1125,7 +1125,7 @@ window.onload = function () {
         const width = payload.find(p => p.name === 'width')?.value
         const height = payload.find(p => p.name === 'height')?.value
         if (!height) return
-        // 地址或HTML代码至少存在一项
+        // Address or HTML code must have at least one
         const src = payload.find(p => p.name === 'src')?.value
         const srcdoc = payload.find(p => p.name === 'srcdoc')?.value
         const block: IBlock = {
@@ -1157,7 +1157,7 @@ window.onload = function () {
     })
   }
 
-  // 5. | 搜索&替换 | 打印 |
+  // 5. | Search & Replace | Print |
   const searchCollapseDom = document.querySelector<HTMLDivElement>(
     '.menu-item__search__collapse'
   )!
@@ -1173,7 +1173,7 @@ window.onload = function () {
     document.querySelector<HTMLInputElement>('#option-case')!
   const searchDom =
     document.querySelector<HTMLDivElement>('.menu-item__search')!
-  searchDom.title = `搜索与替换(${isApple ? '⌘' : 'Ctrl'}+F)`
+  searchDom.title = `Search & Replace (${isApple ? '⌘' : 'Ctrl'}+F)`
   const searchResultDom =
     searchCollapseDom.querySelector<HTMLLabelElement>('.search-result')!
   function setSearchResult() {
@@ -1244,19 +1244,19 @@ window.onload = function () {
     }
 
   const printDom = document.querySelector<HTMLDivElement>('.menu-item__print')!
-  printDom.title = `打印(${isApple ? '⌘' : 'Ctrl'}+P)`
+  printDom.title = `Print (${isApple ? '⌘' : 'Ctrl'}+P)`
   printDom.onclick = function () {
     console.log('print')
     instance.command.executePrint()
   }
 
-  // 6. 目录显隐 | 页面模式 | 纸张缩放 | 纸张大小 | 纸张方向 | 页边距 | 全屏 | 设置
+  // 6. Catalog Show/Hide | Page Mode | Paper Scale | Paper Size | Paper Direction | Page Margin | Fullscreen | Settings
   const editorOptionDom =
     document.querySelector<HTMLDivElement>('.editor-option')!
   editorOptionDom.onclick = function () {
     const options = instance.command.getOptions()
     new Dialog({
-      title: '编辑器配置',
+      title: 'Editor Configuration',
       data: [
         {
           type: 'textarea',
@@ -1265,7 +1265,7 @@ window.onload = function () {
           height: 300,
           required: true,
           value: JSON.stringify(options, null, 2),
-          placeholder: '请输入编辑器配置'
+          placeholder: 'Please enter editor configuration'
         }
       ],
       onConfirm: payload => {
@@ -1291,13 +1291,13 @@ window.onload = function () {
           const catalogItem = catalogItems[c]
           const catalogItemDom = document.createElement('div')
           catalogItemDom.classList.add('catalog-item')
-          // 渲染
+          // Render
           const catalogItemContentDom = document.createElement('div')
           catalogItemContentDom.classList.add('catalog-item__content')
           const catalogItemContentSpanDom = document.createElement('span')
           catalogItemContentSpanDom.innerText = catalogItem.name
           catalogItemContentDom.append(catalogItemContentSpanDom)
-          // 定位
+          // Locate
           catalogItemContentDom.onclick = () => {
             instance.command.executeLocationCatalog(catalogItem.id)
           }
@@ -1305,7 +1305,7 @@ window.onload = function () {
           if (catalogItem.subCatalog && catalogItem.subCatalog.length) {
             appendCatalog(catalogItemDom, catalogItem.subCatalog)
           }
-          // 追加
+          // Append
           parent.append(catalogItemDom)
         }
       }
@@ -1360,7 +1360,7 @@ window.onload = function () {
       instance.command.executePageScaleAdd()
     }
 
-  // 纸张大小
+  // Paper Size
   const paperSizeDom = document.querySelector<HTMLDivElement>('.paper-size')!
   const paperSizeDomOptionsDom =
     paperSizeDom.querySelector<HTMLDivElement>('.options')!
@@ -1372,14 +1372,14 @@ window.onload = function () {
     const paperType = li.dataset.paperSize!
     const [width, height] = paperType.split('*').map(Number)
     instance.command.executePaperSize(width, height)
-    // 纸张状态回显
+    // Paper status feedback
     paperSizeDomOptionsDom
       .querySelectorAll('li')
       .forEach(child => child.classList.remove('active'))
     li.classList.add('active')
   }
 
-  // 纸张方向
+  // Paper Direction
   const paperDirectionDom =
     document.querySelector<HTMLDivElement>('.paper-direction')!
   const paperDirectionDomOptionsDom =
@@ -1391,53 +1391,53 @@ window.onload = function () {
     const li = evt.target as HTMLLIElement
     const paperDirection = li.dataset.paperDirection!
     instance.command.executePaperDirection(<PaperDirection>paperDirection)
-    // 纸张方向状态回显
+    // Paper direction status feedback
     paperDirectionDomOptionsDom
       .querySelectorAll('li')
       .forEach(child => child.classList.remove('active'))
     li.classList.add('active')
   }
 
-  // 页面边距
+  // Page Margin
   const paperMarginDom =
     document.querySelector<HTMLDivElement>('.paper-margin')!
   paperMarginDom.onclick = function () {
     const [topMargin, rightMargin, bottomMargin, leftMargin] =
       instance.command.getPaperMargin()
     new Dialog({
-      title: '页边距',
+      title: 'Page Margin',
       data: [
         {
           type: 'text',
-          label: '上边距',
+          label: 'Top Margin',
           name: 'top',
           required: true,
           value: `${topMargin}`,
-          placeholder: '请输入上边距'
+          placeholder: 'Please enter top margin'
         },
         {
           type: 'text',
-          label: '下边距',
+          label: 'Bottom Margin',
           name: 'bottom',
           required: true,
           value: `${bottomMargin}`,
-          placeholder: '请输入下边距'
+          placeholder: 'Please enter bottom margin'
         },
         {
           type: 'text',
-          label: '左边距',
+          label: 'Left Margin',
           name: 'left',
           required: true,
           value: `${leftMargin}`,
-          placeholder: '请输入左边距'
+          placeholder: 'Please enter left margin'
         },
         {
           type: 'text',
-          label: '右边距',
+          label: 'Right Margin',
           name: 'right',
           required: true,
           value: `${rightMargin}`,
-          placeholder: '请输入右边距'
+          placeholder: 'Please enter right margin'
         }
       ],
       onConfirm: payload => {
@@ -1459,7 +1459,7 @@ window.onload = function () {
     })
   }
 
-  // 全屏
+  // Fullscreen
   const fullscreenDom = document.querySelector<HTMLDivElement>('.fullscreen')!
   fullscreenDom.onclick = toggleFullscreen
   window.addEventListener('keydown', evt => {
@@ -1480,47 +1480,47 @@ window.onload = function () {
     }
   }
 
-  // 7. 编辑器使用模式
+  // 7. Editor Mode
   let modeIndex = 0
   const modeList = [
     {
       mode: EditorMode.EDIT,
-      name: '编辑模式'
+      name: 'Edit Mode'
     },
     {
       mode: EditorMode.CLEAN,
-      name: '清洁模式'
+      name: 'Clean Mode'
     },
     {
       mode: EditorMode.READONLY,
-      name: '只读模式'
+      name: 'Readonly Mode'
     },
     {
       mode: EditorMode.FORM,
-      name: '表单模式'
+      name: 'Form Mode'
     },
     {
       mode: EditorMode.PRINT,
-      name: '打印模式'
+      name: 'Print Mode'
     },
     {
       mode: EditorMode.DESIGN,
-      name: '设计模式'
+      name: 'Design Mode'
     },
     {
       mode: EditorMode.GRAFFITI,
-      name: '涂鸦模式'
+      name: 'Graffiti Mode'
     }
   ]
   const modeElement = document.querySelector<HTMLDivElement>('.editor-mode')!
   modeElement.onclick = function () {
-    // 模式选择循环
+    // Mode selection cycle
     modeIndex === modeList.length - 1 ? (modeIndex = 0) : modeIndex++
-    // 设置模式
+    // Set mode
     const { name, mode } = modeList[modeIndex]
     modeElement.innerText = name
     instance.command.executeMode(mode)
-    // 设置菜单栏权限视觉反馈
+    // Set menu permission visual feedback
     const isReadonly = mode === EditorMode.READONLY
     const enableMenuList = ['search', 'print']
     document.querySelectorAll<HTMLDivElement>('.menu-item>div').forEach(dom => {
@@ -1531,7 +1531,7 @@ window.onload = function () {
     })
   }
 
-  // 模拟批注
+  // Simulate comments
   const commentDom = document.querySelector<HTMLDivElement>('.comment')!
   async function updateComment() {
     const groupIds = await instance.command.getGroupIds()
@@ -1539,9 +1539,9 @@ window.onload = function () {
       const activeCommentDom = commentDom.querySelector<HTMLDivElement>(
         `.comment-item[data-id='${comment.id}']`
       )
-      // 编辑器是否存在对应成组id
+      // Check if editor has corresponding group id
       if (groupIds.includes(comment.id)) {
-        // 当前dom是否存在-不存在则追加
+        // Check if current dom exists - append if not
         if (!activeCommentDom) {
           const commentItem = document.createElement('div')
           commentItem.classList.add('comment-item')
@@ -1550,7 +1550,7 @@ window.onload = function () {
             instance.command.executeLocationGroup(comment.id)
           }
           commentDom.append(commentItem)
-          // 选区信息
+          // Selection info
           const commentItemTitle = document.createElement('div')
           commentItemTitle.classList.add('comment-item__title')
           commentItemTitle.append(document.createElement('span'))
@@ -1563,7 +1563,7 @@ window.onload = function () {
           }
           commentItemTitle.append(closeDom)
           commentItem.append(commentItemTitle)
-          // 基础信息
+          // Basic info
           const commentItemInfo = document.createElement('div')
           commentItemInfo.classList.add('comment-item__info')
           const commentItemInfoName = document.createElement('span')
@@ -1573,7 +1573,7 @@ window.onload = function () {
           commentItemInfo.append(commentItemInfoName)
           commentItemInfo.append(commentItemInfoDate)
           commentItem.append(commentItemInfo)
-          // 详细评论
+          // Detailed comment
           const commentItemContent = document.createElement('div')
           commentItemContent.classList.add('comment-item__content')
           commentItemContent.innerText = comment.content
@@ -1581,14 +1581,14 @@ window.onload = function () {
           commentDom.append(commentItem)
         }
       } else {
-        // 编辑器内不存在对应成组id则dom则移除
+        // Remove dom if editor doesn't have corresponding group id
         activeCommentDom?.remove()
       }
     }
   }
-  // 8. 内部事件监听
+  // 8. Internal Event Listeners
   instance.listener.rangeStyleChange = function (payload) {
-    // 控件类型
+    // Control type
     payload.type === ElementType.SUBSCRIPT
       ? subscriptDom.classList.add('active')
       : subscriptDom.classList.remove('active')
@@ -1611,7 +1611,7 @@ window.onload = function () {
       }
     }
 
-    // 富文本
+    // Rich text
     fontOptionDom
       .querySelectorAll<HTMLLIElement>('li')
       .forEach(li => li.classList.remove('active'))
@@ -1666,7 +1666,7 @@ window.onload = function () {
       highlightSpanDom.style.backgroundColor = '#ffff00'
     }
 
-    // 行布局
+    // Row layout
     leftDom.classList.remove('active')
     centerDom.classList.remove('active')
     rightDom.classList.remove('active')
@@ -1684,7 +1684,7 @@ window.onload = function () {
       leftDom.classList.add('active')
     }
 
-    // 行间距
+    // Row spacing
     rowOptionDom
       .querySelectorAll<HTMLLIElement>('li')
       .forEach(li => li.classList.remove('active'))
@@ -1693,7 +1693,7 @@ window.onload = function () {
     )!
     curRowMarginDom.classList.add('active')
 
-    // 功能
+    // Features
     payload.undo
       ? undoDom.classList.remove('no-allow')
       : undoDom.classList.add('no-allow')
@@ -1704,7 +1704,7 @@ window.onload = function () {
       ? painterDom.classList.add('active')
       : painterDom.classList.remove('active')
 
-    // 标题
+    // Title
     titleOptionDom
       .querySelectorAll<HTMLLIElement>('li')
       .forEach(li => li.classList.remove('active'))
@@ -1715,11 +1715,11 @@ window.onload = function () {
       titleSelectDom.innerText = curTitleDom.innerText
       curTitleDom.classList.add('active')
     } else {
-      titleSelectDom.innerText = '正文'
+      titleSelectDom.innerText = 'Body Text'
       titleOptionDom.querySelector('li:first-child')!.classList.add('active')
     }
 
-    // 列表
+    // List
     listOptionDom
       .querySelectorAll<HTMLLIElement>('li')
       .forEach(li => li.classList.remove('active'))
@@ -1738,7 +1738,7 @@ window.onload = function () {
       listDom.classList.remove('active')
     }
 
-    // 批注
+    // Comment
     commentDom
       .querySelectorAll<HTMLDivElement>('.comment-item')
       .forEach(commentItemDom => {
@@ -1755,7 +1755,7 @@ window.onload = function () {
       }
     }
 
-    // 行列信息
+    // Row and column info
     const rangeContext = instance.command.getRangeContext()
     if (rangeContext) {
       document.querySelector<HTMLSpanElement>('.row-no')!.innerText = `${
@@ -1798,7 +1798,7 @@ window.onload = function () {
       'page-break',
       'control'
     ]
-    // 菜单操作权限
+    // Menu operation permissions
     disableMenusInControlContext.forEach(menu => {
       const menuDom = document.querySelector<HTMLDivElement>(
         `.menu-item__${menu}`
@@ -1820,18 +1820,18 @@ window.onload = function () {
   }
 
   const handleContentChange = async function () {
-    // 字数
+    // Word count
     const wordCount = await instance.command.getWordCount()
     document.querySelector<HTMLSpanElement>('.word-count')!.innerText = `${
       wordCount || 0
     }`
-    // 目录
+    // Catalog
     if (isCatalogShow) {
       nextTick(() => {
         updateCatalog()
       })
     }
-    // 批注
+    // Comment
     nextTick(() => {
       updateComment()
     })
@@ -1843,10 +1843,10 @@ window.onload = function () {
     console.log('elementList: ', payload)
   }
 
-  // 9. 右键菜单注册
+  // 9. Context Menu Registration
   instance.register.contextMenuList([
     {
-      name: '批注',
+      name: 'Comment',
       when: payload => {
         return (
           !payload.isReadonly &&
@@ -1856,15 +1856,15 @@ window.onload = function () {
       },
       callback: (command: Command) => {
         new Dialog({
-          title: '批注',
+          title: 'Comment',
           data: [
             {
               type: 'textarea',
-              label: '批注',
+              label: 'Comment',
               height: 100,
               name: 'value',
               required: true,
-              placeholder: '请输入批注'
+              placeholder: 'Please enter comment'
             }
           ],
           onConfirm: payload => {
@@ -1884,7 +1884,7 @@ window.onload = function () {
       }
     },
     {
-      name: '签名',
+      name: 'Signature',
       icon: 'signature',
       when: payload => {
         return !payload.isReadonly && payload.editorTextFocus
@@ -1908,7 +1908,7 @@ window.onload = function () {
       }
     },
     {
-      name: '格式整理',
+      name: 'Format Cleanup',
       icon: 'word-tool',
       when: payload => {
         return !payload.isReadonly
@@ -1918,7 +1918,7 @@ window.onload = function () {
       }
     },
     {
-      name: '清空涂鸦信息',
+      name: 'Clear Graffiti',
       when: payload => {
         return payload.options.mode === EditorMode.GRAFFITI
       },
@@ -1928,7 +1928,7 @@ window.onload = function () {
     }
   ])
 
-  // 10. 快捷键注册
+  // 10. Shortcut Registration
   instance.register.shortcutList([
     {
       key: KeyMap.P,
