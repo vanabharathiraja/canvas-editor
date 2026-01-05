@@ -133,6 +133,7 @@ export class Command {
   public getPaperMargin: CommandAdapt['getPaperMargin']
   public getSearchNavigateInfo: CommandAdapt['getSearchNavigateInfo']
   public getLocale: CommandAdapt['getLocale']
+  public isRTL: CommandAdapt['isRTL']
   public getGroupIds: CommandAdapt['getGroupIds']
   public getControlValue: CommandAdapt['getControlValue']
   public getControlList: CommandAdapt['getControlList']
@@ -277,6 +278,7 @@ export class Command {
     this.getPaperMargin = adapt.getPaperMargin.bind(adapt)
     this.getSearchNavigateInfo = adapt.getSearchNavigateInfo.bind(adapt)
     this.getLocale = adapt.getLocale.bind(adapt)
+    this.isRTL = adapt.isRTL.bind(adapt)
     this.getGroupIds = adapt.getGroupIds.bind(adapt)
     this.getContainer = adapt.getContainer.bind(adapt)
     this.getTitleValue = adapt.getTitleValue.bind(adapt)

@@ -1,15 +1,20 @@
 import { ILang } from '../../interface/i18n/I18n'
 import zhCN from './lang/zh-CN.json'
 import en from './lang/en.json'
+import ar from './lang/ar.json'
 import { mergeObject } from '../../utils'
 import { DeepPartial } from '../../interface/Common'
+
+// RTL (Right-to-Left) locales
+const RTL_LOCALES = ['ar', 'he', 'fa', 'ur']
 
 export class I18n {
   private currentLocale: string
 
   private langMap: Map<string, ILang> = new Map([
     ['zhCN', zhCN],
-    ['en', en]
+    ['en', en],
+    ['ar', ar]
   ])
 
   constructor(locale: string) {
@@ -18,7 +23,7 @@ export class I18n {
 
   public registerLangMap(locale: string, lang: DeepPartial<ILang>) {
     const sourceLang = this.langMap.get(locale)
-    this.langMap.set(locale, <ILang>mergeObject(sourceLang || zhCN, lang))
+    this.langMap.set(locale, <ILang>mergeObject(sourceLang || en, lang))
   }
 
   public getLocale(): string {
@@ -30,7 +35,11 @@ export class I18n {
   }
 
   public getLang(): ILang {
-    return this.langMap.get(this.currentLocale) || zhCN
+    return this.langMap.get(this.currentLocale) || en
+  }
+
+  public isRTL(): boolean {
+    return RTL_LOCALES.includes(this.currentLocale)
   }
 
   public t(path: string): string {

@@ -1,4 +1,4 @@
-import { nextTick } from 'process'
+
 import { CURSOR_AGENT_OFFSET_HEIGHT } from '../../dataset/constant/Cursor'
 import { EDITOR_PREFIX } from '../../dataset/constant/Editor'
 import { MoveDirection } from '../../dataset/enum/Observer'
@@ -182,7 +182,7 @@ export class Cursor {
       this._clearBlinkTimeout()
     }
     // 移动到视野范围内
-    nextTick(() => {
+    queueMicrotask(() => {
       // nexttick后执行 => 避免画布没有渲染完成造成残影
       this.moveCursorToVisible({
         cursorPosition: cursorPosition!,
