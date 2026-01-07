@@ -1174,6 +1174,8 @@ window.onload = function () {
     document.querySelector<HTMLInputElement>('#option-reg')!
   const searchCaseInputDom =
     document.querySelector<HTMLInputElement>('#option-case')!
+  const searchSelectionInputDom =
+    document.querySelector<HTMLInputElement>('#option-selection')!
   const searchDom =
     document.querySelector<HTMLDivElement>('.menu-item__search')!
   searchDom.title = `Search & Replace (${isApple ? '⌘' : 'Ctrl'}+F)`
@@ -1214,7 +1216,8 @@ window.onload = function () {
   function emitSearch() {
     instance.command.executeSearch(searchInputDom.value || null, {
       isRegEnable: searchRegInputDom.checked,
-      isIgnoreCase: searchCaseInputDom.checked
+      isIgnoreCase: searchCaseInputDom.checked,
+      isLimitSelection: searchSelectionInputDom.checked
     })
     setSearchResult()
   }
@@ -1222,6 +1225,7 @@ window.onload = function () {
   searchInputDom.oninput = emitSearch
   searchRegInputDom.onchange = emitSearch
   searchCaseInputDom.onchange = emitSearch
+  searchSelectionInputDom.onchange = emitSearch
   searchInputDom.onkeydown = function (evt) {
     if (evt.key === 'Enter') {
       emitSearch()
