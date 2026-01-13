@@ -175,6 +175,7 @@ export class TextParticle {
     this.ctx.save()
     this.ctx.font = this.curStyle
     this.ctx.fillStyle = this.curColor || this.options.defaultColor
+    // console.log('Rendering text:', this.text, 'at', this.curX, this.curY)
     this.ctx.fillText(this.text, this.curX, this.curY)
     this.ctx.restore()
   }

@@ -125,7 +125,6 @@ export class Draw {
   private pageList: HTMLCanvasElement[]
   private ctxList: CanvasRenderingContext2D[]
   private pageNo: number
-  private renderCount: number
   private pagePixelRatio: number | null
   private mode: EditorMode
   private options: DeepRequired<IEditorOption>
@@ -195,6 +194,13 @@ export class Draw {
   private lazyRenderIntersectionObserver: IntersectionObserver | null
   private printModeData: Required<Omit<IEditorData, 'graffiti'>> | null
 
+  // Performance Monitoring
+  private renderCount = 0
+  private perfRenderCount = 0
+  private lastPerfUpdate = performance.now()
+  private avgRenderTime = 0
+  private renderTimes: number[] = []
+
   constructor(
     rootContainer: HTMLElement,
     options: DeepRequired<IEditorOption>,
@@ -208,6 +214,7 @@ export class Draw {
     this.ctxList = []
     this.pageNo = 0
     this.renderCount = 0
+    this.perfRenderCount = 0
     this.pagePixelRatio = null
     this.mode = options.mode
     this.options = options
@@ -2687,7 +2694,10 @@ export class Draw {
   }
 
   public render(payload?: IDrawOption) {
-    this.renderCount++
+
+    const renderStart = performance.now()
+
+    this.renderCount++  // Never resets - used by ImageParticle for async tracking
     const { header, footer } = this.options
     const {
       isSubmitHistory = true,
@@ -2834,7 +2844,39 @@ export class Draw {
         }
       }
     })
+
+    // Measure render time
+    const renderEnd = performance.now()
+    const renderTime = renderEnd - renderStart
+    
+    // Track render performance (separate counter from renderCount)
+    this.renderTimes.push(renderTime)
+    this.perfRenderCount++
+    const now = performance.now()
+    
+    if (now - this.lastPerfUpdate >= 1000) {
+      // Calculate average render time
+      this.avgRenderTime = this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length
+      const maxRenderTime = Math.max(...this.renderTimes)
+      const is60FpsCapable = this.avgRenderTime < 16.67
+      
+      console.log(`📊 Performance Stats:`)
+      console.log(`  Renders/sec: ${this.perfRenderCount}`)
+      console.log(`  Avg render: ${this.avgRenderTime.toFixed(2)}ms`)
+      console.log(`  Max render: ${maxRenderTime.toFixed(2)}ms`)
+      console.log(`  60 FPS capable: ${is60FpsCapable ? '✅ Yes' : '❌ No'}`)
+      
+      if (!is60FpsCapable) {
+        console.warn(`⚠️ Avg render time ${this.avgRenderTime.toFixed(2)}ms exceeds 16.67ms (60 FPS threshold)`)
+      }
+      
+      this.perfRenderCount = 0
+      this.renderTimes = []
+      this.lastPerfUpdate = now
+    }
   }
+
+  
 
   public setCursor(curIndex: number | undefined) {
     const positionContext = this.position.getPositionContext()

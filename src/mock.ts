@@ -7,7 +7,7 @@ import {
   TitleLevel
 } from './editor'
 
-const text = `Chief Complaint:\nFever for three days, cough for five days.\nHistory of Present Illness:\nThe patient developed facial edema without obvious cause three days ago after catching a cold, no rash, decreased urine output, fatigue appeared, no improvement with external treatment, now comes to our hospital for consultation.\nPast Medical History:\nDiabetes for 10 years, hypertension for 2 years, infectious disease for 1 year. Report other past medical conditions.\nEpidemiological History:\nDenies contact with confirmed patients, suspected patients, asymptomatic carriers and their close contacts within 14 days; Denies visiting the following places within 14 days: seafood and meat wholesale markets, farmers markets, fairs, large supermarkets, night markets; Denies close contact with staff from the following places within 14 days: seafood and meat wholesale markets, farmers markets, fairs, large supermarkets; Denies 2 or more clustered cases in the surrounding area (such as home, office) within 14 days; Denies contact with people with fever or respiratory symptoms within 14 days; Denies having fever or respiratory symptoms within 14 days; Denies contact with people under isolation observation and other situations that may be associated with COVID-19 within 14 days; Accompanying family members have none of the above situations.\nPhysical Examination:\nT: 39.5°C, P: 80bpm, R: 20/min, BP: 120/80mmHg;\nAuxiliary Examination:\nJune 10, 2020, Radiology: Hematocrit 36.50% (low) 40~50; Monocyte absolute value 0.75*10/L (high) Reference value: 0.1~0.6;\nOutpatient Diagnosis: Treatment: Electronic Signature: []\nOther Records:`
+const text = `Chief Complaint:\nFever for three days, cough for five days.\n\nHistory of Present Illness:\nThe patient developed facial edema without obvious cause three days ago after catching a cold, no rash, decreased urine output, fatigue appeared, no improvement with external treatment, now comes to our hospital for consultation.\n\nPast Medical History:\nDiabetes for 10 years, hypertension for 2 years, infectious disease for 1 year. Report other past medical conditions.\nEpidemiological History:\nDenies contact with confirmed patients, suspected patients, asymptomatic carriers and their close contacts within 14 days; Denies visiting the following places within 14 days: seafood and meat wholesale markets, farmers markets, fairs, large supermarkets, night markets; Denies close contact with staff from the following places within 14 days: seafood and meat wholesale markets, farmers markets, fairs, large supermarkets; Denies 2 or more clustered cases in the surrounding area (such as home, office) within 14 days; Denies contact with people with fever or respiratory symptoms within 14 days; Denies having fever or respiratory symptoms within 14 days; Denies contact with people under isolation observation and other situations that may be associated with COVID-19 within 14 days; Accompanying family members have none of the above situations.\n\nPhysical Examination:\nT: 39.5°C, P: 80bpm, R: 20/min, BP: 120/80mmHg;\n\nAuxiliary Examination:\nJune 10, 2020, Radiology: Hematocrit 36.50% (low) 40~50; Monocyte absolute value 0.75*10/L (high) Reference value: 0.1~0.6;\n\nOutpatient Diagnosis: Treatment: Electronic Signature: []\n\nOther Records:`
 
 // Simulate titles
 const titleText = [
@@ -167,7 +167,7 @@ elementList.splice(116, 0, {
       size: 16
     }
   ],
-  url: 'https://hufe.club/canvas-editor'
+  url: 'http://localhost:3000/canvas-editor'
 })
 
 // Simulate text control (with pre/post text)
@@ -204,7 +204,7 @@ elementList.splice(451, 0, {
   listType: ListType.OL,
   valueList: [
     {
-      value: 'Hypertension\nDiabetes\nViral Cold\nAllergic Rhinitis\nAllergic Nasal Polyps'
+      value: 'Hypertension\nDiabetes\nViral Cold\nAllergic Rhinitis\nAllergic'
     }
   ]
 })
@@ -493,7 +493,7 @@ export const commentList: IComment[] = [
 export const options: IEditorOption = {
   margins: [100, 120, 100, 120],
   watermark: {
-    data: 'Logo',
+    data: 'Taqniat',
     size: 120
   },
   pageNumber: {
