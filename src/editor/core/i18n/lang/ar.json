@@ -1,0 +1,102 @@
+{
+  "contextmenu": {
+    "global": {
+      "cut": "قص",
+      "copy": "نسخ",
+      "paste": "لصق",
+      "selectAll": "تحديد الكل",
+      "print": "طباعة"
+    },
+    "control": {
+      "delete": "حذف عنصر التحكم"
+    },
+    "hyperlink": {
+      "delete": "حذف الرابط",
+      "cancel": "إلغاء الرابط",
+      "edit": "تحرير الرابط"
+    },
+    "image": {
+      "change": "تغيير الصورة",
+      "saveAs": "حفظ كصورة",
+      "textWrap": "التفاف النص",
+      "textWrapType": {
+        "embed": "مضمن",
+        "upDown": "أعلى وأسفل",
+        "surround": "إحاطة",
+        "floatTop": "طفو فوق النص",
+        "floatBottom": "طفو تحت النص"
+      }
+    },
+    "table": {
+      "insertRowCol": "إدراج صف/عمود",
+      "insertTopRow": "إدراج صف في الأعلى",
+      "insertBottomRow": "إدراج صف في الأسفل",
+      "insertLeftCol": "إدراج عمود على اليسار",
+      "insertRightCol": "إدراج عمود على اليمين",
+      "deleteRowCol": "حذف صف/عمود",
+      "deleteRow": "حذف صف",
+      "deleteCol": "حذف عمود",
+      "deleteTable": "حذف الجدول",
+      "mergeCell": "دمج الخلايا",
+      "mergeCancelCell": "إلغاء دمج الخلايا",
+      "verticalAlign": "المحاذاة العمودية",
+      "verticalAlignTop": "أعلى",
+      "verticalAlignMiddle": "وسط",
+      "verticalAlignBottom": "أسفل",
+      "border": "حدود الجدول",
+      "borderAll": "الكل",
+      "borderEmpty": "بدون حدود",
+      "borderDash": "متقطع",
+      "borderExternal": "خارجي",
+      "borderInternal": "داخلي",
+      "borderTd": "حدود الخلية",
+      "borderTdTop": "أعلى",
+      "borderTdRight": "يمين",
+      "borderTdBottom": "أسفل",
+      "borderTdLeft": "يسار",
+      "borderTdForward": "قطري أمامي",
+      "borderTdBack": "قطري خلفي"
+    },
+    "header": {
+      "fullWidth": "خلفية بعرض كامل",
+      "contentFullWidth": "محتوى بعرض كامل",
+      "setBackground": "تعيين الخلفية..."
+    },
+    "footer": {
+      "fullWidth": "خلفية بعرض كامل",
+      "contentFullWidth": "محتوى بعرض كامل",
+      "setBackground": "تعيين الخلفية..."
+    }
+  },
+  "datePicker": {
+    "now": "الآن",
+    "confirm": "تأكيد",
+    "return": "رجوع",
+    "timeSelect": "اختيار الوقت",
+    "weeks": {
+      "sun": "أحد",
+      "mon": "إثنين",
+      "tue": "ثلاثاء",
+      "wed": "أربعاء",
+      "thu": "خميس",
+      "fri": "جمعة",
+      "sat": "سبت"
+    },
+    "year": " ",
+    "month": " ",
+    "hour": "ساعة",
+    "minute": "دقيقة",
+    "second": "ثانية"
+  },
+  "frame": {
+    "header": "رأس الصفحة",
+    "footer": "تذييل الصفحة"
+  },
+  "pageBreak": {
+    "displayName": "فاصل صفحات"
+  },
+  "zone": {
+    "headerTip": "انقر نقرًا مزدوجًا لتحرير رأس الصفحة",
+    "footerTip": "انقر نقرًا مزدوجًا لتحرير تذييل الصفحة"
+  }
+}
