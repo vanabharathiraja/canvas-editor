@@ -2652,4 +2652,118 @@ export class CommandAdapt {
       })
     }
   }
+
+  // 切换页眉全宽模式
+  public setHeaderFullWidth() {
+    this.options.header.fullWidth = !this.options.header.fullWidth
+    // Reset content full-width when disabling full-width
+    if (!this.options.header.fullWidth) {
+      this.options.header.contentFullWidth = false
+    }
+    this.draw.render({
+      isSetCursor: false,
+      isSubmitHistory: false
+    })
+  }
+
+  // 切换页眉内容全宽模式
+  public setHeaderContentFullWidth() {
+    this.options.header.contentFullWidth = !this.options.header.contentFullWidth
+    this.draw.render({
+      isSetCursor: false,
+      isSubmitHistory: false
+    })
+  }
+
+  // 切换页脚全宽模式
+  public setFooterFullWidth() {
+    this.options.footer.fullWidth = !this.options.footer.fullWidth
+    // Reset content full-width when disabling full-width
+    if (!this.options.footer.fullWidth) {
+      this.options.footer.contentFullWidth = false
+    }
+    this.draw.render({
+      isSetCursor: false,
+      isSubmitHistory: false
+    })
+  }
+
+  // 切换页脚内容全宽模式
+  public setFooterContentFullWidth() {
+    this.options.footer.contentFullWidth = !this.options.footer.contentFullWidth
+    this.draw.render({
+      isSetCursor: false,
+      isSubmitHistory: false
+    })
+  }
+
+  // 设置页眉背景（打开对话框）
+  public setHeaderBackground() {
+    const header = this.draw.getHeader()
+    const currentBackground = header.getBackground()
+    const i18n = this.draw.getI18n()
+
+    // Dynamically import the dialog to avoid circular dependencies
+    import('../../../components/backgroundDialog/BackgroundDialog').then(
+      ({ BackgroundDialog }) => {
+        new BackgroundDialog({
+          title: i18n.t('contextmenu.header.setBackground'),
+          currentBackground,
+          onConfirm: background => {
+            header.setBackground(background)
+            this.draw.render({
+              isSetCursor: false,
+              isSubmitHistory: false
+            })
+          },
+          onClear: () => {
+            header.setBackground({
+              color: '',
+              image: '',
+              opacity: 1
+            })
+            this.draw.render({
+              isSetCursor: false,
+              isSubmitHistory: false
+            })
+          }
+        })
+      }
+    )
+  }
+
+  // 设置页脚背景（打开对话框）
+  public setFooterBackground() {
+    const footer = this.draw.getFooter()
+    const currentBackground = footer.getBackground()
+    const i18n = this.draw.getI18n()
+
+    // Dynamically import the dialog to avoid circular dependencies
+    import('../../../components/backgroundDialog/BackgroundDialog').then(
+      ({ BackgroundDialog }) => {
+        new BackgroundDialog({
+          title: i18n.t('contextmenu.footer.setBackground'),
+          currentBackground,
+          onConfirm: background => {
+            footer.setBackground(background)
+            this.draw.render({
+              isSetCursor: false,
+              isSubmitHistory: false
+            })
+          },
+          onClear: () => {
+            footer.setBackground({
+              color: '',
+              image: '',
+              opacity: 1
+            })
+            this.draw.render({
+              isSetCursor: false,
+              isSubmitHistory: false
+            })
+          }
+        })
+      }
+    )
+  }
 }

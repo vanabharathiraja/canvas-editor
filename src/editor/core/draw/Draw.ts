@@ -2597,6 +2597,14 @@ export class Draw {
       zone: EditorZone.MAIN
     })
     if (this.getIsPagingMode()) {
+      // 绘制页眉背景
+      if (!header.disabled) {
+        this.header.renderBackground(ctx)
+      }
+      // 绘制页脚背景
+      if (!footer.disabled) {
+        this.footer.renderBackground(ctx)
+      }
       // 绘制页眉
       if (!header.disabled) {
         this.header.render(ctx, pageNo)

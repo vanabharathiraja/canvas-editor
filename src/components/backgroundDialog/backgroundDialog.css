@@ -1,0 +1,223 @@
+.background-dialog-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.5;
+  background: #000000;
+  z-index: 99;
+}
+
+.background-dialog-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: auto;
+  z-index: 999;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.background-dialog {
+  position: absolute;
+  padding: 0 30px 30px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px 0 rgb(56 56 56 / 20%);
+  border: 1px solid #e2e6ed;
+  border-radius: 4px;
+  min-width: 420px;
+}
+
+.background-dialog-title {
+  position: relative;
+  border-bottom: 1px solid #e2e6ed;
+  margin-bottom: 20px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 500;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.background-dialog-title i {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  display: inline-block;
+  background: url(../../assets/images/close.svg);
+}
+
+.background-dialog-section {
+  margin-bottom: 16px;
+}
+
+.background-dialog-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #3d4757;
+  margin-bottom: 8px;
+}
+
+.background-dialog-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.background-dialog-row label {
+  width: 90px;
+  font-size: 13px;
+  color: #3d4757;
+}
+
+.background-dialog-row input[type="text"],
+.background-dialog-row input[type="number"],
+.background-dialog-row select {
+  flex: 1;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid #d3d3d3;
+  padding: 0 8px;
+  box-sizing: border-box;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.background-dialog-row input[type="color"] {
+  width: 60px;
+  height: 32px;
+  border: 1px solid #d3d3d3;
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.background-dialog-row input:focus,
+.background-dialog-row select:focus {
+  border-color: #4991f2;
+}
+
+.background-dialog-image-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.background-dialog-image-upload input[type="text"] {
+  flex: 1;
+}
+
+.background-dialog-image-upload button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #d3d3d3;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.background-dialog-image-upload button:hover {
+  background: #e8e8e8;
+}
+
+.background-dialog-preview {
+  margin-top: 16px;
+  border: 1px solid #e2e6ed;
+  border-radius: 4px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.background-dialog-preview-title {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.background-dialog-preview-area {
+  width: 100%;
+  height: 80px;
+  border: 1px dashed #d3d3d3;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.background-dialog-preview-area img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.background-dialog-menu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 20px;
+  gap: 12px;
+}
+
+.background-dialog-menu button {
+  height: 32px;
+  padding: 0 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  border: none;
+}
+
+.background-dialog-menu__cancel {
+  background: #f5f5f5;
+  border: 1px solid #d3d3d3 !important;
+  color: #333;
+}
+
+.background-dialog-menu__cancel:hover {
+  background: #e8e8e8;
+}
+
+.background-dialog-menu__confirm {
+  background: #4991f2;
+  color: #ffffff;
+}
+
+.background-dialog-menu__confirm:hover {
+  background: #3a7bd5;
+}
+
+.background-dialog-menu__clear {
+  background: #ff6b6b;
+  color: #ffffff;
+}
+
+.background-dialog-menu__clear:hover {
+  background: #ee5a5a;
+}
+
+.background-dialog-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.background-dialog-opacity-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+}
+
+.background-dialog-opacity-row span {
+  width: 40px;
+  text-align: right;
+  font-size: 12px;
+  color: #666;
+}

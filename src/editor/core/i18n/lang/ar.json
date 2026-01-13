@@ -56,6 +56,16 @@
       "borderTdLeft": "يسار",
       "borderTdForward": "قطري أمامي",
       "borderTdBack": "قطري خلفي"
+    },
+    "header": {
+      "fullWidth": "خلفية بعرض كامل",
+      "contentFullWidth": "محتوى بعرض كامل",
+      "setBackground": "تعيين الخلفية..."
+    },
+    "footer": {
+      "fullWidth": "خلفية بعرض كامل",
+      "contentFullWidth": "محتوى بعرض كامل",
+      "setBackground": "تعيين الخلفية..."
     }
   },
   "datePicker": {

@@ -13,6 +13,16 @@ export const INTERNAL_CONTEXT_MENU_KEY = {
   CONTROL: {
     DELETE: 'controlDelete'
   },
+  HEADER: {
+    FULL_WIDTH: 'headerFullWidth',
+    CONTENT_FULL_WIDTH: 'headerContentFullWidth',
+    SET_BACKGROUND: 'headerSetBackground'
+  },
+  FOOTER: {
+    FULL_WIDTH: 'footerFullWidth',
+    CONTENT_FULL_WIDTH: 'footerContentFullWidth',
+    SET_BACKGROUND: 'footerSetBackground'
+  },
   HYPERLINK: {
     DELETE: 'hyperlinkDelete',
     CANCEL: 'hyperlinkCancel',

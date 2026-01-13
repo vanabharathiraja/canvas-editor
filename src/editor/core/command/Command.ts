@@ -78,6 +78,12 @@ export class Command {
   public executePaperSize: CommandAdapt['paperSize']
   public executePaperDirection: CommandAdapt['paperDirection']
   public executeSetPaperMargin: CommandAdapt['setPaperMargin']
+  public executeSetHeaderFullWidth: CommandAdapt['setHeaderFullWidth']
+  public executeSetHeaderContentFullWidth: CommandAdapt['setHeaderContentFullWidth']
+  public executeSetHeaderBackground: CommandAdapt['setHeaderBackground']
+  public executeSetFooterFullWidth: CommandAdapt['setFooterFullWidth']
+  public executeSetFooterContentFullWidth: CommandAdapt['setFooterContentFullWidth']
+  public executeSetFooterBackground: CommandAdapt['setFooterBackground']
   public executeSetMainBadge: CommandAdapt['setMainBadge']
   public executeSetAreaBadge: CommandAdapt['setAreaBadge']
   public executeInsertElementList: CommandAdapt['insertElementList']
@@ -228,6 +234,14 @@ export class Command {
     this.executePaperSize = adapt.paperSize.bind(adapt)
     this.executePaperDirection = adapt.paperDirection.bind(adapt)
     this.executeSetPaperMargin = adapt.setPaperMargin.bind(adapt)
+    this.executeSetHeaderFullWidth = adapt.setHeaderFullWidth.bind(adapt)
+    this.executeSetHeaderContentFullWidth =
+      adapt.setHeaderContentFullWidth.bind(adapt)
+    this.executeSetHeaderBackground = adapt.setHeaderBackground.bind(adapt)
+    this.executeSetFooterFullWidth = adapt.setFooterFullWidth.bind(adapt)
+    this.executeSetFooterContentFullWidth =
+      adapt.setFooterContentFullWidth.bind(adapt)
+    this.executeSetFooterBackground = adapt.setFooterBackground.bind(adapt)
     // 签章
     this.executeSetMainBadge = adapt.setMainBadge.bind(adapt)
     this.executeSetAreaBadge = adapt.setAreaBadge.bind(adapt)

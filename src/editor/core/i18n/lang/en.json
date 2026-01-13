@@ -56,6 +56,16 @@
       "borderTdLeft": "Left",
       "borderTdForward": "Forward",
       "borderTdBack": "Back"
+    },
+    "header": {
+      "fullWidth": "Full width background",
+      "contentFullWidth": "Full width content",
+      "setBackground": "Set Background..."
+    },
+    "footer": {
+      "fullWidth": "Full width background",
+      "contentFullWidth": "Full width content",
+      "setBackground": "Set Background..."
     }
   },
   "datePicker": {

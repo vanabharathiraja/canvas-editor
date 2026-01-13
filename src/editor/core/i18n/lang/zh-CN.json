@@ -56,6 +56,16 @@
       "borderTdLeft": "左边框",
       "borderTdForward": "正斜线",
       "borderTdBack": "反斜线"
+    },
+    "header": {
+      "fullWidth": "全宽背景",
+      "contentFullWidth": "全宽内容",
+      "setBackground": "设置背景..."
+    },
+    "footer": {
+      "fullWidth": "全宽背景",
+      "contentFullWidth": "全宽内容",
+      "setBackground": "设置背景..."
     }
   },
   "datePicker": {

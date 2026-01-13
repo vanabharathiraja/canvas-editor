@@ -16,7 +16,9 @@ import { I18n } from '../i18n/I18n'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
 import { controlMenus } from './menus/controlMenus'
+import { footerMenus } from './menus/footerMenus'
 import { globalMenus } from './menus/globalMenus'
+import { headerMenus } from './menus/headerMenus'
 import { hyperlinkMenus } from './menus/hyperlinkMenus'
 import { imageMenus } from './menus/imageMenus'
 import { tableMenus } from './menus/tableMenus'
@@ -56,7 +58,9 @@ export class ContextMenu {
       ...tableMenus,
       ...imageMenus,
       ...controlMenus,
-      ...hyperlinkMenus
+      ...hyperlinkMenus,
+      ...headerMenus,
+      ...footerMenus
     ]
     this.contextMenuContainerList = []
     this.contextMenuRelationShip = new Map()
