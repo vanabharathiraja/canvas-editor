@@ -26,6 +26,7 @@ import { IEditorOption, IModeRule } from '../interface/Editor'
 import { IFooter } from '../interface/Footer'
 import { IGroup } from '../interface/Group'
 import { IHeader } from '../interface/Header'
+import { IHeaderBackground } from '../interface/header/HeaderBackground'
 import { ILineBreakOption } from '../interface/LineBreak'
 import { IPageBreak } from '../interface/PageBreak'
 import { IPageNumber } from '../interface/PageNumber'
@@ -61,13 +62,45 @@ export function mergeOption(
     ...defaultTableOption,
     ...options.table
   }
-  const headerOptions: Required<IHeader> = {
-    ...defaultHeaderOption,
-    ...options.header
+  const headerBackgroundOptions: Required<IHeaderBackground> = {
+    ...defaultHeaderOption.background as Required<IHeaderBackground>
   }
-  const footerOptions: Required<IFooter> = {
+  if (options.header?.background) {
+    const bg = options.header.background
+    if (bg.color !== undefined) headerBackgroundOptions.color = bg.color
+    if (bg.image !== undefined) headerBackgroundOptions.image = bg.image
+    if (bg.size !== undefined) headerBackgroundOptions.size = bg.size
+    if (bg.repeat !== undefined) headerBackgroundOptions.repeat = bg.repeat
+    if (bg.width !== undefined) headerBackgroundOptions.width = bg.width
+    if (bg.height !== undefined) headerBackgroundOptions.height = bg.height
+    if (bg.positionX !== undefined) headerBackgroundOptions.positionX = bg.positionX
+    if (bg.positionY !== undefined) headerBackgroundOptions.positionY = bg.positionY
+    if (bg.opacity !== undefined) headerBackgroundOptions.opacity = bg.opacity
+  }
+  const headerOptions: DeepRequired<IHeader> = {
+    ...defaultHeaderOption,
+    ...options.header,
+    background: headerBackgroundOptions
+  }
+  const footerBackgroundOptions: Required<IHeaderBackground> = {
+    ...defaultFooterOption.background as Required<IHeaderBackground>
+  }
+  if (options.footer?.background) {
+    const bg = options.footer.background
+    if (bg.color !== undefined) footerBackgroundOptions.color = bg.color
+    if (bg.image !== undefined) footerBackgroundOptions.image = bg.image
+    if (bg.size !== undefined) footerBackgroundOptions.size = bg.size
+    if (bg.repeat !== undefined) footerBackgroundOptions.repeat = bg.repeat
+    if (bg.width !== undefined) footerBackgroundOptions.width = bg.width
+    if (bg.height !== undefined) footerBackgroundOptions.height = bg.height
+    if (bg.positionX !== undefined) footerBackgroundOptions.positionX = bg.positionX
+    if (bg.positionY !== undefined) footerBackgroundOptions.positionY = bg.positionY
+    if (bg.opacity !== undefined) footerBackgroundOptions.opacity = bg.opacity
+  }
+  const footerOptions: DeepRequired<IFooter> = {
     ...defaultFooterOption,
-    ...options.footer
+    ...options.footer,
+    background: footerBackgroundOptions
   }
   const pageNumberOptions: Required<IPageNumber> = {
     ...defaultPageNumberOption,

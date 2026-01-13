@@ -70,4 +70,14 @@ export interface IContextmenuLang {
     mergeCell: string
     mergeCancelCell: string
   }
+  header: {
+    fullWidth: string
+    contentFullWidth: string
+    setBackground: string
+  }
+  footer: {
+    fullWidth: string
+    contentFullWidth: string
+    setBackground: string
+  }
 }
