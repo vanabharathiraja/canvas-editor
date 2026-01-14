@@ -59,167 +59,167 @@ const highlightIndex: number[] = highlightText
 
 const elementList: IElement[] = []
 // Compose plain text data
-// const textList = text.split('')
-// let index = 0
-// while (index < textList.length) {
-//   const value = textList[index]
-//   const title = titleMap.get(index)
-//   if (title) {
-//     elementList.push({
-//       value: '',
-//       type: ElementType.TITLE,
-//       level: TitleLevel.FIRST,
-//       valueList: [
-//         {
-//           value: title,
-//           size: 18
-//         }
-//       ]
-//     })
-//     index += title.length - 1
-//   } else if (colorIndex.includes(index)) {
-//     elementList.push({
-//       value,
-//       color: '#FF0000',
-//       size: 16
-//     })
-//   } else if (highlightIndex.includes(index)) {
-//     elementList.push({
-//       value,
-//       highlight: '#F2F27F',
-//       groupIds: ['1'] // Simulate comment
-//     })
-//   } else {
-//     elementList.push({
-//       value,
-//       size: 16
-//     })
-//   }
-//   index++
-// }
+const textList = text.split('')
+let index = 0
+while (index < textList.length) {
+  const value = textList[index]
+  const title = titleMap.get(index)
+  if (title) {
+    elementList.push({
+      value: '',
+      type: ElementType.TITLE,
+      level: TitleLevel.FIRST,
+      valueList: [
+        {
+          value: title,
+          size: 18
+        }
+      ]
+    })
+    index += title.length - 1
+  } else if (colorIndex.includes(index)) {
+    elementList.push({
+      value,
+      color: '#FF0000',
+      size: 16
+    })
+  } else if (highlightIndex.includes(index)) {
+    elementList.push({
+      value,
+      highlight: '#F2F27F',
+      groupIds: ['1'] // Simulate comment
+    })
+  } else {
+    elementList.push({
+      value,
+      size: 16
+    })
+  }
+  index++
+}
 
-// // Simulate text control
-// elementList.splice(12, 0, {
-//   type: ElementType.CONTROL,
-//   value: '',
-//   control: {
-//     conceptId: '1',
-//     type: ControlType.TEXT,
-//     value: null,
-//     placeholder: 'Additional notes',
-//     prefix: '{',
-//     postfix: '}'
-//   }
-// })
+// Simulate text control
+elementList.splice(12, 0, {
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: '1',
+    type: ControlType.TEXT,
+    value: null,
+    placeholder: 'Additional notes',
+    prefix: '{',
+    postfix: '}'
+  }
+})
 
-// // Simulate dropdown control
-// elementList.splice(94, 0, {
-//   type: ElementType.CONTROL,
-//   value: '',
-//   control: {
-//     conceptId: '2',
-//     type: ControlType.SELECT,
-//     value: null,
-//     code: null,
-//     placeholder: 'Yes/No',
-//     prefix: '{',
-//     postfix: '}',
-//     valueSets: [
-//       {
-//         value: 'Yes',
-//         code: '98175'
-//       },
-//       {
-//         value: 'No',
-//         code: '98176'
-//       },
-//       {
-//         value: 'Unknown',
-//         code: '98177'
-//       }
-//     ]
-//   }
-// })
+// Simulate dropdown control
+elementList.splice(94, 0, {
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: '2',
+    type: ControlType.SELECT,
+    value: null,
+    code: null,
+    placeholder: 'Yes/No',
+    prefix: '{',
+    postfix: '}',
+    valueSets: [
+      {
+        value: 'Yes',
+        code: '98175'
+      },
+      {
+        value: 'No',
+        code: '98176'
+      },
+      {
+        value: 'Unknown',
+        code: '98177'
+      }
+    ]
+  }
+})
 
-// // Simulate hyperlink
-// elementList.splice(116, 0, {
-//   type: ElementType.HYPERLINK,
-//   value: '',
-//   valueList: [
-//     {
-//       value: 'C',
-//       size: 16
-//     },
-//     {
-//       value: 'O',
-//       size: 16
-//     },
-//     {
-//       value: 'V',
-//       size: 16
-//     },
-//     {
-//       value: 'I',
-//       size: 16
-//     },
-//     {
-//       value: 'D',
-//       size: 16
-//     }
-//   ],
-//   url: 'http://localhost:3000/canvas-editor'
-// })
+// Simulate hyperlink
+elementList.splice(116, 0, {
+  type: ElementType.HYPERLINK,
+  value: '',
+  valueList: [
+    {
+      value: 'C',
+      size: 16
+    },
+    {
+      value: 'O',
+      size: 16
+    },
+    {
+      value: 'V',
+      size: 16
+    },
+    {
+      value: 'I',
+      size: 16
+    },
+    {
+      value: 'D',
+      size: 16
+    }
+  ],
+  url: 'http://localhost:3000/canvas-editor'
+})
 
-// // Simulate text control (with pre/post text)
-// elementList.splice(335, 0, {
-//   type: ElementType.CONTROL,
-//   value: '',
-//   control: {
-//     conceptId: '6',
-//     type: ControlType.TEXT,
-//     value: null,
-//     placeholder: 'content',
-//     preText: 'Other: ',
-//     postText: '.'
-//   }
-// })
+// Simulate text control (with pre/post text)
+elementList.splice(335, 0, {
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: '6',
+    type: ControlType.TEXT,
+    value: null,
+    placeholder: 'content',
+    preText: 'Other: ',
+    postText: '.'
+  }
+})
 
-// // Simulate subscript
-// elementList.splice(346, 0, {
-//   value: '∆',
-//   color: '#FF0000',
-//   type: ElementType.SUBSCRIPT
-// })
+// Simulate subscript
+elementList.splice(346, 0, {
+  value: '∆',
+  color: '#FF0000',
+  type: ElementType.SUBSCRIPT
+})
 
-// // Simulate superscript
-// elementList.splice(430, 0, {
-//   value: '9',
-//   type: ElementType.SUPERSCRIPT
-// })
+// Simulate superscript
+elementList.splice(430, 0, {
+  value: '9',
+  type: ElementType.SUPERSCRIPT
+})
 
-// // Simulate list
-// elementList.splice(451, 0, {
-//   value: '',
-//   type: ElementType.LIST,
-//   listType: ListType.OL,
-//   valueList: [
-//     {
-//       value: 'Hypertension\nDiabetes\nViral Cold\nAllergic Rhinitis\nAllergic'
-//     }
-//   ]
-// })
+// Simulate list
+elementList.splice(451, 0, {
+  value: '',
+  type: ElementType.LIST,
+  listType: ListType.OL,
+  valueList: [
+    {
+      value: 'Hypertension\nDiabetes\nViral Cold\nAllergic Rhinitis\nAllergic'
+    }
+  ]
+})
 
-// elementList.splice(453, 0, {
-//   value: '',
-//   type: ElementType.LIST,
-//   listType: ListType.OL,
-//   valueList: [
-//     {
-//       value:
-//         'Ultrasound-guided thyroid fine needle aspiration;\nHepatitis B surface antibody test;\nMembrane lesion cell collection, posterior neck subcutaneous layer;'
-//     }
-//   ]
-// })
+elementList.splice(453, 0, {
+  value: '',
+  type: ElementType.LIST,
+  listType: ListType.OL,
+  valueList: [
+    {
+      value:
+        'Ultrasound-guided thyroid fine needle aspiration;\nHepatitis B surface antibody test;\nMembrane lesion cell collection, posterior neck subcutaneous layer;'
+    }
+  ]
+})
 
 // // Simulate image
 // elementList.splice(456, 0, {
@@ -231,244 +231,244 @@ const elementList: IElement[] = []
 // })
 
 // Simulate table
-// elementList.push({
-//   type: ElementType.TABLE,
-//   value: '',
-//   colgroup: [
-//     {
-//       width: 180
-//     },
-//     {
-//       width: 80
-//     },
-//     {
-//       width: 130
-//     },
-//     {
-//       width: 130
-//     }
-//   ],
-//   trList: [
-//     {
-//       height: 40,
-//       tdList: [
-//         {
-//           colspan: 1,
-//           rowspan: 2,
-//           value: [
-//             { value: `1`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `2`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 2,
-//           rowspan: 1,
-//           value: [
-//             { value: `3`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         }
-//       ]
-//     },
-//     {
-//       height: 40,
-//       tdList: [
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `4`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `5`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `6`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         }
-//       ]
-//     },
-//     {
-//       height: 40,
-//       tdList: [
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `7`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `8`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `9`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         },
-//         {
-//           colspan: 1,
-//           rowspan: 1,
-//           value: [
-//             { value: `1`, size: 16 },
-//             { value: `0`, size: 16 },
-//             { value: '.', size: 16 }
-//           ]
-//         }
-//       ]
-//     }
-//   ]
-// })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    {
+      width: 180
+    },
+    {
+      width: 80
+    },
+    {
+      width: 130
+    },
+    {
+      width: 130
+    }
+  ],
+  trList: [
+    {
+      height: 40,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 2,
+          value: [
+            { value: `1`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `2`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 2,
+          rowspan: 1,
+          value: [
+            { value: `3`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        }
+      ]
+    },
+    {
+      height: 40,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `4`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `5`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `6`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        }
+      ]
+    },
+    {
+      height: 40,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `7`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `8`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `9`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { value: `1`, size: 16 },
+            { value: `0`, size: 16 },
+            { value: '.', size: 16 }
+          ]
+        }
+      ]
+    }
+  ]
+})
 
-// // Simulate checkbox
-// elementList.push(
-//   ...(<IElement[]>[
-//     {
-//       value: 'Do you agree with the above content: '
-//     },
-//     {
-//       type: ElementType.CONTROL,
-//       control: {
-//         conceptId: '3',
-//         type: ControlType.CHECKBOX,
-//         code: '98175',
-//         value: '',
-//         valueSets: [
-//           {
-//             value: 'Agree',
-//             code: '98175'
-//           },
-//           {
-//             value: 'Disagree',
-//             code: '98176'
-//           }
-//         ]
-//       },
-//       value: ''
-//     },
-//     {
-//       value: '\n'
-//     }
-//   ])
-// )
+// Simulate checkbox
+elementList.push(
+  ...(<IElement[]>[
+    {
+      value: 'Do you agree with the above content: '
+    },
+    {
+      type: ElementType.CONTROL,
+      control: {
+        conceptId: '3',
+        type: ControlType.CHECKBOX,
+        code: '98175',
+        value: '',
+        valueSets: [
+          {
+            value: 'Agree',
+            code: '98175'
+          },
+          {
+            value: 'Disagree',
+            code: '98176'
+          }
+        ]
+      },
+      value: ''
+    },
+    {
+      value: '\n'
+    }
+  ])
+)
 
-// // LaTeX formula
-// elementList.push(
-//   ...(<IElement[]>[
-//     {
-//       value: 'Medical formula: '
-//     },
-//     {
-//       value: `{E_k} = hv - {W_0}`,
-//       type: ElementType.LATEX
-//     },
-//     {
-//       value: '\n'
-//     }
-//   ])
-// )
+// LaTeX formula
+elementList.push(
+  ...(<IElement[]>[
+    {
+      value: 'Medical formula: '
+    },
+    {
+      value: `{E_k} = hv - {W_0}`,
+      type: ElementType.LATEX
+    },
+    {
+      value: '\n'
+    }
+  ])
+)
 
-// // Date picker
-// elementList.push(
-//   ...(<IElement[]>[
-//     {
-//       value: 'Signing Date: '
-//     },
-//     {
-//       type: ElementType.CONTROL,
-//       value: '',
-//       control: {
-//         conceptId: '5',
-//         type: ControlType.DATE,
-//         value: [
-//           {
-//             value: `2022-08-10 17:30:01`
-//           }
-//         ],
-//         placeholder: 'Signing Date'
-//       }
-//     },
-//     {
-//       value: '\n'
-//     }
-//   ])
-// )
+// Date picker
+elementList.push(
+  ...(<IElement[]>[
+    {
+      value: 'Signing Date: '
+    },
+    {
+      type: ElementType.CONTROL,
+      value: '',
+      control: {
+        conceptId: '5',
+        type: ControlType.DATE,
+        value: [
+          {
+            value: `2022-08-10 17:30:01`
+          }
+        ],
+        placeholder: 'Signing Date'
+      }
+    },
+    {
+      value: '\n'
+    }
+  ])
+)
 
-// // Simulate fixed length underline
-// elementList.push(
-//   ...[
-//     {
-//       value: 'Patient Signature: '
-//     },
-//     {
-//       type: ElementType.CONTROL,
-//       value: '',
-//       control: {
-//         conceptId: '4',
-//         type: ControlType.TEXT,
-//         value: null,
-//         placeholder: '',
-//         prefix: '\u200c',
-//         postfix: '\u200c',
-//         minWidth: 160,
-//         underline: true
-//       }
-//     }
-//   ]
-// )
+// Simulate fixed length underline
+elementList.push(
+  ...[
+    {
+      value: 'Patient Signature: '
+    },
+    {
+      type: ElementType.CONTROL,
+      value: '',
+      control: {
+        conceptId: '4',
+        type: ControlType.TEXT,
+        value: null,
+        placeholder: '',
+        prefix: '\u200c',
+        postfix: '\u200c',
+        minWidth: 160,
+        underline: true
+      }
+    }
+  ]
+)
 
-// // Simulate ending text
-// elementList.push(
-//   ...[
-//     {
-//       value: '\n'
-//     },
-//     {
-//       value: '',
-//       type: ElementType.TAB
-//     },
-//     {
-//       value: 'E',
-//       size: 16
-//     },
-//     {
-//       value: 'O',
-//       size: 16
-//     },
-//     {
-//       value: 'F',
-//       size: 16
-//     }
-//   ]
-// )
+// Simulate ending text
+elementList.push(
+  ...[
+    {
+      value: '\n'
+    },
+    {
+      value: '',
+      type: ElementType.TAB
+    },
+    {
+      value: 'E',
+      size: 16
+    },
+    {
+      value: 'O',
+      size: 16
+    },
+    {
+      value: 'F',
+      size: 16
+    }
+  ]
+)
 
 // ⭐ NEW: Add comprehensive bidirectional text test cases
 elementList.push(
