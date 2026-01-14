@@ -17,6 +17,9 @@ importers:
       '@hufe921/canvas-editor-plugin-docx':
         specifier: ^0.0.5
         version: 0.0.5(@hufe921/canvas-editor@0.9.122)
+      bidi-js:
+        specifier: ^1.0.3
+        version: 1.0.3
       prismjs:
         specifier: ^1.27.0
         version: 1.30.0
@@ -689,6 +692,9 @@ packages:
 
   bcrypt-pbkdf@1.0.2:
     resolution: {integrity: sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w==}
+
+  bidi-js@1.0.3:
+    resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
 
   blob-util@2.0.2:
     resolution: {integrity: sha512-T7JQa+zsXXEa6/8ZhHcQEW1UFfVM49Ts65uBkFL6fz2QmrElqmbajIDJvuA0tEhRe5eIjpV9ZF+0RfZR9voJFQ==}
@@ -2679,6 +2685,10 @@ snapshots:
   bcrypt-pbkdf@1.0.2:
     dependencies:
       tweetnacl: 0.14.5
+
+  bidi-js@1.0.3:
+    dependencies:
+      require-from-string: 2.0.2
 
   blob-util@2.0.2: {}
 

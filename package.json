@@ -68,6 +68,7 @@
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
     "@hufe921/canvas-editor-plugin-docx": "^0.0.5",
+    "bidi-js": "^1.0.3",
     "prismjs": "^1.27.0"
   },
   "simple-git-hooks": {

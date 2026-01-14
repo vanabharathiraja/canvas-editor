@@ -120,6 +120,7 @@ import { TableOperate } from './particle/table/TableOperate'
 import { Area } from './interactive/Area'
 import { Badge } from './frame/Badge'
 import { Graffiti } from './graffiti/Graffiti'
+import { BidiManager, IBidiRun } from './bidi/BidiManager'
 
 export class Draw {
   private container: HTMLDivElement
@@ -184,6 +185,7 @@ export class Draw {
   private selectionObserver: SelectionObserver
   private imageObserver: ImageObserver
   private graffiti: Graffiti
+  private bidiManager: BidiManager
 
   private LETTER_REG: RegExp
   private WORD_LIKE_REG: RegExp
@@ -275,6 +277,7 @@ export class Draw {
     this.scrollObserver = new ScrollObserver(this)
     this.selectionObserver = new SelectionObserver(this)
     this.imageObserver = new ImageObserver()
+    this.bidiManager = new BidiManager()
     new MouseObserver(this)
 
     this.canvasEvent = new CanvasEvent(this)
@@ -2071,6 +2074,16 @@ export class Draw {
         x += metrics.width
       }
     }
+    // Analyze bidi for each row
+    for (let r = 0; r < rowList.length; r++) {
+      const row = rowList[r]
+      const bidiRuns = this.bidiManager.analyzeRow(row.elementList)
+      // Only add bidi metadata if RTL text is detected
+      if (bidiRuns.length > 0) {
+        row.bidiRuns = bidiRuns
+        row.visualBidiRuns = this.bidiManager.reorderRuns(bidiRuns)
+      }
+    }
     return rowList
   }
 
@@ -2204,6 +2217,23 @@ export class Draw {
     let index = startIndex
     for (let i = 0; i < rowList.length; i++) {
       const curRow = rowList[i]
+      
+      // Create a map to track which run should be rendered at each element position
+      const visualBidiRuns = curRow.visualBidiRuns
+      const elementToVisualRun = new Map<IElement, { run: IBidiRun; isFirst: boolean }>()
+      
+      if (visualBidiRuns && visualBidiRuns.length > 0) {
+        // Map each element to its run and determine visual rendering order
+        for (const run of visualBidiRuns) {
+          run.elements.forEach((el, idx) => {
+            elementToVisualRun.set(el, { 
+              run, 
+              isFirst: idx === 0 // First element in the run (logical order)
+            })
+          })
+        }
+      }
+      
       // 选区绘制记录
       const rangeRecord: IElementFillRect = {
         x: 0,
@@ -2314,18 +2344,39 @@ export class Draw {
           this.textParticle.complete()
           this.blockParticle.render(ctx, pageNo, element, x, y + offsetY)
         } else {
-          // 如果当前元素设置左偏移，则上一元素立即绘制
-          if (element.left) {
-            this.textParticle.complete()
-          }
-          this.textParticle.record(ctx, element, x, y + offsetY)
-          // 如果设置字宽、字间距、标点符号（避免浏览器排版缩小间距）需单独绘制
-          if (
-            element.width ||
-            element.letterSpacing ||
-            PUNCTUATION_REG.test(element.value)
-          ) {
-            this.textParticle.complete()
+          // Check if this element is part of a bidi run
+          const runInfo = elementToVisualRun.get(element)
+          
+          if (runInfo) {
+            // Element is part of a bidi run
+            if (runInfo.isFirst) {
+              // This is the first element in the run - render entire run
+              this.textParticle.complete()
+              this.textParticle.renderRun(
+                ctx,
+                runInfo.run.elements,
+                x,
+                y + offsetY,
+                runInfo.run.direction
+              )
+            }
+            // For other elements in the run, skip individual rendering but continue loop
+            // This ensures selection and other features still process all elements
+          } else {
+            // Original text rendering logic for non-bidi text
+            // 如果当前元素设置左偏移，则上一元素立即绘制
+            if (element.left) {
+              this.textParticle.complete()
+            }
+            this.textParticle.record(ctx, element, x, y + offsetY)
+            // 如果设置字宽、字间距、标点符号（避免浏览器排版缩小间距）需单独绘制
+            if (
+              element.width ||
+              element.letterSpacing ||
+              PUNCTUATION_REG.test(element.value)
+            ) {
+              this.textParticle.complete()
+            }
           }
         }
         // 换行符绘制

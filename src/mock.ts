@@ -59,167 +59,167 @@ const highlightIndex: number[] = highlightText
 
 const elementList: IElement[] = []
 // Compose plain text data
-const textList = text.split('')
-let index = 0
-while (index < textList.length) {
-  const value = textList[index]
-  const title = titleMap.get(index)
-  if (title) {
-    elementList.push({
-      value: '',
-      type: ElementType.TITLE,
-      level: TitleLevel.FIRST,
-      valueList: [
-        {
-          value: title,
-          size: 18
-        }
-      ]
-    })
-    index += title.length - 1
-  } else if (colorIndex.includes(index)) {
-    elementList.push({
-      value,
-      color: '#FF0000',
-      size: 16
-    })
-  } else if (highlightIndex.includes(index)) {
-    elementList.push({
-      value,
-      highlight: '#F2F27F',
-      groupIds: ['1'] // Simulate comment
-    })
-  } else {
-    elementList.push({
-      value,
-      size: 16
-    })
-  }
-  index++
-}
+// const textList = text.split('')
+// let index = 0
+// while (index < textList.length) {
+//   const value = textList[index]
+//   const title = titleMap.get(index)
+//   if (title) {
+//     elementList.push({
+//       value: '',
+//       type: ElementType.TITLE,
+//       level: TitleLevel.FIRST,
+//       valueList: [
+//         {
+//           value: title,
+//           size: 18
+//         }
+//       ]
+//     })
+//     index += title.length - 1
+//   } else if (colorIndex.includes(index)) {
+//     elementList.push({
+//       value,
+//       color: '#FF0000',
+//       size: 16
+//     })
+//   } else if (highlightIndex.includes(index)) {
+//     elementList.push({
+//       value,
+//       highlight: '#F2F27F',
+//       groupIds: ['1'] // Simulate comment
+//     })
+//   } else {
+//     elementList.push({
+//       value,
+//       size: 16
+//     })
+//   }
+//   index++
+// }
 
-// Simulate text control
-elementList.splice(12, 0, {
-  type: ElementType.CONTROL,
-  value: '',
-  control: {
-    conceptId: '1',
-    type: ControlType.TEXT,
-    value: null,
-    placeholder: 'Additional notes',
-    prefix: '{',
-    postfix: '}'
-  }
-})
+// // Simulate text control
+// elementList.splice(12, 0, {
+//   type: ElementType.CONTROL,
+//   value: '',
+//   control: {
+//     conceptId: '1',
+//     type: ControlType.TEXT,
+//     value: null,
+//     placeholder: 'Additional notes',
+//     prefix: '{',
+//     postfix: '}'
+//   }
+// })
 
-// Simulate dropdown control
-elementList.splice(94, 0, {
-  type: ElementType.CONTROL,
-  value: '',
-  control: {
-    conceptId: '2',
-    type: ControlType.SELECT,
-    value: null,
-    code: null,
-    placeholder: 'Yes/No',
-    prefix: '{',
-    postfix: '}',
-    valueSets: [
-      {
-        value: 'Yes',
-        code: '98175'
-      },
-      {
-        value: 'No',
-        code: '98176'
-      },
-      {
-        value: 'Unknown',
-        code: '98177'
-      }
-    ]
-  }
-})
+// // Simulate dropdown control
+// elementList.splice(94, 0, {
+//   type: ElementType.CONTROL,
+//   value: '',
+//   control: {
+//     conceptId: '2',
+//     type: ControlType.SELECT,
+//     value: null,
+//     code: null,
+//     placeholder: 'Yes/No',
+//     prefix: '{',
+//     postfix: '}',
+//     valueSets: [
+//       {
+//         value: 'Yes',
+//         code: '98175'
+//       },
+//       {
+//         value: 'No',
+//         code: '98176'
+//       },
+//       {
+//         value: 'Unknown',
+//         code: '98177'
+//       }
+//     ]
+//   }
+// })
 
-// Simulate hyperlink
-elementList.splice(116, 0, {
-  type: ElementType.HYPERLINK,
-  value: '',
-  valueList: [
-    {
-      value: 'C',
-      size: 16
-    },
-    {
-      value: 'O',
-      size: 16
-    },
-    {
-      value: 'V',
-      size: 16
-    },
-    {
-      value: 'I',
-      size: 16
-    },
-    {
-      value: 'D',
-      size: 16
-    }
-  ],
-  url: 'http://localhost:3000/canvas-editor'
-})
+// // Simulate hyperlink
+// elementList.splice(116, 0, {
+//   type: ElementType.HYPERLINK,
+//   value: '',
+//   valueList: [
+//     {
+//       value: 'C',
+//       size: 16
+//     },
+//     {
+//       value: 'O',
+//       size: 16
+//     },
+//     {
+//       value: 'V',
+//       size: 16
+//     },
+//     {
+//       value: 'I',
+//       size: 16
+//     },
+//     {
+//       value: 'D',
+//       size: 16
+//     }
+//   ],
+//   url: 'http://localhost:3000/canvas-editor'
+// })
 
-// Simulate text control (with pre/post text)
-elementList.splice(335, 0, {
-  type: ElementType.CONTROL,
-  value: '',
-  control: {
-    conceptId: '6',
-    type: ControlType.TEXT,
-    value: null,
-    placeholder: 'content',
-    preText: 'Other: ',
-    postText: '.'
-  }
-})
+// // Simulate text control (with pre/post text)
+// elementList.splice(335, 0, {
+//   type: ElementType.CONTROL,
+//   value: '',
+//   control: {
+//     conceptId: '6',
+//     type: ControlType.TEXT,
+//     value: null,
+//     placeholder: 'content',
+//     preText: 'Other: ',
+//     postText: '.'
+//   }
+// })
 
-// Simulate subscript
-elementList.splice(346, 0, {
-  value: '∆',
-  color: '#FF0000',
-  type: ElementType.SUBSCRIPT
-})
+// // Simulate subscript
+// elementList.splice(346, 0, {
+//   value: '∆',
+//   color: '#FF0000',
+//   type: ElementType.SUBSCRIPT
+// })
 
-// Simulate superscript
-elementList.splice(430, 0, {
-  value: '9',
-  type: ElementType.SUPERSCRIPT
-})
+// // Simulate superscript
+// elementList.splice(430, 0, {
+//   value: '9',
+//   type: ElementType.SUPERSCRIPT
+// })
 
-// Simulate list
-elementList.splice(451, 0, {
-  value: '',
-  type: ElementType.LIST,
-  listType: ListType.OL,
-  valueList: [
-    {
-      value: 'Hypertension\nDiabetes\nViral Cold\nAllergic Rhinitis\nAllergic'
-    }
-  ]
-})
+// // Simulate list
+// elementList.splice(451, 0, {
+//   value: '',
+//   type: ElementType.LIST,
+//   listType: ListType.OL,
+//   valueList: [
+//     {
+//       value: 'Hypertension\nDiabetes\nViral Cold\nAllergic Rhinitis\nAllergic'
+//     }
+//   ]
+// })
 
-elementList.splice(453, 0, {
-  value: '',
-  type: ElementType.LIST,
-  listType: ListType.OL,
-  valueList: [
-    {
-      value:
-        'Ultrasound-guided thyroid fine needle aspiration;\nHepatitis B surface antibody test;\nMembrane lesion cell collection, posterior neck subcutaneous layer;'
-    }
-  ]
-})
+// elementList.splice(453, 0, {
+//   value: '',
+//   type: ElementType.LIST,
+//   listType: ListType.OL,
+//   valueList: [
+//     {
+//       value:
+//         'Ultrasound-guided thyroid fine needle aspiration;\nHepatitis B surface antibody test;\nMembrane lesion cell collection, posterior neck subcutaneous layer;'
+//     }
+//   ]
+// })
 
 // // Simulate image
 // elementList.splice(456, 0, {
@@ -231,116 +231,1046 @@ elementList.splice(453, 0, {
 // })
 
 // Simulate table
+// elementList.push({
+//   type: ElementType.TABLE,
+//   value: '',
+//   colgroup: [
+//     {
+//       width: 180
+//     },
+//     {
+//       width: 80
+//     },
+//     {
+//       width: 130
+//     },
+//     {
+//       width: 130
+//     }
+//   ],
+//   trList: [
+//     {
+//       height: 40,
+//       tdList: [
+//         {
+//           colspan: 1,
+//           rowspan: 2,
+//           value: [
+//             { value: `1`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `2`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 2,
+//           rowspan: 1,
+//           value: [
+//             { value: `3`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         }
+//       ]
+//     },
+//     {
+//       height: 40,
+//       tdList: [
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `4`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `5`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `6`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         }
+//       ]
+//     },
+//     {
+//       height: 40,
+//       tdList: [
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `7`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `8`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `9`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         },
+//         {
+//           colspan: 1,
+//           rowspan: 1,
+//           value: [
+//             { value: `1`, size: 16 },
+//             { value: `0`, size: 16 },
+//             { value: '.', size: 16 }
+//           ]
+//         }
+//       ]
+//     }
+//   ]
+// })
+
+// // Simulate checkbox
+// elementList.push(
+//   ...(<IElement[]>[
+//     {
+//       value: 'Do you agree with the above content: '
+//     },
+//     {
+//       type: ElementType.CONTROL,
+//       control: {
+//         conceptId: '3',
+//         type: ControlType.CHECKBOX,
+//         code: '98175',
+//         value: '',
+//         valueSets: [
+//           {
+//             value: 'Agree',
+//             code: '98175'
+//           },
+//           {
+//             value: 'Disagree',
+//             code: '98176'
+//           }
+//         ]
+//       },
+//       value: ''
+//     },
+//     {
+//       value: '\n'
+//     }
+//   ])
+// )
+
+// // LaTeX formula
+// elementList.push(
+//   ...(<IElement[]>[
+//     {
+//       value: 'Medical formula: '
+//     },
+//     {
+//       value: `{E_k} = hv - {W_0}`,
+//       type: ElementType.LATEX
+//     },
+//     {
+//       value: '\n'
+//     }
+//   ])
+// )
+
+// // Date picker
+// elementList.push(
+//   ...(<IElement[]>[
+//     {
+//       value: 'Signing Date: '
+//     },
+//     {
+//       type: ElementType.CONTROL,
+//       value: '',
+//       control: {
+//         conceptId: '5',
+//         type: ControlType.DATE,
+//         value: [
+//           {
+//             value: `2022-08-10 17:30:01`
+//           }
+//         ],
+//         placeholder: 'Signing Date'
+//       }
+//     },
+//     {
+//       value: '\n'
+//     }
+//   ])
+// )
+
+// // Simulate fixed length underline
+// elementList.push(
+//   ...[
+//     {
+//       value: 'Patient Signature: '
+//     },
+//     {
+//       type: ElementType.CONTROL,
+//       value: '',
+//       control: {
+//         conceptId: '4',
+//         type: ControlType.TEXT,
+//         value: null,
+//         placeholder: '',
+//         prefix: '\u200c',
+//         postfix: '\u200c',
+//         minWidth: 160,
+//         underline: true
+//       }
+//     }
+//   ]
+// )
+
+// // Simulate ending text
+// elementList.push(
+//   ...[
+//     {
+//       value: '\n'
+//     },
+//     {
+//       value: '',
+//       type: ElementType.TAB
+//     },
+//     {
+//       value: 'E',
+//       size: 16
+//     },
+//     {
+//       value: 'O',
+//       size: 16
+//     },
+//     {
+//       value: 'F',
+//       size: 16
+//     }
+//   ]
+// )
+
+// ⭐ NEW: Add comprehensive bidirectional text test cases
+elementList.push(
+  ...[
+    {
+      value: '\n\n'
+    },
+    {
+      value: '═══════════════════════════════════════',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: 'BIDIRECTIONAL TEXT TESTS (RTL ⇄ LTR)',
+      size: 18,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '═══════════════════════════════════════',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n\n'
+    },
+    
+    // Test 1: Pure Arabic
+    {
+      value: '1. Pure RTL (Arabic):',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   ',
+      size: 16
+    },
+    {
+      value: 'مرحباً بكم في محرر النصوص ثنائي الاتجاه', // "Welcome to the bidirectional text editor"
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 2: Mixed English and Arabic (multiple switches)
+    {
+      value: '2. Mixed LTR+RTL (Multiple Switches):',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   The word ',
+      size: 16
+    },
+    {
+      value: 'مرحبا', // "hello"
+      size: 16
+    },
+    {
+      value: ' means hello and ',
+      size: 16
+    },
+    {
+      value: 'شكرا', // "thank you"
+      size: 16
+    },
+    {
+      value: ' means thank you.',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 3: Numbers in Arabic context
+    {
+      value: '3. Numbers in RTL Context:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   ',
+      size: 16
+    },
+    {
+      value: 'التاريخ: ', // "Date: "
+      size: 16
+    },
+    {
+      value: '2024/01/14',
+      size: 16
+    },
+    {
+      value: '، السعر: ', // ", Price: "
+      size: 16
+    },
+    {
+      value: '1,250.99',
+      size: 16
+    },
+    {
+      value: ' دولار', // " dollars"
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 4: Nested parentheses and quotes
+    {
+      value: '4. Nested Parentheses & Quotes:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   English text (',
+      size: 16
+    },
+    {
+      value: 'نص عربي', // "Arabic text"
+      size: 16
+    },
+    {
+      value: ' with "',
+      size: 16
+    },
+    {
+      value: 'اقتباس', // "quote"
+      size: 16
+    },
+    {
+      value: '") inside.',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 5: Punctuation handling
+    {
+      value: '5. Punctuation in Mixed Text:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   ',
+      size: 16
+    },
+    {
+      value: 'هل تتحدث الإنجليزية؟', // "Do you speak English?"
+      size: 16
+    },
+    {
+      value: ' Yes! I speak ',
+      size: 16
+    },
+    {
+      value: 'العربية', // "Arabic"
+      size: 16
+    },
+    {
+      value: ', too.',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 6: Email and URLs
+    {
+      value: '6. Email & URL in RTL:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   ',
+      size: 16
+    },
+    {
+      value: 'البريد الإلكتروني: ', // "Email: "
+      size: 16
+    },
+    {
+      value: 'user@example.com',
+      size: 16
+    },
+    {
+      value: ' والموقع: ', // " and website: "
+      size: 16
+    },
+    {
+      value: 'https://example.com',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 7: Long mixed paragraph
+    {
+      value: '7. Long Mixed Paragraph:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   In modern software development, supporting ',
+      size: 16
+    },
+    {
+      value: 'النصوص ثنائية الاتجاه', // "bidirectional text"
+      size: 16
+    },
+    {
+      value: ' is essential. Languages like ',
+      size: 16
+    },
+    {
+      value: 'العربية', // "Arabic"
+      size: 16
+    },
+    {
+      value: ' read from right to left, while English reads left to right. The Unicode Bidirectional Algorithm (UAX#9) handles this complexity by analyzing text and applying the correct display order.',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 8: Mathematical expressions
+    {
+      value: '8. Math Expressions in RTL:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   ',
+      size: 16
+    },
+    {
+      value: 'المعادلة: ', // "Equation: "
+      size: 16
+    },
+    {
+      value: 'E = mc²',
+      size: 16
+    },
+    {
+      value: ' حيث ',  // " where "
+      size: 16
+    },
+    {
+      value: 'E',
+      size: 16
+    },
+    {
+      value: ' تمثل الطاقة', // " represents energy"
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 9: Multiple direction changes in one line
+    {
+      value: '9. Rapid Direction Switching:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   A ',
+      size: 16
+    },
+    {
+      value: 'ب', // "b"
+      size: 16
+    },
+    {
+      value: ' C ',
+      size: 16
+    },
+    {
+      value: 'د', // "d"
+      size: 16
+    },
+    {
+      value: ' E ',
+      size: 16
+    },
+    {
+      value: 'و', // "w"
+      size: 16
+    },
+    {
+      value: ' G ',
+      size: 16
+    },
+    {
+      value: 'ح', // "h"
+      size: 16
+    },
+    {
+      value: ' I',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    },
+
+    // Test 10: File paths in RTL context
+    {
+      value: '10. File Paths in RTL:',
+      size: 16,
+      bold: true
+    },
+    {
+      value: '\n'
+    },
+    {
+      value: '   ',
+      size: 16
+    },
+    {
+      value: 'المسار: ', // "Path: "
+      size: 16
+    },
+    {
+      value: 'C:\\Users\\Documents\\',
+      size: 16
+    },
+    {
+      value: 'ملفات', // "files"
+      size: 16
+    },
+    {
+      value: '\\data.txt',
+      size: 16
+    },
+    {
+      value: '\n\n'
+    }
+  ]
+)
+
+// ⭐ NEW: Add Contract-Style Table with English (LTR) and Arabic (RTL)
+elementList.push({
+  value: '\n\n'
+})
+
+elementList.push({
+  value: '═══════════════════════════════════════',
+  size: 16,
+  bold: true
+})
+
+elementList.push({
+  value: '\n'
+})
+
+elementList.push({
+  value: 'EMPLOYMENT CONTRACT / عقد العمل',
+  size: 18,
+  bold: true
+})
+
+elementList.push({
+  value: '\n'
+})
+
+elementList.push({
+  value: '═══════════════════════════════════════',
+  size: 16,
+  bold: true
+})
+
+elementList.push({
+  value: '\n\n'
+})
+
+// Contract table
 elementList.push({
   type: ElementType.TABLE,
   value: '',
   colgroup: [
     {
-      width: 180
+      width: 250  // English column (left)
     },
     {
-      width: 80
-    },
-    {
-      width: 130
-    },
-    {
-      width: 130
+      width: 250  // Arabic column (right)
     }
   ],
   trList: [
+    // Header Row
     {
-      height: 40,
+      height: 50,
       tdList: [
         {
           colspan: 1,
-          rowspan: 2,
+          rowspan: 1,
+          backgroundColor: '#E8F4F8',
           value: [
-            { value: `1`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'English Terms',
+              size: 16,
+              bold: true
+            }
           ]
         },
         {
           colspan: 1,
           rowspan: 1,
+          backgroundColor: '#E8F4F8',
           value: [
-            { value: `2`, size: 16 },
-            { value: '.', size: 16 }
-          ]
-        },
-        {
-          colspan: 2,
-          rowspan: 1,
-          value: [
-            { value: `3`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'الشروط العربية',  // "Arabic Terms"
+              size: 16,
+              bold: true
+            }
           ]
         }
       ]
     },
+    // Row 1: Contract parties
     {
-      height: 40,
+      height: 60,
       tdList: [
         {
           colspan: 1,
           rowspan: 1,
           value: [
-            { value: `4`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'This Employment Contract is entered into between the Employer and the Employee on this date.',
+              size: 14
+            }
           ]
         },
         {
           colspan: 1,
           rowspan: 1,
           value: [
-            { value: `5`, size: 16 },
-            { value: '.', size: 16 }
-          ]
-        },
-        {
-          colspan: 1,
-          rowspan: 1,
-          value: [
-            { value: `6`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'تم إبرام عقد العمل هذا بين صاحب العمل والموظف في هذا التاريخ.',
+              size: 14
+            }
           ]
         }
       ]
     },
+    // Row 2: Position & Salary
     {
-      height: 40,
+      height: 80,
       tdList: [
         {
           colspan: 1,
           rowspan: 1,
           value: [
-            { value: `7`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'Position: ',
+              size: 14,
+              bold: true
+            },
+            {
+              value: 'Software Engineer',
+              size: 14
+            },
+            {
+              value: '\nMonthly Salary: ',
+              size: 14,
+              bold: true
+            },
+            {
+              value: '$5,000.00',
+              size: 14
+            },
+            {
+              value: '\nStart Date: ',
+              size: 14,
+              bold: true
+            },
+            {
+              value: '2024/02/01',
+              size: 14
+            }
           ]
         },
         {
           colspan: 1,
           rowspan: 1,
           value: [
-            { value: `8`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'المسمى الوظيفي: ',  // "Position: "
+              size: 14,
+              bold: true
+            },
+            {
+              value: 'مهندس برمجيات',  // "Software Engineer"
+              size: 14
+            },
+            {
+              value: '\nالراتب الشهري: ',  // "\nMonthly Salary: "
+              size: 14,
+              bold: true
+            },
+            {
+              value: '5,000.00',
+              size: 14
+            },
+            {
+              value: ' دولار',  // " dollars"
+              size: 14
+            },
+            {
+              value: '\nتاريخ البدء: ',  // "\nStart Date: "
+              size: 14,
+              bold: true
+            },
+            {
+              value: '2024/02/01',
+              size: 14
+            }
+          ]
+        }
+      ]
+    },
+    // Row 3: Working hours
+    {
+      height: 60,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { 
+              value: 'Working Hours: ',
+              size: 14,
+              bold: true
+            },
+            {
+              value: 'Monday to Friday, 9:00 AM - 5:00 PM (40 hours per week)',
+              size: 14
+            }
           ]
         },
         {
           colspan: 1,
           rowspan: 1,
           value: [
-            { value: `9`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'ساعات العمل: ',  // "Working Hours: "
+              size: 14,
+              bold: true
+            },
+            {
+              value: 'من الاثنين إلى الجمعة، من الساعة ',  // "Monday to Friday, from "
+              size: 14
+            },
+            {
+              value: '9:00',
+              size: 14
+            },
+            {
+              value: ' صباحاً إلى ',  // " AM to "
+              size: 14
+            },
+            {
+              value: '5:00',
+              size: 14
+            },
+            {
+              value: ' مساءً (',  // " PM ("
+              size: 14
+            },
+            {
+              value: '40',
+              size: 14
+            },
+            {
+              value: ' ساعة أسبوعياً)',  // " hours per week)"
+              size: 14
+            }
+          ]
+        }
+      ]
+    },
+    // Row 4: Benefits
+    {
+      height: 80,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { 
+              value: 'Benefits:\n',
+              size: 14,
+              bold: true
+            },
+            {
+              value: '• Health Insurance\n',
+              size: 14
+            },
+            {
+              value: '• 21 days annual leave\n',
+              size: 14
+            },
+            {
+              value: '• Retirement plan',
+              size: 14
+            }
           ]
         },
         {
           colspan: 1,
           rowspan: 1,
           value: [
-            { value: `1`, size: 16 },
-            { value: `0`, size: 16 },
-            { value: '.', size: 16 }
+            { 
+              value: 'المزايا:\n',  // "Benefits:\n"
+              size: 14,
+              bold: true
+            },
+            {
+              value: '• التأمين الصحي\n',  // "• Health Insurance\n"
+              size: 14
+            },
+            {
+              value: '• ',
+              size: 14
+            },
+            {
+              value: '21',
+              size: 14
+            },
+            {
+              value: ' يوم إجازة سنوية\n',  // " days annual leave\n"
+              size: 14
+            },
+            {
+              value: '• خطة التقاعد',  // "• Retirement plan"
+              size: 14
+            }
+          ]
+        }
+      ]
+    },
+    // Row 5: Probation period
+    {
+      height: 50,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { 
+              value: 'Probation Period: ',
+              size: 14,
+              bold: true
+            },
+            {
+              value: '90 days from the start date',
+              size: 14
+            }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { 
+              value: 'فترة التجربة: ',  // "Probation Period: "
+              size: 14,
+              bold: true
+            },
+            {
+              value: '90',
+              size: 14
+            },
+            {
+              value: ' يوماً من تاريخ البدء',  // " days from the start date"
+              size: 14
+            }
+          ]
+        }
+      ]
+    },
+    // Row 6: Termination clause
+    {
+      height: 70,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { 
+              value: 'Termination: ',
+              size: 14,
+              bold: true
+            },
+            {
+              value: 'Either party may terminate this contract with 30 days written notice.',
+              size: 14
+            }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: [
+            { 
+              value: 'إنهاء العقد: ',  // "Termination: "
+              size: 14,
+              bold: true
+            },
+            {
+              value: 'يجوز لأي من الطرفين إنهاء هذا العقد بإشعار كتابي مدته ',  // "Either party may terminate this contract with written notice of "
+              size: 14
+            },
+            {
+              value: '30',
+              size: 14
+            },
+            {
+              value: ' يوماً.',  // " days."
+              size: 14
+            }
+          ]
+        }
+      ]
+    },
+    // Row 7: Signatures
+    {
+      height: 80,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          backgroundColor: '#F5F5F5',
+          value: [
+            { 
+              value: 'Employee Signature:\n\n',
+              size: 14,
+              bold: true
+            },
+            {
+              value: '___________________________\n',
+              size: 14
+            },
+            {
+              value: 'Date: _______________',
+              size: 14
+            }
+          ]
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          backgroundColor: '#F5F5F5',
+          value: [
+            { 
+              value: 'توقيع الموظف:\n\n',  // "Employee Signature:\n\n"
+              size: 14,
+              bold: true
+            },
+            {
+              value: '___________________________\n',
+              size: 14
+            },
+            {
+              value: 'التاريخ: _______________',  // "Date: _______________"
+              size: 14
+            }
           ]
         }
       ]
@@ -348,127 +1278,34 @@ elementList.push({
   ]
 })
 
-// Simulate checkbox
-elementList.push(
-  ...(<IElement[]>[
-    {
-      value: 'Do you agree with the above content: '
-    },
-    {
-      type: ElementType.CONTROL,
-      control: {
-        conceptId: '3',
-        type: ControlType.CHECKBOX,
-        code: '98175',
-        value: '',
-        valueSets: [
-          {
-            value: 'Agree',
-            code: '98175'
-          },
-          {
-            value: 'Disagree',
-            code: '98176'
-          }
-        ]
-      },
-      value: ''
-    },
-    {
-      value: '\n'
-    }
-  ])
-)
+elementList.push({
+  value: '\n\n'
+})
 
-// LaTeX formula
-elementList.push(
-  ...(<IElement[]>[
-    {
-      value: 'Medical formula: '
-    },
-    {
-      value: `{E_k} = hv - {W_0}`,
-      type: ElementType.LATEX
-    },
-    {
-      value: '\n'
-    }
-  ])
-)
+elementList.push({
+  value: '─────────────────────────────────────',
+  size: 14
+})
 
-// Date picker
-elementList.push(
-  ...(<IElement[]>[
-    {
-      value: 'Signing Date: '
-    },
-    {
-      type: ElementType.CONTROL,
-      value: '',
-      control: {
-        conceptId: '5',
-        type: ControlType.DATE,
-        value: [
-          {
-            value: `2022-08-10 17:30:01`
-          }
-        ],
-        placeholder: 'Signing Date'
-      }
-    },
-    {
-      value: '\n'
-    }
-  ])
-)
+elementList.push({
+  value: '\n'
+})
 
-// Simulate fixed length underline
-elementList.push(
-  ...[
-    {
-      value: 'Patient Signature: '
-    },
-    {
-      type: ElementType.CONTROL,
-      value: '',
-      control: {
-        conceptId: '4',
-        type: ControlType.TEXT,
-        value: null,
-        placeholder: '',
-        prefix: '\u200c',
-        postfix: '\u200c',
-        minWidth: 160,
-        underline: true
-      }
-    }
-  ]
-)
+elementList.push({
+  value: 'Note: This contract demonstrates bidirectional text handling in table cells. / ',
+  size: 12,
+  color: '#666666'
+})
 
-// Simulate ending text
-elementList.push(
-  ...[
-    {
-      value: '\n'
-    },
-    {
-      value: '',
-      type: ElementType.TAB
-    },
-    {
-      value: 'E',
-      size: 16
-    },
-    {
-      value: 'O',
-      size: 16
-    },
-    {
-      value: 'F',
-      size: 16
-    }
-  ]
-)
+elementList.push({
+  value: 'ملاحظة: يوضح هذا العقد معالجة النص ثنائي الاتجاه في خلايا الجدول.',
+  size: 12,
+  color: '#666666'
+})
+
+elementList.push({
+  value: '\n'
+})
 
 export const data: IElement[] = elementList
 

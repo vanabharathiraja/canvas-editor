@@ -151,11 +151,9 @@ export class Cursor {
         this.focus()
       })
     }
-    // fillText位置 + 文字基线到底部距离 - 模拟光标偏移量
-    const descent =
-      metrics.boundingBoxDescent < 0 ? 0 : metrics.boundingBoxDescent
+    // Simplified cursor positioning: ascent - half cursor height for better centering
     const cursorTop =
-      leftTop[1] + ascent + descent - (cursorHeight - increaseHeight) + preY
+      leftTop[1] + ascent - cursorHeight / 2 + preY
     const cursorLeft = hitLineStartIndex ? leftTop[0] : rightTop[0]
     agentCursorDom.style.left = `${cursorLeft}px`
     agentCursorDom.style.top = `${
