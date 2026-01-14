@@ -22,6 +22,17 @@ export function tab(evt: KeyboardEvent, host: CanvasEvent) {
     const rangeManager = draw.getRange()
     const elementList = draw.getElementList()
     const { startIndex, endIndex } = rangeManager.getRange()
+    const startElement = elementList[startIndex]
+    // 列表内Tab键控制缩进
+    if (startElement?.listId) {
+      const listParticle = draw.getListParticle()
+      if (evt.shiftKey) {
+        listParticle.listOutdent()
+      } else {
+        listParticle.listIndent()
+      }
+      return
+    }
     // 插入tab符
     const anchorStyle = rangeManager.getRangeAnchorStyle(elementList, endIndex)
     // 仅复制样式

@@ -1,7 +1,12 @@
 import { ZERO } from '../../../dataset/constant/Common'
-import { ulStyleMapping } from '../../../dataset/constant/List'
+import {
+  getOlMarkerText,
+  LIST_BASE_INDENT,
+  LIST_LEVEL_INDENT,
+  ulStyleByLevel,
+  ulStyleMapping
+} from '../../../dataset/constant/List'
 import { ElementType } from '../../../dataset/enum/Element'
-import { KeyMap } from '../../../dataset/enum/KeyMap'
 import { ListStyle, ListType, UlStyle } from '../../../dataset/enum/List'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
@@ -19,7 +24,9 @@ export class ListParticle {
   // 非递增样式直接返回默认值
   private readonly UN_COUNT_STYLE_WIDTH = 20
   private readonly MEASURE_BASE_TEXT = '0'
-  private readonly LIST_GAP = 10
+  private readonly LIST_GAP = 8
+  // 列表标记与文本之间的间距
+  private readonly LIST_MARKER_SPACING = 6
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -49,11 +56,51 @@ export class ListParticle {
       el.listId = listId
       el.listType = listType
       el.listStyle = listStyle
+      el.listLevel = el.listLevel ?? 0
     })
     // 光标定位
     const isSetCursor = startIndex === endIndex
     const curIndex = isSetCursor ? endIndex : startIndex
     this.draw.render({ curIndex, isSetCursor })
+  }
+
+  public setListLevel(level: number) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    const { startIndex, endIndex } = this.range.getRange()
+    if (!~startIndex && !~endIndex) return
+    // 需要改变的元素列表（仅限列表内元素）
+    const changeElementList = this.range
+      .getRangeParagraphElementList()
+      ?.filter(el => el.listId)
+    if (!changeElementList || !changeElementList.length) return
+    // 设置层级（限制在0-8范围内）
+    const newLevel = Math.max(0, Math.min(8, level))
+    changeElementList.forEach(el => {
+      el.listLevel = newLevel
+    })
+    // 光标定位
+    const isSetCursor = startIndex === endIndex
+    const curIndex = isSetCursor ? endIndex : startIndex
+    this.draw.render({ curIndex, isSetCursor })
+  }
+
+  public listIndent() {
+    const changeElementList = this.range
+      .getRangeParagraphElementList()
+      ?.filter(el => el.listId)
+    if (!changeElementList || !changeElementList.length) return
+    const currentLevel = changeElementList[0].listLevel || 0
+    this.setListLevel(currentLevel + 1)
+  }
+
+  public listOutdent() {
+    const changeElementList = this.range
+      .getRangeParagraphElementList()
+      ?.filter(el => el.listId)
+    if (!changeElementList || !changeElementList.length) return
+    const currentLevel = changeElementList[0].listLevel || 0
+    this.setListLevel(currentLevel - 1)
   }
 
   public unsetList() {
@@ -91,6 +138,7 @@ export class ListParticle {
       delete el.listType
       delete el.listStyle
       delete el.listWrap
+      delete el.listLevel
     })
     // 光标定位
     const isSetCursor = startIndex === endIndex
@@ -145,22 +193,22 @@ export class ListParticle {
       if (startElement.listStyle === ListStyle.CHECKBOX) {
         return (checkbox.width + this.LIST_GAP) * scale
       }
-      return this.UN_COUNT_STYLE_WIDTH * scale
+      return (this.UN_COUNT_STYLE_WIDTH + this.LIST_MARKER_SPACING) * scale
     }
     // 计算列表数量
-    const count = listElementList.reduce((pre, cur) => {
-      if (cur.value === ZERO) {
-        pre += 1
+    let count = 0
+    listElementList.forEach(el => {
+      if (el.value === ZERO) {
+        count++
       }
-      return pre
-    }, 0)
+    })
     if (!count) return 0
-    // 以递增样式最大宽度为准
-    const text = `${this.MEASURE_BASE_TEXT.repeat(String(count).length)}${
-      KeyMap.PERIOD
-    }`
+    // 使用固定的标记宽度：数字位数 + 点 + 间距
+    // 层级编号由各自的缩进处理，这里只需考虑单个数字的宽度
+    const digitCount = String(count).length
+    const text = this.MEASURE_BASE_TEXT.repeat(digitCount + 1) // +1 for the period
     const textMetrics = ctx.measureText(text)
-    return Math.ceil((textMetrics.width + this.LIST_GAP) * scale)
+    return Math.ceil((textMetrics.width + this.LIST_GAP + this.LIST_MARKER_SPACING) * scale)
   }
 
   public drawListStyle(
@@ -168,7 +216,7 @@ export class ListParticle {
     row: IRow,
     position: IElementPosition
   ) {
-    const { elementList, offsetX, listIndex, ascent } = row
+    const { elementList, offsetX, listIndex, listLevel, ascent } = row
     const startElement = elementList[0]
     if (startElement.value !== ZERO || startElement.listWrap) return
     // tab width
@@ -179,13 +227,19 @@ export class ListParticle {
       if (element?.type !== ElementType.TAB) break
       tabWidth += defaultTabWidth * scale
     }
+    // 获取元素字体和字号（优先使用元素自身的，否则使用默认值）
+    const elementFont = startElement.font || defaultFont
+    const elementSize = startElement.size || defaultSize
     // 列表样式渲染
     const {
       coordinate: {
         leftTop: [startX, startY]
       }
     } = position
-    const x = startX - offsetX! + tabWidth
+    // 计算列表层级缩进量（基础缩进 + 层级缩进）
+    const baseIndent = LIST_BASE_INDENT * scale
+    const levelIndent = (listLevel || 0) * LIST_LEVEL_INDENT * scale
+    const x = startX - offsetX! + tabWidth + baseIndent + levelIndent
     const y = startY + ascent
     // 复选框样式特殊处理
     if (startElement.listStyle === ListStyle.CHECKBOX) {
@@ -214,15 +268,20 @@ export class ListParticle {
     } else {
       let text = ''
       if (startElement.listType === ListType.UL) {
-        text =
+        // 根据层级自动选择bullet样式（循环使用）
+        const level = listLevel || 0
+        text = ulStyleByLevel[level % ulStyleByLevel.length] ||
           ulStyleMapping[<UlStyle>(<unknown>startElement.listStyle)] ||
           ulStyleMapping[UlStyle.DISC]
       } else {
-        text = `${listIndex! + 1}${KeyMap.PERIOD}`
+        // 层级式编号（1. → 1.1 → 1.1.1）
+        const hierarchy = row.listHierarchy || [listIndex || 0]
+        const marker = getOlMarkerText(hierarchy)
+        text = `${marker}.`
       }
       if (!text) return
       ctx.save()
-      ctx.font = `${defaultSize * scale}px ${defaultFont}`
+      ctx.font = `${elementSize * scale}px ${elementFont}`
       ctx.fillText(text, x, y)
       ctx.restore()
     }

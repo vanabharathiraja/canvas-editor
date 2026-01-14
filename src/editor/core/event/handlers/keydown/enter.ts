@@ -20,14 +20,22 @@ export function enter(evt: KeyboardEvent, host: CanvasEvent) {
   const elementList = draw.getElementList()
   const startElement = elementList[startIndex]
   const endElement = elementList[endIndex]
-  // 最后一个列表项行首回车取消列表设置
+  // 列表项行首回车处理
   if (
     isCollapsed &&
     endElement.listId &&
     endElement.value === ZERO &&
     elementList[endIndex + 1]?.listId !== endElement.listId
   ) {
-    draw.getListParticle().unsetList()
+    const listParticle = draw.getListParticle()
+    const currentLevel = endElement.listLevel || 0
+    // 嵌套列表项：先减少缩进层级
+    if (currentLevel > 0) {
+      listParticle.listOutdent()
+      return
+    }
+    // 顶级列表项：取消列表设置
+    listParticle.unsetList()
     return
   }
   // 列表块内换行

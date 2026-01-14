@@ -16,6 +16,8 @@ export interface IRow {
   isPageBreak?: boolean
   isList?: boolean
   listIndex?: number
+  listLevel?: number
+  listHierarchy?: number[]
   offsetX?: number
   offsetY?: number
   elementList: IRowElement[]

@@ -916,6 +916,18 @@ export class CommandAdapt {
     this.draw.getListParticle().setList(listType, listStyle)
   }
 
+  public listIndent() {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.draw.getListParticle().listIndent()
+  }
+
+  public listOutdent() {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.draw.getListParticle().listOutdent()
+  }
+
   public rowFlex(payload: RowFlex) {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
