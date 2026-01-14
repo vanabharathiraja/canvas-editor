@@ -1,6 +1,8 @@
 import { version } from '../../../../package.json'
 import { ZERO } from '../../dataset/constant/Common'
+import { LIST_BASE_INDENT, LIST_LEVEL_INDENT } from '../../dataset/constant/List'
 import { RowFlex } from '../../dataset/enum/Row'
+import { ListType } from '../../dataset/enum/List'
 import {
   IAppendElementListOption,
   IComputeRowListPayload,
@@ -1402,9 +1404,10 @@ export class Draw {
     let x = startX
     let y = startY
     let pageNo = 0
-    // 列表位置
+    // 列表位置（层级式索引跟踪）
     let listId: string | undefined
-    let listIndex = 0
+    let prevListLevel: number | undefined
+    let listHierarchy: number[] = []
     // 控件最小宽度
     let controlRealWidth = 0
     for (let i = 0; i < elementList.length; i++) {
@@ -1418,9 +1421,16 @@ export class Draw {
         boundingBoxDescent: 0
       }
       // 实际可用宽度
+      const listLevel = element.listLevel || 0
+      const baseIndent = element.listId ? LIST_BASE_INDENT * scale : 0
+      const levelIndent = element.listId ? listLevel * LIST_LEVEL_INDENT * scale : 0
+      // 层级式编号每层需要额外的标记宽度
+      const hierarchyMarkerWidth = element.listId && element.listType === ListType.OL && listLevel > 0
+        ? listLevel * 12 * scale
+        : 0
       const offsetX =
         curRow.offsetX ||
-        (element.listId && listStyleMap.get(element.listId)) ||
+        (element.listId && (listStyleMap.get(element.listId) || 0) + baseIndent + levelIndent + hierarchyMarkerWidth) ||
         0
       const availableWidth = innerWidth - offsetX
       // 增加起始位置坐标偏移量
@@ -1859,11 +1869,26 @@ export class Draw {
       }
       // 列表信息
       if (element.listId) {
+        const curLevel = element.listLevel || 0
         if (element.listId !== listId) {
-          listIndex = 0
+          // 新列表，重置层级索引
+          listHierarchy = [0]
+        } else if (curLevel > (prevListLevel ?? 0)) {
+          // 进入更深层级，添加新层级索引
+          while (listHierarchy.length <= curLevel) {
+            listHierarchy.push(0)
+          }
+        } else if (curLevel < (prevListLevel ?? 0)) {
+          // 返回较浅层级，截断并增加当前层级计数
+          listHierarchy = listHierarchy.slice(0, curLevel + 1)
+          if (element.value === ZERO && !element.listWrap) {
+            listHierarchy[curLevel]++
+          }
         } else if (element.value === ZERO && !element.listWrap) {
-          listIndex++
+          // 同一层级的新行，增加当前层级计数
+          listHierarchy[curLevel]++
         }
+        prevListLevel = curLevel
       }
       listId = element.listId
       // 计算四周环绕导致的元素偏移量
@@ -1939,8 +1964,17 @@ export class Draw {
         // 列表缩进
         if (element.listId) {
           row.isList = true
-          row.offsetX = listStyleMap.get(element.listId!)
-          row.listIndex = listIndex
+          const curListLevel = element.listLevel || 0
+          const baseIndent = LIST_BASE_INDENT * scale
+          const levelIndent = curListLevel * LIST_LEVEL_INDENT * scale
+          // 层级式编号每层需要额外的标记宽度（约2个字符：数字+点）
+          const hierarchyMarkerWidth = element.listType === ListType.OL && curListLevel > 0
+            ? curListLevel * 12 * scale  // ~12px per additional level for "N." chars
+            : 0
+          row.offsetX = (listStyleMap.get(element.listId!) || 0) + baseIndent + levelIndent + hierarchyMarkerWidth
+          row.listIndex = listHierarchy[curListLevel] || 0
+          row.listLevel = curListLevel
+          row.listHierarchy = [...listHierarchy.slice(0, curListLevel + 1)]
         }
         // Y轴偏移量
         row.offsetY =
