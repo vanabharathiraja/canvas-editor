@@ -132,66 +132,6 @@ export class TextParticle {
     this.text = ''
   }
 
-  public renderRun(
-    ctx: CanvasRenderingContext2D,
-    elements: IRowElement[],
-    x: number,
-    y: number,
-    direction: 'ltr' | 'rtl'
-  ) {
-    if (!elements || elements.length === 0) return
-
-    const isRTL = direction === 'rtl'
-    let currentX = x
-
-    ctx.save()
-    
-    // CRITICAL: Set canvas direction for proper text shaping
-    // This tells the browser to apply contextual forms for Arabic/Hebrew
-    // DO NOT manually reverse the text - let the browser handle it
-    ctx.direction = direction
-
-    // Batch consecutive elements with same style for contextual rendering
-    // This is critical for Arabic/cursive scripts where characters need to connect
-    let batchStart = 0
-    
-    for (let i = 0; i <= elements.length; i++) {
-      const element = elements[i]
-      const prevElement = i > 0 ? elements[i - 1] : null
-      
-      // Check if we need to flush the batch (style change or end of array)
-      const shouldFlush = i === elements.length || 
-        (prevElement && (prevElement.style !== element.style || prevElement.color !== element.color))
-      
-      if (shouldFlush && batchStart < i) {
-        // Render batched elements as continuous text IN LOGICAL ORDER
-        // The browser will apply BiDi algorithm and Arabic shaping
-        const batchElements = elements.slice(batchStart, i)
-        const batchText = batchElements.map(el => el.value).join('')
-        const batchWidth = batchElements.reduce((sum, el) => sum + el.metrics.width, 0)
-        
-        // Set style from first element in batch
-        const styleElement = batchElements[0]
-        ctx.font = styleElement.style
-        ctx.fillStyle = styleElement.color || this.options.defaultColor
-
-        // For RTL: text is drawn from right to left, starting point is the RIGHT edge
-        // For LTR: text is drawn from left to right, starting point is the LEFT edge
-        const drawX = isRTL ? currentX + batchWidth : currentX
-        
-        // Draw text in LOGICAL order - browser handles visual reordering and shaping
-        ctx.fillText(batchText, drawX, y)
-        
-        // Move position for next batch
-        currentX += batchWidth
-        
-        batchStart = i
-      }
-    }
-
-    ctx.restore()
-  }
-
   public record(
     ctx: CanvasRenderingContext2D,
     element: IRowElement,

@@ -40,12 +40,12 @@ window.onload = function () {
       header: [
         {
           value: 'First People\'s Hospital',
-          size: 30,
+          size: 32,
           rowFlex: RowFlex.CENTER
         },
         {
           value: '\nOutpatient Medical Record',
-          size: 16,
+          size: 18,
           rowFlex: RowFlex.CENTER
         },
         {
@@ -56,7 +56,7 @@ window.onload = function () {
       main: <IElement[]>data,
       footer: [
         {
-          value: 'Taqniat Intelligent Solutions Co., Ltd.',
+          value: 'canvas-editor',
           size: 12
         }
       ]
