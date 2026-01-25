@@ -1351,20 +1351,25 @@ export class Draw {
   }
 
   public getElementRowMargin(el: IElement) {
-    const { defaultBasicRowMarginHeight, defaultRowMargin, scale, lineHeight } =
-      this.options
-    // 使用相对行高(相对于字体大小),rowMargin直接作为行高倍数
-    if (lineHeight !== undefined) {
-      const fontSize = this.getElementSize(el) * scale
-      // rowMargin直接作为行高倍数(Google Docs风格: 1=单倍, 2=双倍, 3=三倍)
-      const effectiveLineHeight = el.rowMargin ?? defaultRowMargin ?? lineHeight
-      const totalLineHeight = fontSize * effectiveLineHeight
-      const margin = (totalLineHeight - fontSize) / 2
-      return margin
+    const {
+      defaultSize,
+      defaultBasicRowMarginHeight,
+      defaultRowMargin,
+      scale
+    } = this.options
+    // 字体在12-30之间，行间距不变，小于12按比例缩小，大于30按比例放大
+    const fontSize = el.size || defaultSize
+    let ratio = 1
+    if (fontSize < 12) {
+      ratio = fontSize / 12
+    } else if (fontSize > 30) {
+      ratio = 1 + (fontSize - 30) / 30
     }
-    // 向后兼容:未设置lineHeight时使用固定行距
     return (
-      defaultBasicRowMarginHeight * (el.rowMargin ?? defaultRowMargin) * scale
+      defaultBasicRowMarginHeight *
+      ratio *
+      (el.rowMargin ?? defaultRowMargin) *
+      scale
     )
   }
 
@@ -1787,17 +1792,14 @@ export class Draw {
         if (element.letterSpacing) {
           metrics.width += element.letterSpacing * scale
         }
-        // 使用基线ascent和descent保持行高稳定
-        metrics.boundingBoxAscent =
-          this.textParticle.getBasisWordBoundingBoxAscent(
-            ctx,
-            element.font!
-          ) * scale
+        // 使用基于字体的基准度量以确保一致的行高，避免字符特定度量导致的布局跳动
+        const basisMetrics = this.textParticle.measureBasisWord(
+          ctx,
+          element.font!
+        )
+        metrics.boundingBoxAscent = basisMetrics.actualBoundingBoxAscent * scale
         metrics.boundingBoxDescent =
-          this.textParticle.getBasisWordBoundingBoxDescent(
-            ctx,
-            element.font!
-          ) * scale
+          basisMetrics.actualBoundingBoxDescent * scale
         if (element.type === ElementType.SUPERSCRIPT) {
           metrics.boundingBoxAscent += metrics.height / 2
         } else if (element.type === ElementType.SUBSCRIPT) {
@@ -2025,17 +2027,6 @@ export class Draw {
             el.metrics.width += gap
           }
           curRow.width = availableWidth
-        }
-        // 行距离顶部偏移量等于行高时 => 行增加默认标准元素偏移量
-        // 如整行都是空格测量偏移量为0，导致行塌陷
-        if (curRow.ascent === rowMargin) {
-          const boundingBoxDescent =
-            this.textParticle.getBasisWordBoundingBoxAscent(
-              ctx,
-              element.font!
-            ) * scale
-          curRow.ascent += boundingBoxDescent
-          curRow.height += boundingBoxDescent
         }
       }
       // 重新计算坐标、页码、下一行首行元素环绕交叉
