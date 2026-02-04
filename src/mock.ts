@@ -422,7 +422,25 @@ elementList.push(
   ])
 )
 
-// Simulate fixed length underline
+// 模拟Label标签
+elementList.push(
+  ...(<IElement[]>[
+    {
+      value: '诊断标签：'
+    },
+    {
+      type: ElementType.LABEL,
+      value: '高血压',
+      labelId: 'l1',
+      size: 14
+    },
+    {
+      value: '\n'
+    }
+  ])
+)
+
+// 模拟固定长度下划线
 elementList.push(
   ...[
     {
@@ -445,7 +463,30 @@ elementList.push(
   ]
 )
 
-// Simulate ending text
+elementList.push(
+  ...[
+    {
+      value: '\n就诊次数：'
+    },
+    {
+      type: ElementType.CONTROL,
+      value: '',
+      control: {
+        conceptId: '7',
+        type: ControlType.NUMBER,
+        value: null,
+        placeholder: '就诊次数',
+        prefix: '{',
+        postfix: '}',
+        numberExclusiveOptions: {
+          calculatorDisabled: false
+        }
+      }
+    }
+  ]
+)
+
+// 模拟结尾文本
 elementList.push(
   ...[
     {

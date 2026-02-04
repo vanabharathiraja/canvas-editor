@@ -6,6 +6,7 @@ import { defaultCursorOption } from '../dataset/constant/Cursor'
 import { defaultFooterOption } from '../dataset/constant/Footer'
 import { defaultGroupOption } from '../dataset/constant/Group'
 import { defaultHeaderOption } from '../dataset/constant/Header'
+import { defaultLabelOption } from '../dataset/constant/Label'
 import { defaultLineBreak } from '../dataset/constant/LineBreak'
 import { defaultPageBreakOption } from '../dataset/constant/PageBreak'
 import { defaultPageNumberOption } from '../dataset/constant/PageNumber'
@@ -27,6 +28,7 @@ import { IFooter } from '../interface/Footer'
 import { IGroup } from '../interface/Group'
 import { IHeader } from '../interface/Header'
 import { IHeaderBackground } from '../interface/header/HeaderBackground'
+import { ILabelOption } from '../interface/Label'
 import { ILineBreakOption } from '../interface/LineBreak'
 import { IPageBreak } from '../interface/PageBreak'
 import { IPageNumber } from '../interface/PageNumber'
@@ -178,6 +180,10 @@ export function mergeOption(
     ...defaultGraffitiOption,
     ...options.graffiti
   }
+  const labelOptions: Required<ILabelOption> = {
+    ...defaultLabelOption,
+    ...options.label
+  }
   const modeRuleOption: DeepRequired<IModeRule> = {
     print: {
       ...defaultModeRuleOption.print,
@@ -262,6 +268,7 @@ export function mergeOption(
     pageBorder: pageBorderOptions,
     badge: badgeOptions,
     modeRule: modeRuleOption,
-    graffiti: graffitiOptions
+    graffiti: graffitiOptions,
+    label: labelOptions
   }
 }

@@ -135,6 +135,9 @@ interface IElement {
     strikeout?: boolean;
     selectExclusiveOptions?: {
       inputAble?: boolean;
+    },
+    numberExclusiveOptions?: {
+      calculatorDisabled?: boolean;
     }
   };
   controlComponent?: {
@@ -166,6 +169,12 @@ interface IElement {
     x: number;
     y: number;
     pageNo?: number;
+  }
+  imgCrop?: {
+    x: number;      // 裁剪起始X坐标（相对于原图）
+    y: number;      // 裁剪起始Y坐标（相对于原图）
+    width: number;  // 裁剪宽度
+    height: number; // 裁剪高度
   }
   imgToolDisabled?: boolean;
   // 内容块
@@ -206,6 +215,14 @@ interface IElement {
     mode?: AreaMode;
     deletable?: boolean;
     placeholder?: IPlaceholder;
+  };
+  // 标签
+  labelId?: string;
+  label?: {
+    color?: string;
+    backgroundColor?: string;
+    borderRadius?: number;
+    padding?: IPadding;
   };
 }
 ```
