@@ -422,15 +422,15 @@ elementList.push(
   ])
 )
 
-// 模拟Label标签
+// Simulate Label tag
 elementList.push(
   ...(<IElement[]>[
     {
-      value: '诊断标签：'
+      value: 'Diagnosis Label: '
     },
     {
       type: ElementType.LABEL,
-      value: '高血压',
+      value: 'Hypertension',
       labelId: 'l1',
       size: 14
     },
@@ -462,28 +462,24 @@ elementList.push(
     }
   ]
 )
-
 elementList.push(
-  ...[
+  ...(<IElement[]>[
     {
-      value: '\n就诊次数：'
+      value: '\nVisit Count: '
     },
     {
       type: ElementType.CONTROL,
       value: '',
       control: {
         conceptId: '7',
-        type: ControlType.NUMBER,
+        type: ControlType.TEXT,
         value: null,
-        placeholder: '就诊次数',
+        placeholder: 'Visit Count',
         prefix: '{',
-        postfix: '}',
-        numberExclusiveOptions: {
-          calculatorDisabled: false
-        }
+        postfix: '}'
       }
     }
-  ]
+  ])
 )
 
 // 模拟结尾文本
