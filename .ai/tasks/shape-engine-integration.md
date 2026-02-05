@@ -1,6 +1,6 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2026-02-04  
+**Last Updated**: 2026-02-05  
 **Current Phase**: Phase 0 - POC
 
 ## Legend
@@ -8,6 +8,27 @@
 - `[~]` In Progress
 - `[x]` Completed
 - `[!]` Blocked
+
+---
+
+## Overview
+
+**Total Tasks**: ~85+ tasks across 11 phases  
+**New Additions** (2026-02-05):
+- Phase 1: Added auto-direction detection tasks (1.5, 1.6)
+- Phase 5.5: Added dynamic direction handling (5.5.4, 5.5.5)
+- **Phase 6.5**: NEW - UI Controls & Direction Management (6 tasks)
+- Phase 8: Added comprehensive edge case tasks (8.2.1, 8.2.2, 8.2.3)
+- Phase 8: Added i18n tasks (8.6.1)
+- Phase 8: Added direction-specific E2E tests (8.8.1, 8.8.2)
+
+**Key Features Now Covered**:
+✅ Auto-direction detection (Google Docs-like behavior)  
+✅ Dynamic direction switching as user types  
+✅ Direction toolbar controls  
+✅ Keyboard shortcuts for direction  
+✅ Edge cases for mixed BiDi text  
+✅ Empty line direction inheritance  
 
 ---
 
@@ -91,14 +112,28 @@
   - Split text into script runs
   - Handle common characters (spaces, punctuation)
 
-- [ ] **1.5** - Update existing interfaces
+- [ ] **1.5** - Auto-direction detection utilities
+  - Detect paragraph direction from first strong character
+  - Detect direction from content (strong directional chars)
+  - Handle empty paragraphs (inherit from previous or default)
+  - Support manual direction override
+
+- [ ] **1.6** - Direction detection algorithms
+  - Implement UAX#9 P2-P3 (paragraph level detection)
+  - Handle weak characters (spaces, punctuation)
+  - Handle neutral characters
+  - Support direction estimation for mixed content
+
+- [ ] **1.7** - Update existing interfaces
   - Add `direction` field to relevant interfaces
+  - Add `directionMode` field ('auto' | 'ltr' | 'rtl')
   - Update `IElement` interface if needed
   - Ensure backward compatibility
 
-- [ ] **1.6** - Write unit tests
+- [ ] **1.8** - Write unit tests
   - Test BiDi run detection
   - Test script detection
+  - Test auto-direction detection (various scenarios)
   - Test interface utilities
 
 ---
@@ -262,10 +297,24 @@
   - Punctuation resolution
   - Number handling in RTL context
 
-- [ ] **5.5.4** - Write BiDi tests
+- [ ] **5.5.4** - Dynamic direction handling
+  - Auto-detect direction as user types
+  - Switch direction on new empty line (like Google Docs)
+  - Maintain direction in mixed BiDi text (English then Arabic)
+  - Direction inheritance rules for new paragraphs
+
+- [ ] **5.5.5** - Direction state management
+  - Track paragraph direction mode (auto/manual)
+  - Update direction on content change
+  - Handle backspace/delete at paragraph boundaries
+  - Preserve manual overrides when appropriate
+
+- [ ] **5.5.6** - Write BiDi tests
   - Test simple BiDi cases
   - Test nested embeddings
   - Test edge cases (all from UAX#9 test suite)
+  - Test auto-direction switching scenarios
+  - Test mixed content direction handling
 
 ---
 
@@ -303,6 +352,47 @@
   - Test RTL cursor movement
   - Test cursor at LTR/RTL boundaries
   - Test selection in mixed text
+
+---
+
+## Phase 6.5: UI Controls & Direction Management
+**Goal**: User interface for direction control
+
+### Tasks
+- [ ] **6.5.1** - Add direction toggle to toolbar
+  - LTR button
+  - RTL button
+  - Auto-detect option (default)
+  - Visual indicators for current direction
+
+- [ ] **6.5.2** - Implement direction commands
+  - Command: setParagraphDirection(direction: 'ltr' | 'rtl' | 'auto')
+  - Apply to current paragraph
+  - Apply to selection (multiple paragraphs)
+  - Keyboard shortcuts (Ctrl+Shift+X for LTR, Ctrl+Shift+R for RTL)
+
+- [ ] **6.5.3** - Visual direction indicators
+  - Direction marker in editor (subtle indicator)
+  - Cursor direction indicator
+  - Selection direction clarity
+  - Alignment follows direction (RTL = right-aligned)
+
+- [ ] **6.5.4** - User preferences
+  - Default direction mode (auto/ltr/rtl)
+  - Default direction for new documents
+  - Auto-detection sensitivity settings
+  - Remember per-document direction preferences
+
+- [ ] **6.5.5** - Context menu integration
+  - Right-click menu option for direction
+  - Show current direction state
+  - Quick toggle between LTR/RTL/Auto
+
+- [ ] **6.5.6** - Write UI tests
+  - Test toolbar buttons work correctly
+  - Test keyboard shortcuts
+  - Test direction changes update UI
+  - Test multi-paragraph direction changes
 
 ---
 
@@ -357,6 +447,32 @@
   - Very long strings
   - Malformed Unicode
   - Missing fonts
+  - Zero-width characters (ZWNJ, ZWJ, etc.)
+  - Direction override characters (LRO, RLO, PDF)
+
+- [ ] **8.2.1** - Google Docs-like behavior edge cases
+  - New empty line auto-direction based on first character typed
+  - Mixed BiDi text: English first keeps LTR, then Arabic
+  - Direction persistence when deleting all content
+  - Direction at paragraph boundaries (Enter key behavior)
+  - Copy-paste with direction preservation
+  - Direction handling with numbered/bulleted lists
+
+- [ ] **8.2.2** - Auto-direction edge cases
+  - Single character determination (weak vs strong)
+  - Spaces-only paragraphs
+  - Numbers-only paragraphs
+  - Punctuation-only content
+  - Emoji and symbols direction handling
+  - Mixed script scenarios (Latin + Arabic + numbers)
+
+- [ ] **8.2.3** - User interaction edge cases
+  - Cursor position when switching direction mid-typing
+  - Selection behavior during direction switch
+  - Undo/redo with direction changes
+  - Find/replace in RTL text
+  - Spell check in RTL languages
+  - Auto-complete in RTL context
 
 - [ ] **8.3** - Error handling
   - Graceful degradation
@@ -379,6 +495,12 @@
   - Keyboard navigation works correctly
   - ARIA attributes if needed
 
+- [ ] **8.6.1** - Internationalization (i18n)
+  - UI text for direction controls (translate to multiple languages)
+  - RTL UI layout for Arabic/Hebrew users
+  - Language-specific keyboard shortcuts
+  - Locale-aware direction defaults
+
 - [ ] **8.7** - Bundle size optimization
   - Code splitting for shape engine
   - Tree shaking unused scripts
@@ -388,6 +510,24 @@
   - Comprehensive Cypress tests
   - Visual regression tests
   - Performance benchmarks
+
+- [ ] **8.8.1** - Direction-specific E2E tests
+  - Test: Type Arabic on new line → direction changes to RTL
+  - Test: Type English first, then Arabic → stays LTR
+  - Test: Empty line inherits smart direction
+  - Test: Manual direction override persists
+  - Test: Copy-paste preserves direction
+  - Test: Toolbar direction buttons work
+  - Test: Keyboard shortcuts work
+  - Test: Multi-paragraph direction selection
+
+- [ ] **8.8.2** - Real-world scenario tests
+  - Arabic document with embedded English quotes
+  - English document with Arabic names/terms
+  - Mixed language forms (labels LTR, input RTL)
+  - Bi-directional email composition
+  - Code snippets in RTL documents
+  - URLs in RTL text
 
 ---
 

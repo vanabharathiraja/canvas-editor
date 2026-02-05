@@ -1,6 +1,6 @@
 # Current Focus
 
-**Last Updated**: 2026-02-04  
+**Last Updated**: 2026-02-05  
 **Active Sprint**: Shape Engine Integration - Phase 0 (POC)
 
 ## Current Objective
@@ -26,6 +26,13 @@ Validate the approach with a minimal proof-of-concept:
 - [ ] Can render shaped glyphs to Canvas
 - [ ] RTL text displays correctly
 - [ ] Measure performance impact
+
+**Recent Updates** (2026-02-05):
+- Added auto-direction detection tasks (Google Docs-like behavior)
+- Added Phase 6.5: UI Controls & Direction Management
+- Added comprehensive edge case scenarios
+- Added direction-specific E2E test cases
+- Total tasks increased from ~60 to ~85+
 
 ## Next Phases (Preview)
 
