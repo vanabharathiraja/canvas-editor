@@ -49,6 +49,10 @@ export default defineConfig(({ mode }) => {
           'poc-shaping': path.resolve(
             __dirname,
             'src/poc/poc-shaping.html'
+          ),
+          'test-shaping-integration': path.resolve(
+            __dirname,
+            'src/poc/test-shaping-integration.html'
           )
         }
       }

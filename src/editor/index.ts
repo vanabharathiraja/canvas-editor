@@ -74,6 +74,7 @@ import { IBadge } from './interface/Badge'
 import { WatermarkType } from './dataset/enum/Watermark'
 import { INTERNAL_SHORTCUT_KEY } from './dataset/constant/Shortcut'
 import { IGraffitiData } from './interface/Graffiti'
+import { IShapingOption, IFontMapping } from './interface/Shaping'
 
 export default class Editor {
   public command: Command
@@ -237,5 +238,7 @@ export type {
   IRange,
   IRangeStyle,
   IBadge,
-  IGetElementListByHTMLOption
+  IGetElementListByHTMLOption,
+  IShapingOption,
+  IFontMapping
 }

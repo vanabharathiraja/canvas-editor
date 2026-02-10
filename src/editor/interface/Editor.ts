@@ -32,6 +32,7 @@ import { LocationPosition } from '../dataset/enum/Common'
 import { IRange } from './Range'
 import { IGraffitiData, IGraffitiOption } from './Graffiti'
 import { IWhiteSpaceOption } from './WhiteSpace'
+import { IShapingOption } from './Shaping'
 
 export interface IEditorData {
   header?: IElement[]
@@ -110,6 +111,7 @@ export interface IEditorOption {
   modeRule?: IModeRule
   graffiti?: IGraffitiOption
   label?: ILabelOption
+  shaping?: IShapingOption
 }
 
 export interface IEditorResult {

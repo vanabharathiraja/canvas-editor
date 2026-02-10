@@ -56,6 +56,8 @@ import { IGraffitiOption } from '../interface/Graffiti'
 import { defaultGraffitiOption } from '../dataset/constant/Graffiti'
 import { IWhiteSpaceOption } from '../interface/WhiteSpace'
 import { defaultWhiteSpaceOption } from '../dataset/constant/WhiteSpace'
+import { IShapingOption } from '../interface/Shaping'
+import { defaultShapingOption } from '../dataset/constant/Shaping'
 
 export function mergeOption(
   options: IEditorOption = {}
@@ -184,6 +186,10 @@ export function mergeOption(
     ...defaultLabelOption,
     ...options.label
   }
+  const shapingOptions: Required<IShapingOption> = {
+    ...defaultShapingOption,
+    ...options.shaping
+  }
   const modeRuleOption: DeepRequired<IModeRule> = {
     print: {
       ...defaultModeRuleOption.print,
@@ -269,6 +275,7 @@ export function mergeOption(
     badge: badgeOptions,
     modeRule: modeRuleOption,
     graffiti: graffitiOptions,
-    label: labelOptions
+    label: labelOptions,
+    shaping: shapingOptions
   }
 }

@@ -192,27 +192,37 @@
 **Goal**: Connect shaping engine with existing draw system
 
 ### Tasks
-- [ ] **3.1** - Analyze current Draw.ts architecture
-  - Document current text rendering flow
-  - Identify integration points
-  - Plan minimal invasive changes
+- [x] **3.1** - Analyze current Draw.ts architecture
+  - Documented current text rendering flow (TextParticle.record → _render → ctx.fillText)
+  - Identified integration points (measureText, _render in TextParticle)
+  - Planned minimal invasive changes with feature flag + fallback
 
-- [ ] **3.2** - Update BiDiManager
-  - Integrate with ShapeEngine
-  - Use shaping for RTL text
-  - Maintain existing behavior for simple LTR
+- [x] **3.2** - Add IShapingOption interface & feature flag
+  - Created `src/editor/interface/Shaping.ts` (IShapingOption, IFontMapping)
+  - Added `shaping` option to IEditorOption
+  - Created `src/editor/dataset/constant/Shaping.ts` (default: disabled)
+  - Merged in option.ts mergeOption()
+  - Exported IShapingOption, IFontMapping from editor index
 
-- [ ] **3.3** - Add fallback mechanism
-  - Detect when shaping is needed
-  - Fall back to Canvas API for simple text
-  - Handle shaping errors gracefully
+- [x] **3.3** - Add font registry to ShapeEngine
+  - Added fontRegistry Map for CSS font name → URL mapping
+  - registerFont(), registerFontMapping(), isFontRegistered()
+  - ensureFontLoaded() with dedup loading promises
+  - isFontReady() for synchronous hot-path checks
 
-- [ ] **3.4** - Create rendering helper
-  - Convert ShapeResult to drawing commands
-  - Handle glyph path drawing vs. font rendering
-  - Optimize for performance
+- [x] **3.4** - Initialize ShapeEngine in Draw
+  - Import ShapeEngine in Draw.ts
+  - Added _initShapeEngine() method
+  - Fire-and-forget async init (fonts load in background)
+  - Auto re-render when fonts are loaded
+  - Fallback to Canvas API until fonts are ready
 
-- [ ] **3.5** - Write integration tests
+- [x] **3.5** - Add fallback mechanism
+  - _isShapingReady() checks: enabled + initialized + font loaded
+  - Falls back to Canvas API when any condition is false
+  - Zero impact on existing functionality when shaping disabled
+
+- [ ] **3.6** - Write integration tests
   - Test LTR text still works
   - Test RTL text works with shaping
   - Test fallback mechanism
@@ -223,22 +233,25 @@
 **Goal**: Update text rendering with shaping support
 
 ### Tasks
-- [ ] **4.1** - Analyze TextParticle.ts
-  - Document current rendering logic
-  - Identify change points
-  - Plan refactoring approach
+- [x] **4.1** - Analyze TextParticle.ts
+  - Documented: measureText uses ctx.measureText with caching
+  - Documented: _render uses ctx.fillText, record batches same-style chars
+  - Identified change points: measureText (width), _render (draw glyphs)
 
-- [ ] **4.2** - Add shaping path to TextParticle
-  - Check if text needs shaping
-  - Call ShapeEngine when needed
-  - Render shaped glyphs
+- [x] **4.2** - Add shaping path to TextParticle measureText
+  - Added _getElementFontName(), _getElementFontSize() helpers
+  - Added _isShapingReady() checks (enabled + initialized + font loaded)
+  - measureText: Uses ShapeEngine.getShapedWidth() for width
+  - Canvas API still used for vertical metrics (ascent/descent)
+  - Results cached in same cacheMeasureText Map
 
-- [ ] **4.3** - Update text metrics calculation
-  - Use shaped glyph advances
-  - Calculate accurate bounding boxes
-  - Handle ligatures and clusters
+- [x] **4.3** - Add shaping path to TextParticle _render
+  - record() now tracks curFont (CSS font name)
+  - _render() uses ShapeEngine.shapeText() + renderGlyphs() when ready
+  - Added _parseFontSize() to extract px size from CSS font string
+  - Falls back to ctx.fillText() when shaping unavailable
 
-- [ ] **4.4** - Handle partial styling
+- [ ] **4.4** - Handle partial styling (future)
   - Split styled runs properly
   - Preserve shaping across style boundaries
   - Render styled clusters correctly

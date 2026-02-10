@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShapeEngine Integration Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    h1 { margin-bottom: 20px; }
+    .controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .controls label { display: block; margin-bottom: 10px; }
+    .controls button {
+      padding: 8px 16px;
+      margin-right: 10px;
+      cursor: pointer;
+      background: #4183d9;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .controls button:hover { background: #3070c0; }
+    #status {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .editor-container {
+      border: 1px solid #ccc;
+      background: white;
+      min-height: 400px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ShapeEngine Integration Test</h1>
+
+  <div class="controls">
+    <p><strong>Instructions:</strong> This test creates a canvas-editor instance
+      with ShapeEngine enabled. Load a font file (.ttf/.otf) to activate shaping.</p>
+
+    <label>
+      Font file (.ttf/.otf):
+      <input type="file" id="fontFile" accept=".ttf,.otf,.woff" />
+    </label>
+    <label>
+      Font name (CSS name to map):
+      <input type="text" id="fontName" value="Microsoft YaHei" style="width: 250px" />
+    </label>
+
+    <button id="btnLoadFont">Load Font & Create Editor</button>
+    <button id="btnCreateDefault">Create Editor (no shaping)</button>
+
+    <div id="status">Ready. Load a font file to test shaping integration.</div>
+  </div>
+
+  <div class="editor-container">
+    <div class="editor"></div>
+  </div>
+
+  <script type="module">
+    import Editor, { ElementType, RowFlex, TitleLevel } from '../editor/index.ts'
+
+    const statusEl = document.getElementById('status')
+    function log(msg) {
+      statusEl.textContent += '\n' + msg
+      statusEl.scrollTop = statusEl.scrollHeight
+    }
+
+    // Test data with mixed text
+    const testData = [
+      { value: 'ShapeEngine Integration Test', size: 24, bold: true },
+      { value: '\n' },
+      { value: '\n' },
+      { value: 'English text: Hello World! The quick brown fox jumps over the lazy dog.', size: 16 },
+      { value: '\n' },
+      { value: '\n' },
+      { value: 'Numbers & symbols: 0123456789 !@#$%^&*()', size: 16 },
+      { value: '\n' },
+      { value: '\n' },
+      { value: 'Mixed sizes: ', size: 16 },
+      { value: 'Small ', size: 12 },
+      { value: 'Medium ', size: 16 },
+      { value: 'Large ', size: 24 },
+      { value: 'Bold ', size: 16, bold: true },
+      { value: 'Italic ', size: 16, italic: true },
+      { value: '\n' },
+      { value: '\n' },
+      { value: 'Arabic text (needs RTL shaping): مرحبا بالعالم', size: 16 },
+      { value: '\n' },
+      { value: '\n' },
+      { value: 'This text should be rendered using the ShapeEngine when a font is loaded.', size: 14, color: '#666666' }
+    ]
+
+    // Split multi-char strings into individual elements (canvas-editor expects single chars)
+    function splitToElements(data) {
+      const result = []
+      for (const item of data) {
+        if (item.value.length <= 1) {
+          result.push(item)
+        } else {
+          for (const ch of item.value) {
+            result.push({ ...item, value: ch })
+          }
+        }
+      }
+      return result
+    }
+
+    const elementList = splitToElements(testData)
+
+    // Default editor (no shaping)
+    document.getElementById('btnCreateDefault').onclick = function() {
+      const container = document.querySelector('.editor')
+      container.innerHTML = ''
+      log('Creating editor WITHOUT shaping...')
+      const instance = new Editor(container, elementList, {
+        margins: [80, 100, 80, 100],
+        shaping: { enabled: false }
+      })
+      log('Editor created (Canvas API rendering)')
+      window.editor = instance
+    }
+
+    // Editor with ShapeEngine
+    document.getElementById('btnLoadFont').onclick = async function() {
+      const fileInput = document.getElementById('fontFile')
+      const fontNameInput = document.getElementById('fontName')
+      const fontName = fontNameInput.value.trim()
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        log('ERROR: Please select a font file first!')
+        return
+      }
+      if (!fontName) {
+        log('ERROR: Please enter a font name!')
+        return
+      }
+
+      const file = fileInput.files[0]
+      log(`Loading font file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+
+      // Create a blob URL for the font file
+      const fontUrl = URL.createObjectURL(file)
+      log(`Font blob URL created: ${fontUrl}`)
+
+      // Clear and recreate
+      const container = document.querySelector('.editor')
+      container.innerHTML = ''
+
+      log(`Creating editor WITH shaping enabled (font: "${fontName}")...`)
+
+      const instance = new Editor(container, elementList, {
+        margins: [80, 100, 80, 100],
+        defaultFont: fontName,
+        shaping: {
+          enabled: true,
+          basePath: '/canvas-editor/harfbuzz',
+          fontMapping: {
+            [fontName]: { url: fontUrl }
+          }
+        }
+      })
+
+      log('Editor created. ShapeEngine initializing in background...')
+      log('Watch the console for ShapeEngine logs.')
+      log('The editor will re-render automatically when fonts are loaded.')
+      window.editor = instance
+    }
+  </script>
+</body>
+</html>

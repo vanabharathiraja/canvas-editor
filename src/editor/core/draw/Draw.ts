@@ -121,6 +121,7 @@ import { TableOperate } from './particle/table/TableOperate'
 import { Area } from './interactive/Area'
 import { Badge } from './frame/Badge'
 import { Graffiti } from './graffiti/Graffiti'
+import { ShapeEngine } from '../shaping/ShapeEngine'
 
 export class Draw {
   private container: HTMLDivElement
@@ -303,6 +304,11 @@ export class Draw {
     this.lazyRenderIntersectionObserver = null
     this.printModeData = null
 
+    // Initialize ShapeEngine if shaping is enabled
+    if (options.shaping.enabled) {
+      this._initShapeEngine(options)
+    }
+
     // 打印模式优先设置打印数据
     if (this.mode === EditorMode.PRINT) {
       this.setPrintData()
@@ -342,6 +348,30 @@ export class Draw {
       this.setEditorData(this.printModeData)
       this.printModeData = null
     }
+  }
+
+  private _initShapeEngine(options: DeepRequired<IEditorOption>): void {
+    const shapeEngine = ShapeEngine.getInstance()
+    const { basePath, fontMapping } = options.shaping
+    // Register font mappings
+    shapeEngine.registerFontMapping(fontMapping)
+    // Initialize HarfBuzz + load fonts asynchronously
+    shapeEngine.init(basePath).then(() => {
+      // Load all registered fonts
+      const fontNames = Object.keys(fontMapping)
+      const loadPromises = fontNames.map(name =>
+        shapeEngine.ensureFontLoaded(name)
+      )
+      Promise.all(loadPromises).then(() => {
+        console.log('[Draw] ShapeEngine fonts loaded, triggering re-render')
+        // Re-render now that shaping is available
+        this.render({ isInit: false, isSetCursor: false })
+      }).catch(err => {
+        console.error('[Draw] ShapeEngine font loading error:', err)
+      })
+    }).catch(err => {
+      console.error('[Draw] ShapeEngine init error:', err)
+    })
   }
 
   public getLetterReg(): RegExp {

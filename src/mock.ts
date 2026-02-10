@@ -542,5 +542,13 @@ export const options: IEditorOption = {
   zone: {
     tipDisabled: false
   },
-  maskMargin: [60, 0, 30, 0] // Menu bar height 60, bottom toolbar 30 as mask layer
+  maskMargin: [60, 0, 30, 0], // Menu bar height 60, bottom toolbar 30 as mask layer
+  defaultFont: 'Noto Sans',
+  shaping: {
+    enabled: true,
+    basePath: '/canvas-editor/harfbuzz',
+    fontMapping: {
+      'Noto Sans': { url: '/canvas-editor/fonts/NotoSans-Regular.ttf' }
+    }
+  }
 }

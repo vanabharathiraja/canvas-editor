@@ -7,6 +7,7 @@ import { DeepRequired } from '../../../interface/Common'
 import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
 import { Draw } from '../Draw'
+import { ShapeEngine } from '../../shaping/ShapeEngine'
 
 export interface IMeasureWordResult {
   width: number
@@ -23,6 +24,7 @@ export class TextParticle {
   private text: string
   private curStyle: string
   private curColor?: string
+  private curFont?: string // CSS font name for ShapeEngine (e.g. "Microsoft YaHei")
   public cacheMeasureText: Map<string, TextMetrics>
 
   constructor(draw: Draw) {
@@ -34,6 +36,30 @@ export class TextParticle {
     this.text = ''
     this.curStyle = ''
     this.cacheMeasureText = new Map()
+  }
+
+  /**
+   * Resolve the CSS font name for an element, using defaultFont as fallback.
+   */
+  private _getElementFontName(element?: IElement): string {
+    return element?.font || this.options.defaultFont
+  }
+
+  /**
+   * Resolve the font size for an element.
+   */
+  private _getElementFontSize(element?: IElement): number {
+    return element?.actualSize || element?.size || this.options.defaultSize
+  }
+
+  /**
+   * Check if shaping is enabled AND the font is ready for a given element.
+   */
+  private _isShapingReady(fontName?: string): boolean {
+    if (!this.options.shaping.enabled) return false
+    const name = fontName || this.options.defaultFont
+    const engine = ShapeEngine.getInstance()
+    return engine.isInitialized() && engine.isFontReady(name)
   }
 
   public measureBasisWord(
@@ -108,6 +134,31 @@ export class TextParticle {
     if (cacheTextMetrics) {
       return cacheTextMetrics
     }
+    // Try ShapeEngine for width measurement
+    const fontName = this._getElementFontName(element)
+    if (this._isShapingReady(fontName)) {
+      const fontSize = this._getElementFontSize(element)
+      const engine = ShapeEngine.getInstance()
+      const shapedWidth = engine.getShapedWidth(
+        element.value,
+        fontName,
+        fontSize
+      )
+      // Use Canvas API for vertical metrics (ascent/descent)
+      // since ShapeEngine doesn't provide pixel-space metrics
+      const textMetrics = ctx.measureText(element.value)
+      const result: ITextMetrics = {
+        width: shapedWidth,
+        actualBoundingBoxAscent: textMetrics.actualBoundingBoxAscent,
+        actualBoundingBoxDescent: textMetrics.actualBoundingBoxDescent,
+        actualBoundingBoxLeft: textMetrics.actualBoundingBoxLeft,
+        actualBoundingBoxRight: textMetrics.actualBoundingBoxRight,
+        fontBoundingBoxAscent: textMetrics.fontBoundingBoxAscent,
+        fontBoundingBoxDescent: textMetrics.fontBoundingBoxDescent
+      }
+      this.cacheMeasureText.set(id, result as unknown as TextMetrics)
+      return result
+    }
     const textMetrics = ctx.measureText(element.value)
     this.cacheMeasureText.set(id, textMetrics)
     return textMetrics
@@ -139,12 +190,15 @@ export class TextParticle {
     y: number
   ) {
     this.ctx = ctx
+    // Track font name for ShapeEngine rendering
+    const fontName = this._getElementFontName(element)
     // 兼容模式立即绘制
     if (this.options.renderMode === RenderMode.COMPATIBILITY) {
       this._setCurXY(x, y)
       this.text = element.value
       this.curStyle = element.style
       this.curColor = element.color
+      this.curFont = fontName
       this.complete()
       return
     }
@@ -163,6 +217,7 @@ export class TextParticle {
     this.text += element.value
     this.curStyle = element.style
     this.curColor = element.color
+    this.curFont = fontName
   }
 
   private _setCurXY(x: number, y: number) {
@@ -174,9 +229,39 @@ export class TextParticle {
     if (!this.text || !~this.curX || !~this.curX) return
     this.ctx.save()
     this.ctx.font = this.curStyle
-    this.ctx.fillStyle = this.curColor || this.options.defaultColor
-    // console.log('Rendering text:', this.text, 'at', this.curX, this.curY)
-    this.ctx.fillText(this.text, this.curX, this.curY)
+    const color = this.curColor || this.options.defaultColor
+
+    // Try ShapeEngine rendering
+    const fontName = this.curFont || this.options.defaultFont
+    if (this._isShapingReady(fontName)) {
+      const engine = ShapeEngine.getInstance()
+      // Extract font size from curStyle (e.g. "italic bold 16px Microsoft YaHei")
+      const fontSize = this._parseFontSize(this.curStyle)
+      const result = engine.shapeText(this.text, fontName, fontSize)
+      engine.renderGlyphs(
+        this.ctx,
+        result,
+        fontName,
+        fontSize,
+        this.curX,
+        this.curY,
+        color
+      )
+    } else {
+      // Fallback to Canvas API
+      this.ctx.fillStyle = color
+      this.ctx.fillText(this.text, this.curX, this.curY)
+    }
     this.ctx.restore()
+  }
+
+  /**
+   * Parse the font size (in px) from a CSS font string.
+   * Example: "italic bold 16px Microsoft YaHei" → 16
+   */
+  private _parseFontSize(fontStr: string): number {
+    const match = fontStr.match(/(\d+(?:\.\d+)?)px/)
+    if (match) return parseFloat(match[1])
+    return this.options.defaultSize
   }
 }

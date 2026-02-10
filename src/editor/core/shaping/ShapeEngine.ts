@@ -100,6 +100,9 @@ export class ShapeEngine {
   private shapeCache: Map<string, IShapeResult> = new Map()
   private readonly CACHE_MAX_SIZE = 1000
 
+  // Font registry: CSS font name → { url, loading promise }
+  private fontRegistry: Map<string, { url: string; loading: Promise<IFontMetrics> | null }> = new Map()
+
   private constructor() {
     // singleton - use ShapeEngine.getInstance()
   }
@@ -389,6 +392,69 @@ export class ShapeEngine {
     return this.fonts.has(fontId)
   }
 
+  /**
+   * Register a CSS font name with a font file URL.
+   * The font will be lazily loaded when first needed.
+   */
+  registerFont(fontName: string, fontUrl: string): void {
+    if (!this.fontRegistry.has(fontName)) {
+      this.fontRegistry.set(fontName, { url: fontUrl, loading: null })
+    }
+  }
+
+  /**
+   * Register multiple fonts from a mapping object.
+   * @param mapping Record<fontName, { url }> from IShapingOption.fontMapping
+   */
+  registerFontMapping(mapping: Record<string, { url: string }>): void {
+    for (const [fontName, { url }] of Object.entries(mapping)) {
+      this.registerFont(fontName, url)
+    }
+  }
+
+  /** Check if a CSS font name is registered (may not be loaded yet) */
+  isFontRegistered(fontName: string): boolean {
+    return this.fontRegistry.has(fontName)
+  }
+
+  /**
+   * Ensure a font is loaded and ready for shaping.
+   * Uses the font name as the fontId internally.
+   * Returns true if font is ready, false if not registered.
+   */
+  async ensureFontLoaded(fontName: string): Promise<boolean> {
+    // Already loaded in HarfBuzz
+    if (this.fonts.has(fontName)) return true
+
+    const entry = this.fontRegistry.get(fontName)
+    if (!entry) return false
+
+    // Already loading — wait for it
+    if (entry.loading) {
+      await entry.loading
+      return true
+    }
+
+    // Start loading
+    entry.loading = this.loadFont(fontName, entry.url)
+    try {
+      await entry.loading
+      return true
+    } catch (err) {
+      console.error(`[ShapeEngine] Failed to load font "${fontName}":`, err)
+      entry.loading = null
+      return false
+    }
+  }
+
+  /**
+   * Check if a font is ready for shaping (registered AND loaded).
+   * This is a synchronous check — use for hot paths.
+   */
+  isFontReady(fontName: string): boolean {
+    return this.fonts.has(fontName)
+  }
+
   /** Clear shaping cache */
   clearCache(): void {
     this.shapeCache.clear()
@@ -403,6 +469,7 @@ export class ShapeEngine {
     }
     this.fonts.clear()
     this.shapeCache.clear()
+    this.fontRegistry.clear()
     this.hb = null
     this.initialized = false
     this.initializing = null
