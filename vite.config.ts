@@ -41,6 +41,17 @@ export default defineConfig(({ mode }) => {
     base: `/${name}/`,
     server: {
       host: '0.0.0.0'
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          'poc-shaping': path.resolve(
+            __dirname,
+            'src/poc/poc-shaping.html'
+          )
+        }
+      }
     }
   }
 })
