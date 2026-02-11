@@ -353,24 +353,52 @@ export class Draw {
   private _initShapeEngine(options: DeepRequired<IEditorOption>): void {
     const shapeEngine = ShapeEngine.getInstance()
     const { basePath, fontMapping } = options.shaping
-    // Register font mappings
+    // Register font mappings (including bold/italic variants)
     shapeEngine.registerFontMapping(fontMapping)
-    // Initialize HarfBuzz + load fonts asynchronously
+    // Initialize HarfBuzz + load all registered fonts asynchronously
     shapeEngine.init(basePath).then(() => {
-      // Load all registered fonts
-      const fontNames = Object.keys(fontMapping)
-      const loadPromises = fontNames.map(name =>
-        shapeEngine.ensureFontLoaded(name)
+      // Collect all registered font IDs (base + variants)
+      const fontIds: string[] = []
+      for (const fontName of Object.keys(fontMapping)) {
+        const entry = fontMapping[fontName]
+        fontIds.push(fontName)
+        if (entry.boldUrl) fontIds.push(`${fontName}|bold`)
+        if (entry.italicUrl) fontIds.push(`${fontName}|italic`)
+        if (entry.boldItalicUrl) fontIds.push(`${fontName}|boldItalic`)
+      }
+      const loadPromises = fontIds.map(id =>
+        shapeEngine.ensureFontLoaded(id)
       )
       Promise.all(loadPromises).then(() => {
-        console.log('[Draw] ShapeEngine fonts loaded, triggering re-render')
+        // Clear stale Canvas API measurements before re-render
+        this.textParticle.cacheMeasureText.clear()
         // Re-render now that shaping is available
         this.render({ isInit: false, isSetCursor: false })
       }).catch(err => {
-        console.error('[Draw] ShapeEngine font loading error:', err)
+        console.warn('[Draw] ShapeEngine font loading error:', err)
       })
     }).catch(err => {
-      console.error('[Draw] ShapeEngine init error:', err)
+      console.warn('[Draw] ShapeEngine init error:', err)
+    })
+  }
+
+  /**
+   * Ensure a font variant is loaded for the ShapeEngine.
+   * If the font is registered but not yet loaded, loads it asynchronously
+   * and triggers a re-render when ready. This is called when font switching
+   * detects a registered-but-not-loaded font.
+   */
+  public ensureShapingFont(fontId: string): void {
+    if (!this.options.shaping.enabled) return
+    const engine = ShapeEngine.getInstance()
+    if (!engine.isInitialized() || engine.isFontReady(fontId)) return
+    if (!engine.isFontRegistered(fontId)) return
+    engine.ensureFontLoaded(fontId).then(loaded => {
+      if (loaded) {
+        // Clear text measurement cache — old Canvas API widths need replacing
+        this.textParticle.cacheMeasureText.clear()
+        this.render({ isInit: false, isSetCursor: false })
+      }
     })
   }
 

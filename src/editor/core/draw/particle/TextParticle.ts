@@ -24,8 +24,10 @@ export class TextParticle {
   private text: string
   private curStyle: string
   private curColor?: string
-  private curFont?: string // CSS font name for ShapeEngine (e.g. "Microsoft YaHei")
+  private curFont?: string // Resolved font ID for ShapeEngine (e.g. "Noto Sans|bold")
   public cacheMeasureText: Map<string, TextMetrics>
+  // Track fonts that are currently being lazy-loaded to avoid duplicate triggers
+  private pendingFontLoads: Set<string>
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -36,13 +38,29 @@ export class TextParticle {
     this.text = ''
     this.curStyle = ''
     this.cacheMeasureText = new Map()
+    this.pendingFontLoads = new Set()
   }
 
   /**
-   * Resolve the CSS font name for an element, using defaultFont as fallback.
+   * Resolve the CSS font family name for an element.
    */
   private _getElementFontName(element?: IElement): string {
     return element?.font || this.options.defaultFont
+  }
+
+  /**
+   * Resolve the ShapeEngine font ID for an element, accounting for
+   * bold/italic variants. Falls back through available variants.
+   */
+  private _resolveShapingFontId(element?: IElement): string {
+    const fontName = this._getElementFontName(element)
+    if (!this.options.shaping.enabled) return fontName
+    const engine = ShapeEngine.getInstance()
+    return engine.resolveFontId(
+      fontName,
+      !!element?.bold,
+      !!element?.italic
+    )
   }
 
   /**
@@ -53,13 +71,22 @@ export class TextParticle {
   }
 
   /**
-   * Check if shaping is enabled AND the font is ready for a given element.
+   * Check if shaping is enabled AND the resolved font is ready.
+   * If the font is registered but not yet loaded, triggers lazy loading
+   * which will cause a re-render when complete.
    */
-  private _isShapingReady(fontName?: string): boolean {
+  private _isShapingReady(fontId?: string): boolean {
     if (!this.options.shaping.enabled) return false
-    const name = fontName || this.options.defaultFont
+    const id = fontId || this.options.defaultFont
     const engine = ShapeEngine.getInstance()
-    return engine.isInitialized() && engine.isFontReady(name)
+    if (!engine.isInitialized()) return false
+    if (engine.isFontReady(id)) return true
+    // Font is registered but not loaded — trigger lazy load & re-render
+    if (engine.isFontRegistered(id) && !this.pendingFontLoads.has(id)) {
+      this.pendingFontLoads.add(id)
+      this.draw.ensureShapingFont(id)
+    }
+    return false
   }
 
   public measureBasisWord(
@@ -135,13 +162,13 @@ export class TextParticle {
       return cacheTextMetrics
     }
     // Try ShapeEngine for width measurement
-    const fontName = this._getElementFontName(element)
-    if (this._isShapingReady(fontName)) {
+    const fontId = this._resolveShapingFontId(element)
+    if (this._isShapingReady(fontId)) {
       const fontSize = this._getElementFontSize(element)
       const engine = ShapeEngine.getInstance()
       const shapedWidth = engine.getShapedWidth(
         element.value,
-        fontName,
+        fontId,
         fontSize
       )
       // Use Canvas API for vertical metrics (ascent/descent)
@@ -190,15 +217,15 @@ export class TextParticle {
     y: number
   ) {
     this.ctx = ctx
-    // Track font name for ShapeEngine rendering
-    const fontName = this._getElementFontName(element)
+    // Resolve font ID including bold/italic variant
+    const fontId = this._resolveShapingFontId(element)
     // 兼容模式立即绘制
     if (this.options.renderMode === RenderMode.COMPATIBILITY) {
       this._setCurXY(x, y)
       this.text = element.value
       this.curStyle = element.style
       this.curColor = element.color
-      this.curFont = fontName
+      this.curFont = fontId
       this.complete()
       return
     }
@@ -206,7 +233,7 @@ export class TextParticle {
     if (!this.text) {
       this._setCurXY(x, y)
     }
-    // 样式发生改变
+    // 样式发生改变 (includes font family, size, bold, italic changes)
     if (
       (this.curStyle && element.style !== this.curStyle) ||
       element.color !== this.curColor
@@ -217,7 +244,7 @@ export class TextParticle {
     this.text += element.value
     this.curStyle = element.style
     this.curColor = element.color
-    this.curFont = fontName
+    this.curFont = fontId
   }
 
   private _setCurXY(x: number, y: number) {
@@ -226,22 +253,22 @@ export class TextParticle {
   }
 
   private _render() {
-    if (!this.text || !~this.curX || !~this.curX) return
+    if (!this.text || !~this.curX || !~this.curY) return
     this.ctx.save()
     this.ctx.font = this.curStyle
     const color = this.curColor || this.options.defaultColor
 
     // Try ShapeEngine rendering
-    const fontName = this.curFont || this.options.defaultFont
-    if (this._isShapingReady(fontName)) {
+    const fontId = this.curFont || this.options.defaultFont
+    if (this._isShapingReady(fontId)) {
       const engine = ShapeEngine.getInstance()
       // Extract font size from curStyle (e.g. "italic bold 16px Microsoft YaHei")
       const fontSize = this._parseFontSize(this.curStyle)
-      const result = engine.shapeText(this.text, fontName, fontSize)
+      const result = engine.shapeText(this.text, fontId, fontSize)
       engine.renderGlyphs(
         this.ctx,
         result,
-        fontName,
+        fontId,
         fontSize,
         this.curX,
         this.curY,

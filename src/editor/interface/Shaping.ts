@@ -5,10 +5,16 @@
  * with the editor's text measurement and rendering pipeline.
  */
 
-/** Font mapping entry: maps a CSS font name to a font file URL */
+/** Font mapping entry: maps a CSS font name to font file URL(s) */
 export interface IFontMapping {
-  /** URL to the font file (.ttf, .otf, .woff) */
+  /** URL to the regular-weight font file (.ttf, .otf, .woff) */
   url: string
+  /** URL to the bold font file (optional — falls back to Canvas API) */
+  boldUrl?: string
+  /** URL to the italic font file (optional — falls back to Canvas API) */
+  italicUrl?: string
+  /** URL to the bold-italic font file (optional — falls back to Canvas API) */
+  boldItalicUrl?: string
 }
 
 export interface IShapingOption {

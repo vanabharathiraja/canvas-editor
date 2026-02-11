@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2026-02-10  
-**Current Phase**: Phase 0 - POC (Implementation started)
+**Last Updated**: 2025-02-10
+**Current Phase**: Phase 3-4 (Integration complete, quality improvements planned)
 
 ## Legend
 - `[ ]` Not Started
@@ -59,15 +59,16 @@
     script loading (`public/harfbuzz/`) + global functions
   - POC page confirmed: "ShapeEngine initialized successfully!"
 
-- [~] **0.5** - Render shaped glyphs to Canvas
+- [x] **0.5** - Render shaped glyphs to Canvas
   - Extract glyph paths from OpenType.js ✅
   - Draw glyph paths to Canvas at correct positions ✅
-  - Verify visual output matches expected Arabic shaping (needs font testing)
+  - Verified: rendering works, but inherent quality difference vs native fillText()
+    (see `.ai/decisions/shaping-roadmap.md` for analysis)
 
-- [~] **0.6** - Test RTL text direction
-  - Shape RTL text run ✅ (code implemented)
-  - Render right-to-left ✅ (code implemented)
-  - Verify cursor positions make sense (needs interactive testing)
+- [x] **0.6** - Test RTL text direction
+  - Shape RTL text run ✅
+  - Render right-to-left ✅
+  - Cursor positions need Phase 5 work
 
 - [ ] **0.7** - Performance benchmark
   - Measure shaping time for various text lengths
@@ -229,6 +230,33 @@
 
 ---
 
+## Phase 3.5: Rendering Quality (NEW)
+**Goal**: Improve ShapeEngine rendering quality for Latin text
+**Reference**: `.ai/decisions/shaping-roadmap.md`
+
+### Tasks
+- [ ] **3.5.1** - Script detection utility
+  - Create `needsComplexShaping(text)` function
+  - Detect Arabic, Devanagari, Bengali, Thai, etc. Unicode ranges
+  - Handle mixed-script text (any complex char → use shaping)
+
+- [ ] **3.5.2** - Smart routing in TextParticle
+  - If text is simple Latin/CJK → use native Canvas API fillText()
+  - If text needs complex shaping → use ShapeEngine renderGlyphs()
+  - Add `forceShaping` option for testing/debugging
+
+- [ ] **3.5.3** - CSS @font-face registration
+  - When ShapeEngine loads a font file, also register as CSS @font-face
+  - Ensures native fillText() can use the loaded font
+  - Use FontFace API: `new FontFace(name, data)`
+
+- [ ] **3.5.4** - Test Arabic rendering quality
+  - Load Amiri or Noto Sans Arabic font
+  - Verify Arabic text is properly shaped and rendered
+  - Compare with native Canvas API rendering
+
+---
+
 ## Phase 4: TextParticle Update
 **Goal**: Update text rendering with shaping support
 
@@ -250,6 +278,19 @@
   - _render() uses ShapeEngine.shapeText() + renderGlyphs() when ready
   - Added _parseFontSize() to extract px size from CSS font string
   - Falls back to ctx.fillText() when shaping unavailable
+
+- [x] **4.3.1** - Bold/italic font variant support
+  - Added _resolveShapingFontId() — resolves element bold/italic to font ID
+  - ShapeEngine.resolveFontId() with fallback chain (boldItalic→bold→italic→base)
+  - record() detects font/style changes and flushes text runs
+  - IFontMapping extended with boldUrl, italicUrl, boldItalicUrl
+  - Downloaded NotoSans Bold, Italic, BoldItalic font files
+
+- [x] **4.3.2** - Lazy font loading on font-switch
+  - _isShapingReady() triggers ensureShapingFont() for registered but unloaded fonts
+  - pendingFontLoads Set prevents duplicate lazy-load triggers
+  - Cache invalidation on font load (cacheMeasureText.clear())
+  - Auto re-render when lazy-loaded font becomes available
 
 - [ ] **4.4** - Handle partial styling (future)
   - Split styled runs properly

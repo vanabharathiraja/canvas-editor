@@ -548,7 +548,12 @@ export const options: IEditorOption = {
     enabled: true,
     basePath: '/canvas-editor/harfbuzz',
     fontMapping: {
-      'Noto Sans': { url: '/canvas-editor/fonts/NotoSans-Regular.ttf' }
+      'Noto Sans': {
+        url: '/canvas-editor/fonts/NotoSans-Regular.ttf',
+        boldUrl: '/canvas-editor/fonts/NotoSans-Bold.ttf',
+        italicUrl: '/canvas-editor/fonts/NotoSans-Italic.ttf',
+        boldItalicUrl: '/canvas-editor/fonts/NotoSans-BoldItalic.ttf'
+      }
     }
   }
 }

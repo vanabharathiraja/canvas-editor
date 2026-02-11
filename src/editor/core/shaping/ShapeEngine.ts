@@ -404,12 +404,62 @@ export class ShapeEngine {
 
   /**
    * Register multiple fonts from a mapping object.
-   * @param mapping Record<fontName, { url }> from IShapingOption.fontMapping
+   * Registers the regular font plus any bold/italic/boldItalic variants
+   * under composite keys: "FontName", "FontName|bold", "FontName|italic",
+   * "FontName|boldItalic".
+   * @param mapping Record<fontName, IFontMapping> from IShapingOption.fontMapping
    */
-  registerFontMapping(mapping: Record<string, { url: string }>): void {
-    for (const [fontName, { url }] of Object.entries(mapping)) {
-      this.registerFont(fontName, url)
+  registerFontMapping(mapping: Record<string, { url: string; boldUrl?: string; italicUrl?: string; boldItalicUrl?: string }>): void {
+    for (const [fontName, entry] of Object.entries(mapping)) {
+      this.registerFont(fontName, entry.url)
+      if (entry.boldUrl) {
+        this.registerFont(`${fontName}|bold`, entry.boldUrl)
+      }
+      if (entry.italicUrl) {
+        this.registerFont(`${fontName}|italic`, entry.italicUrl)
+      }
+      if (entry.boldItalicUrl) {
+        this.registerFont(`${fontName}|boldItalic`, entry.boldItalicUrl)
+      }
     }
+  }
+
+  /**
+   * Resolve a CSS font name + bold/italic flags to the internal font ID.
+   * Returns the most specific variant available, falling back to the base font.
+   *
+   * Resolution order for bold+italic:
+   *   1. "FontName|boldItalic" (exact match)
+   *   2. "FontName|bold" (bold only)
+   *   3. "FontName" (regular)
+   *
+   * @param fontName CSS font family name
+   * @param bold Whether bold style is requested
+   * @param italic Whether italic style is requested
+   * @returns The resolved font ID to use with shapeText/renderGlyphs
+   */
+  resolveFontId(fontName: string, bold = false, italic = false): string {
+    if (bold && italic) {
+      const biKey = `${fontName}|boldItalic`
+      if (this.fontRegistry.has(biKey)) return biKey
+      // Fall back to bold, then italic, then regular
+      const bKey = `${fontName}|bold`
+      if (this.fontRegistry.has(bKey)) return bKey
+      const iKey = `${fontName}|italic`
+      if (this.fontRegistry.has(iKey)) return iKey
+      return fontName
+    }
+    if (bold) {
+      const bKey = `${fontName}|bold`
+      if (this.fontRegistry.has(bKey)) return bKey
+      return fontName
+    }
+    if (italic) {
+      const iKey = `${fontName}|italic`
+      if (this.fontRegistry.has(iKey)) return iKey
+      return fontName
+    }
+    return fontName
   }
 
   /** Check if a CSS font name is registered (may not be loaded yet) */
@@ -451,8 +501,29 @@ export class ShapeEngine {
    * Check if a font is ready for shaping (registered AND loaded).
    * This is a synchronous check — use for hot paths.
    */
-  isFontReady(fontName: string): boolean {
-    return this.fonts.has(fontName)
+  isFontReady(fontId: string): boolean {
+    return this.fonts.has(fontId)
+  }
+
+  /**
+   * Check if a base font family is registered at all (any variant).
+   * Useful for determining if ShapeEngine knows about a font family.
+   */
+  isFontFamilyRegistered(fontName: string): boolean {
+    return this.fontRegistry.has(fontName)
+  }
+
+  /**
+   * Dynamically register a new font and begin loading it.
+   * Useful when user switches to a font via the toolbar at runtime.
+   * Returns a promise that resolves when the font is loaded and ready.
+   * If the engine is not yet initialized, the registration is saved
+   * and will be loaded when init completes.
+   */
+  async registerAndLoadFont(fontName: string, fontUrl: string): Promise<boolean> {
+    this.registerFont(fontName, fontUrl)
+    if (!this.initialized) return false
+    return this.ensureFontLoaded(fontName)
   }
 
   /** Clear shaping cache */

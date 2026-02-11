@@ -56,7 +56,7 @@ import { IGraffitiOption } from '../interface/Graffiti'
 import { defaultGraffitiOption } from '../dataset/constant/Graffiti'
 import { IWhiteSpaceOption } from '../interface/WhiteSpace'
 import { defaultWhiteSpaceOption } from '../dataset/constant/WhiteSpace'
-import { IShapingOption } from '../interface/Shaping'
+import { IShapingOption, IFontMapping } from '../interface/Shaping'
 import { defaultShapingOption } from '../dataset/constant/Shaping'
 
 export function mergeOption(
@@ -190,6 +190,21 @@ export function mergeOption(
     ...defaultShapingOption,
     ...options.shaping
   }
+  // Normalize fontMapping entries: ensure all variant URLs have defaults
+  const rawMapping = shapingOptions.fontMapping || {}
+  const normalizedMapping: Record<string, Required<IFontMapping>> = {}
+  for (const [name, entry] of Object.entries(rawMapping)) {
+    normalizedMapping[name] = {
+      url: entry.url,
+      boldUrl: entry.boldUrl || '',
+      italicUrl: entry.italicUrl || '',
+      boldItalicUrl: entry.boldItalicUrl || ''
+    }
+  }
+  const normalizedShaping = {
+    ...shapingOptions,
+    fontMapping: normalizedMapping
+  }
   const modeRuleOption: DeepRequired<IModeRule> = {
     print: {
       ...defaultModeRuleOption.print,
@@ -276,6 +291,6 @@ export function mergeOption(
     modeRule: modeRuleOption,
     graffiti: graffitiOptions,
     label: labelOptions,
-    shaping: shapingOptions
+    shaping: normalizedShaping
   }
 }
