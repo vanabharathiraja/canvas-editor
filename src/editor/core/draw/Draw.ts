@@ -1,5 +1,5 @@
 import { version } from '../../../../package.json'
-import { ZERO } from '../../dataset/constant/Common'
+import { ZERO, LETTER_CLASS } from '../../dataset/constant/Common'
 import { LIST_BASE_INDENT, LIST_LEVEL_INDENT } from '../../dataset/constant/List'
 import { RowFlex } from '../../dataset/enum/Row'
 import { ListType } from '../../dataset/enum/List'
@@ -290,10 +290,18 @@ export class Draw {
     this.workerManager = new WorkerManager(this)
     new Actuator(this)
 
-    const { letterClass } = options
-    this.LETTER_REG = new RegExp(`[${letterClass.join('')}]`)
+    // Auto-extend letter class with Arabic when shaping is enabled,
+    // so WORD_LIKE_REG prevents mid-word breaks in Arabic text.
+    const letterClassList = [...options.letterClass]
+    if (options.shaping.enabled) {
+      const hasArabic = letterClassList.some(lc => lc.includes('\u0600'))
+      if (!hasArabic) {
+        letterClassList.push(LETTER_CLASS.ARABIC)
+      }
+    }
+    this.LETTER_REG = new RegExp(`[${letterClassList.join('')}]`)
     this.WORD_LIKE_REG = new RegExp(
-      `${letterClass.map(letter => `[^${letter}][${letter}]`).join('|')}`
+      `${letterClassList.map(letter => `[^${letter}][${letter}]`).join('|')}`
     )
     this.rowList = []
     this.pageRowList = []

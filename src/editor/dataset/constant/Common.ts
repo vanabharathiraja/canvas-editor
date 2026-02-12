@@ -38,7 +38,13 @@ export const LETTER_CLASS = {
   ITALIAN: 'A-Za-zÀàÈèÉéÌìÍíÎîÓóÒòÙù',
   DUTCH: 'A-Za-zÀàÁáÂâÄäÈèÉéÊêËëÌìÍíÎîÏïÓóÒòÔôÖöÙùÛûÜü',
   SWEDISH: 'A-Za-zÅåÄäÖö',
-  GREEK: 'ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω'
+  GREEK: 'ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω',
+  ARABIC:
+    '\u0600-\u06FF' + // Arabic block (letters, diacritics, digits)
+    '\u0750-\u077F' + // Arabic Supplement
+    '\u08A0-\u08FF' + // Arabic Extended-A
+    '\uFB50-\uFDFF' + // Arabic Presentation Forms-A
+    '\uFE70-\uFEFF'   // Arabic Presentation Forms-B
 }
 
 export const METRICS_BASIS_TEXT = '日'
