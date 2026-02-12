@@ -446,6 +446,36 @@ export class ShapeEngine {
   }
 
   /**
+   * Resolve a font ID with fallback for complex scripts.
+   *
+   * If the requested font is not registered in ShapeEngine, returns
+   * the fallback font ID (with bold/italic variants resolved).
+   * This allows Arabic text to be shaped with Amiri even when the
+   * user's selected font (e.g. "Arial") isn't in fontMapping.
+   *
+   * @param fontName CSS font family name (may not be registered)
+   * @param fallbackFont Fallback font name for complex scripts
+   * @param bold Whether bold style is requested
+   * @param italic Whether italic style is requested
+   * @returns The resolved font ID, or the fallback if fontName is unknown
+   */
+  resolveWithFallback(
+    fontName: string,
+    fallbackFont: string,
+    bold = false,
+    italic = false
+  ): string {
+    // Try the requested font first
+    const resolved = this.resolveFontId(fontName, bold, italic)
+    if (this.fontRegistry.has(resolved)) return resolved
+    // Fall back to the complex-script font
+    if (fallbackFont && this.fontRegistry.has(fallbackFont)) {
+      return this.resolveFontId(fallbackFont, bold, italic)
+    }
+    return resolved
+  }
+
+  /**
    * Register a CSS font name with a font file URL.
    * The font will be lazily loaded when first needed.
    */

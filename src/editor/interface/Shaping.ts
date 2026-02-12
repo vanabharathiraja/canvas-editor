@@ -43,4 +43,16 @@ export interface IShapingOption {
    * across all scripts is more important than rendering sharpness.
    */
   forceShaping?: boolean
+  /**
+   * Fallback font name for complex scripts when the user's selected font
+   * is not registered in fontMapping.
+   *
+   * When a user types Arabic text with "Arial" selected and Arial is not
+   * in fontMapping, the ShapeEngine will use this font for shaping and
+   * rendering instead. This is invisible to the user — no font change
+   * appears in the toolbar.
+   *
+   * Must be a key in fontMapping. Default: 'Amiri'
+   */
+  complexScriptFallback?: string
 }

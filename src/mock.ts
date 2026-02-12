@@ -491,7 +491,7 @@ elementList.push(
   ]
 )
 
-// Arabic text sample (uses Amiri font via ShapeEngine)
+// Arabic text sample (uses ShapeEngine fallback — no explicit font needed)
 const arabicTitle = 'الملاحظات السريرية:'
 const arabicBody =
   'يعاني المريض من حمى منذ ثلاثة أيام مع سعال جاف. الفحص السريري يظهر احمرار في الحلق مع تضخم في اللوزتين.'
@@ -506,8 +506,7 @@ for (let i = 0; i < arabicChars.length; i++) {
       valueList: [
         {
           value: arabicTitle,
-          size: 18,
-          font: 'Amiri'
+          size: 18
         }
       ]
     })
@@ -516,8 +515,7 @@ for (let i = 0; i < arabicChars.length; i++) {
   if (i < arabicChars.length) {
     elementList.push({
       value: arabicChars[i],
-      size: 16,
-      font: 'Amiri'
+      size: 16
     })
   }
 }
@@ -532,11 +530,11 @@ elementList.push(
   { value: 'd', size: 16 },
   { value: ':', size: 16 },
   { value: ' ', size: 16 },
-  { value: 'م', size: 16, font: 'Amiri' },
-  { value: 'ر', size: 16, font: 'Amiri' },
-  { value: 'ح', size: 16, font: 'Amiri' },
-  { value: 'ب', size: 16, font: 'Amiri' },
-  { value: 'ا', size: 16, font: 'Amiri' },
+  { value: 'م', size: 16 },
+  { value: 'ر', size: 16 },
+  { value: 'ح', size: 16 },
+  { value: 'ب', size: 16 },
+  { value: 'ا', size: 16 },
   { value: ' ', size: 16 },
   { value: 'H', size: 16 },
   { value: 'e', size: 16 },

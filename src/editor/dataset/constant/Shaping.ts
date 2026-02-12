@@ -4,5 +4,6 @@ export const defaultShapingOption: Required<IShapingOption> = {
   enabled: false,
   basePath: '/harfbuzz',
   fontMapping: {},
-  forceShaping: false
+  forceShaping: false,
+  complexScriptFallback: 'Amiri'
 }

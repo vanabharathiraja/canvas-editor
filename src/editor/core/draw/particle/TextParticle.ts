@@ -58,11 +58,25 @@ export class TextParticle {
   /**
    * Resolve the ShapeEngine font ID for an element, accounting for
    * bold/italic variants. Falls back through available variants.
+   *
+   * When `text` is provided and contains complex script characters,
+   * falls back to the configured complexScriptFallback font (e.g. Amiri)
+   * if the element's font isn't registered in ShapeEngine.
    */
-  private _resolveShapingFontId(element?: IElement): string {
+  private _resolveShapingFontId(element?: IElement, text?: string): string {
     const fontName = this._getElementFontName(element)
     if (!this.options.shaping.enabled) return fontName
     const engine = ShapeEngine.getInstance()
+    // For complex-script text, use fallback if the font isn't registered
+    const textToCheck = text || element?.value || ''
+    if (textToCheck && needsComplexShaping(textToCheck)) {
+      return engine.resolveWithFallback(
+        fontName,
+        this.options.shaping.complexScriptFallback,
+        !!element?.bold,
+        !!element?.italic
+      )
+    }
     return engine.resolveFontId(
       fontName,
       !!element?.bold,
@@ -449,13 +463,24 @@ export class TextParticle {
     this.ctx.font = this.curStyle
     const color = this.curColor || this.options.defaultColor
 
+    // Re-resolve font ID with the full accumulated text so fallback
+    // kicks in for complex scripts even if curFont was set per-char.
+    let fontId = this.curFont || this.options.defaultFont
+    if (
+      this._shouldUseShaping(this.text) &&
+      !ShapeEngine.getInstance().isFontRegistered(fontId)
+    ) {
+      const fallback = this.options.shaping.complexScriptFallback
+      if (fallback && ShapeEngine.getInstance().isFontRegistered(fallback)) {
+        fontId = fallback
+      }
+    }
+
     // Try ShapeEngine rendering (complex scripts or forceShaping)
-    const fontId = this.curFont || this.options.defaultFont
     if (
       this._isShapingReady(fontId) &&
       this._shouldUseShaping(this.text)
     ) {
-      console.log(`Shaping & rendering text: "${this.text}" with fontId: ${fontId}`)
       const engine = ShapeEngine.getInstance()
       // Extract font size from curStyle (e.g. "italic bold 16px Microsoft YaHei")
       const fontSize = this._parseFontSize(this.curStyle)
