@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
 **Last Updated**: 2026-02-12
-**Current Phase**: Phase 7 — Cursor & Hit Testing for Complex Scripts
+**Current Phase**: Phase 7 — Pure RTL Cursor & Interaction
 
 ## Legend
 - `[ ]` Not Started
@@ -15,9 +15,11 @@
 
 **Total Tasks**: ~95+ tasks across 12 phases  
 **Latest Update** (2026-02-12):
+- Phase 1 audited — most tasks already completed implicitly
 - Phase 5A completed (measurement–rendering consistency fix)
-- Phase 7 expanded with detailed cursor/hit-testing tasks + edge cases
+- Phase 7 refocused: pure RTL cursor/interaction first, mixed BiDi later
 - Phase 6 remains reverted (position reversal approach was wrong)
+- Dependency analysis: BiDi (1.3, 5.5) deferred until mixed-direction needed
 
 **Key Features Now Covered**:
 ✅ Auto-direction detection (Google Docs-like behavior)  
@@ -82,61 +84,43 @@
 
 ## Phase 1: Foundation
 **Goal**: Add direction-aware interfaces
+**Status**: Audited — most tasks completed implicitly in Phases 2–5A
 
 ### Tasks
-- [ ] **1.1** - Define TextRun interface
-  ```typescript
-  interface TextRun {
-    text: string
-    direction: 'ltr' | 'rtl'
-    script: string
-    startIndex: number
-    endIndex: number
-  }
-  ```
+- [x] **1.1** - Define TextRun interface
+  - Already exists as `ITextRun` in `src/editor/core/shaping/interface/ShapeEngine.ts`
+  - Fields: text, direction, script, language, startIndex, endIndex
 
-- [ ] **1.2** - Define ShapeResult interface
-  ```typescript
-  interface ShapeResult {
-    glyphs: GlyphInfo[]
-    direction: 'ltr' | 'rtl'
-    advance: number
-  }
-  ```
+- [x] **1.2** - Define ShapeResult interface
+  - Already exists as `IShapeResult` in `src/editor/core/shaping/interface/ShapeEngine.ts`
+  - Fields: glyphs (IGlyphInfo[]), direction, totalAdvance
 
-- [ ] **1.3** - Add Unicode BiDi utilities
-  - Implement Unicode BiDi algorithm (or use library)
-  - Detect paragraph direction
-  - Split text into directional runs
+- [ ] **1.3** - Add Unicode BiDi utilities *(deferred — needed for mixed LTR/RTL on same line)*
+  - Full UAX#9 algorithm not yet needed for pure RTL paragraphs
+  - Will be required when implementing mixed-direction row layout
 
-- [ ] **1.4** - Script detection utility
-  - Detect script for each character (Latin, Arabic, Devanagari, etc.)
-  - Split text into script runs
-  - Handle common characters (spaces, punctuation)
+- [x] **1.4** - Script detection utility
+  - Implemented in `src/editor/utils/unicode.ts`
+  - `needsComplexShaping()` — binary-search over 27 Unicode ranges
+  - `detectScript()` — returns ISO 15924 tags (Arab, Deva, Latn, etc.)
+  - Handles common characters (ASCII passthrough)
 
-- [ ] **1.5** - Auto-direction detection utilities
-  - Detect paragraph direction from first strong character
-  - Detect direction from content (strong directional chars)
-  - Handle empty paragraphs (inherit from previous or default)
-  - Support manual direction override
+- [x] **1.5** - Auto-direction detection utilities
+  - `detectDirection()` in `unicode.ts` — first-strong-char algorithm
+  - Used in `computeRowList()` to auto-set RTL alignment
+  - Empty paragraph handling via row direction inheritance
 
-- [ ] **1.6** - Direction detection algorithms
-  - Implement UAX#9 P2-P3 (paragraph level detection)
-  - Handle weak characters (spaces, punctuation)
-  - Handle neutral characters
-  - Support direction estimation for mixed content
+- [ ] **1.6** - Direction detection algorithms *(deferred — needed for mixed BiDi)*
+  - First-strong-char detection done (sufficient for pure RTL)
+  - Full UAX#9 P2-P3 with weak/neutral char resolution deferred
 
-- [ ] **1.7** - Update existing interfaces
-  - Add `direction` field to relevant interfaces
-  - Add `directionMode` field ('auto' | 'ltr' | 'rtl')
-  - Update `IElement` interface if needed
-  - Ensure backward compatibility
+- [x] **1.7** - Update existing interfaces
+  - `isRTL?: boolean` on `IRow` (Row.ts)
+  - `isRTL?: boolean` on `IElementPosition` (Element.ts)
+  - Propagated in `computePageRowPosition()` (Position.ts)
+  - `directionMode` deferred until UI controls (Phase 6.5)
 
-- [ ] **1.8** - Write unit tests
-  - Test BiDi run detection
-  - Test script detection
-  - Test auto-direction detection (various scenarios)
-  - Test interface utilities
+- [ ] **1.8** - Write unit tests *(deferred)*
 
 ---
 
@@ -571,8 +555,9 @@ NEXT element (or row start), not by reversing this element's coordinates.
 
 ## Phase 7: Cursor & Hit Testing for Complex Scripts
 **Goal**: Accurate cursor placement, hit testing, selection, and keyboard navigation for RTL/Arabic text
-**Status**: Not Started
+**Status**: In Progress — 7.2, 7.3, 7.5 core tasks done
 **Constraint**: Positions MUST remain in LTR logical order (rendering depends on this)
+**Key Technique**: Mirror formula `visualX = rowStart + rowEnd - logicalX` applied at read-time
 
 ### 7.1 — Cluster-Aware Coordinate Mapping
 Build a mapping of `charIndex → { visualX, width }` for each contextual group,
@@ -618,11 +603,11 @@ Position the cursor correctly for RTL text without modifying position coordinate
   - Identify where cursor x,y is determined
   - map the flow: position → cursor x → cursor DOM element
 
-- [ ] **7.2.2** - Implement RTL cursor offset
-  - For LTR: cursor at `leftTop[0]` (left edge of next char)
-  - For RTL: cursor at `leftTop[0] + metrics.width` (right edge of current char)
-  - Use `isRTL` flag from position to decide which edge
-  - Handle boundary: cursor at start of RTL row → use row right margin
+- [x] **7.2.2** - Implement RTL cursor offset
+  - Mirror formula: `cursorLeft = rowStart + rowEnd - ltrCursorLeft`
+  - Scans positionList for row's first/last letter to find bounds
+  - Both normal and hitLineStartIndex cases are mirrored
+  - Implemented in `Cursor.ts drawCursor()`
 
 - [ ] **7.2.3** - Cursor visual direction indicator
   - Add subtle directional flag to cursor (e.g. small wedge pointing RTL)
@@ -647,11 +632,12 @@ Map mouse click coordinates to the correct element for RTL text.
   - Identify the comparison logic: `x < leftTop[0] + metrics.width/2`
   - Understand `isLastArea` fallback
 
-- [ ] **7.3.2** - Implement RTL-aware hit testing
-  - For RTL rows, the visual order is reversed from logical order
-  - Click at visual-left of row = logical END of text
-  - Click at visual-right of row = logical START of text
-  - Use cluster coordinates to find the correct element
+- [x] **7.3.2** - Implement RTL-aware hit testing
+  - Mirror formula applied: `mirrorX = rowStart + rowEnd - x`
+  - Direct-hit section: when position isRTL, mirror x and re-scan row
+  - Midpoint check uses mirrorX (naturally handles RTL half-char logic)
+  - Non-hit fallback: swapped left/right logic for RTL rows
+  - Implemented in `Position.ts getPositionByXY()`
 
 - [ ] **7.3.3** - Handle mixed LTR/RTL hit testing
   - Detect which run (LTR or RTL) the click is in
@@ -665,10 +651,11 @@ Map mouse click coordinates to the correct element for RTL text.
   - Click on right half → select the visually-right char
   - Use proportional splitting from 7.1.5
 
-- [ ] **7.3.5** - Edge case: click after last char on RTL row
-  - Should position cursor at logical start (visual right)
-  - Current code assumes last letter is at visual right — wrong for RTL
-  - Fix `isLastArea` logic to check `isRTL`
+- [x] **7.3.5** - Edge case: click after last char on RTL row
+  - RTL non-hit fallback: click right of content → logical start (hitLineStartIndex)
+  - Click left of content → logical end (last element index)
+  - Uses `lastRightTop[0]` for row end boundary
+  - Implemented in `Position.ts` non-hit fallback section
 
 - [ ] **7.3.6** - Edge case: empty row after RTL text
   - Clicking on empty line should respect direction inheritance
@@ -717,11 +704,11 @@ Draw selection rectangles correctly for RTL and mixed text.
   - Identify the x, width calculation for highlight rects
   - Understand multi-row selection
 
-- [ ] **7.5.2** - RTL selection highlight
-  - Selection from cursor at logical index A to B
-  - In RTL row: highlight from visual position of B to visual position of A
-  - The highlight rect x is `min(visualA, visualB)`, width is `|visualA - visualB|`
-  - Use cluster coordinates for accurate visual bounds
+- [x] **7.5.2** - RTL selection highlight
+  - Mirror formula: `rangeX = rowStart + rowEnd - (rangeRecord.x + rangeW)`
+  - Uses first/last position of current row for bounds
+  - Width stays the same, only x is mirrored
+  - Implemented in `Draw.ts drawRow()` selection rendering section
 
 - [ ] **7.5.3** - Mixed-direction selection
   - Selection spanning LTR + RTL text on same row

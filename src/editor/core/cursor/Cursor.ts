@@ -156,7 +156,30 @@ export class Cursor {
       metrics.boundingBoxDescent < 0 ? 0 : metrics.boundingBoxDescent
     const cursorTop =
       leftTop[1] + ascent + descent - (cursorHeight - increaseHeight) + preY
-    const cursorLeft = hitLineStartIndex ? leftTop[0] : rightTop[0]
+    let cursorLeft = hitLineStartIndex ? leftTop[0] : rightTop[0]
+    // RTL光标位置镜像：位置坐标按逻辑顺序排列（左→右），
+    // 但RTL文本视觉顺序相反，需要在行范围内镜像光标X坐标
+    if (cursorPosition.isRTL) {
+      const positionList = this.position.getPositionList()
+      const rowNo = cursorPosition.rowNo
+      const curPageNo2 = cursorPosition.pageNo
+      // 查找当前行首尾位置
+      let rowStart = leftTop[0]
+      let rowEnd = rightTop[0]
+      for (let p = 0; p < positionList.length; p++) {
+        const pos = positionList[p]
+        if (pos.pageNo !== curPageNo2 || pos.rowNo !== rowNo) continue
+        if (pos.isFirstLetter) {
+          rowStart = pos.coordinate.leftTop[0]
+        }
+        if (pos.isLastLetter) {
+          rowEnd = pos.coordinate.rightTop[0]
+          break
+        }
+      }
+      // 镜像公式: visualX = rowStart + rowEnd - logicalX
+      cursorLeft = rowStart + rowEnd - cursorLeft
+    }
     agentCursorDom.style.left = `${cursorLeft}px`
     agentCursorDom.style.top = `${
       cursorTop + cursorHeight - defaultOffsetHeight

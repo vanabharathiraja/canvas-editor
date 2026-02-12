@@ -2643,8 +2643,23 @@ export class Draw {
       // 绘制选区
       if (!isPrintMode && !isGraffitiMode) {
         if (rangeRecord.width && rangeRecord.height) {
-          const { x, y, width, height } = rangeRecord
-          this.range.render(ctx, x, y, width, height)
+          let rangeX = rangeRecord.x
+          const { y: rangeY, width: rangeW, height: rangeH } = rangeRecord
+          // RTL行：选区矩形需要在行范围内镜像
+          if (curRow.isRTL) {
+            const firstPos = positionList[curRow.startIndex]
+            const lastPos =
+              positionList[
+                curRow.startIndex + curRow.elementList.length - 1
+              ]
+            if (firstPos && lastPos) {
+              const rowStart = firstPos.coordinate.leftTop[0]
+              const rowEnd = lastPos.coordinate.rightTop[0]
+              // 镜像: 将选区右边缘映射到视觉位置
+              rangeX = rowStart + rowEnd - (rangeRecord.x + rangeW)
+            }
+          }
+          this.range.render(ctx, rangeX, rangeY, rangeW, rangeH)
         }
         if (
           isCrossRowCol &&

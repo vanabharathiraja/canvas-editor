@@ -506,6 +506,49 @@ export class Position {
           }
         }
         let hitLineStartIndex: number | undefined
+        // RTL行：镜像x坐标以找到视觉位置对应的正确逻辑元素
+        if (positionList[j].isRTL) {
+          const rowNo = positionList[j].rowNo
+          const rowPageNo = positionList[j].pageNo
+          let rowStart = leftTop[0]
+          let rowEnd = rightTop[0]
+          for (let k = 0; k < positionList.length; k++) {
+            const rp = positionList[k]
+            if (rp.pageNo !== rowPageNo || rp.rowNo !== rowNo) continue
+            if (rp.isFirstLetter) rowStart = rp.coordinate.leftTop[0]
+            if (rp.isLastLetter) {
+              rowEnd = rp.coordinate.rightTop[0]
+              break
+            }
+          }
+          const mirrorX = rowStart + rowEnd - x
+          // 在行内查找镜像位置对应的元素
+          for (let k = 0; k < positionList.length; k++) {
+            const rp = positionList[k]
+            if (rp.pageNo !== rowPageNo || rp.rowNo !== rowNo) continue
+            const rpLeft = rp.coordinate.leftTop[0]
+            const rpRight = rp.coordinate.rightTop[0]
+            if (rpLeft <= mirrorX && rpRight >= mirrorX) {
+              let rtlIndex = k
+              const rtlElement = elementList[rp.index]
+              if (rtlElement.value !== ZERO) {
+                const w = rpRight - rpLeft
+                if (mirrorX < rpLeft + w / 2) {
+                  rtlIndex = k - 1
+                  if (rp.isFirstLetter) {
+                    hitLineStartIndex = k
+                  }
+                }
+              }
+              return {
+                isDirectHit: true,
+                hitLineStartIndex,
+                index: rtlIndex,
+                isControl: !!rtlElement.controlId
+              }
+            }
+          }
+        }
         // 判断是否在文字中间前后
         if (elementList[index].value !== ZERO) {
           const valueWidth = rightTop[0] - leftTop[0]
@@ -561,7 +604,7 @@ export class Position {
       const {
         index,
         rowNo,
-        coordinate: { leftTop, leftBottom }
+        coordinate: { leftTop, leftBottom, rightTop: lastRightTop }
       } = lastLetterList[j]
       if (y > leftTop[1] && y <= leftBottom[1]) {
         const headIndex = positionList.findIndex(
@@ -574,7 +617,27 @@ export class Position {
           headElement.listStyle === ListStyle.CHECKBOX
             ? this.draw.getMargins()[3]
             : headPosition.coordinate.leftTop[0]
-        if (x < headStartX) {
+        // RTL行：视觉方向与逻辑方向相反
+        // 视觉右侧=逻辑起始，视觉左侧=逻辑结尾
+        if (lastLetterList[j].isRTL) {
+          const rowEnd = lastRightTop[0]
+          if (x > rowEnd) {
+            // 点击在内容右侧=视觉起始=逻辑起始
+            if (~headIndex) {
+              if (headPosition.value === ZERO) {
+                curPositionIndex = headIndex
+              } else {
+                curPositionIndex = headIndex - 1
+                hitLineStartIndex = headIndex
+              }
+            } else {
+              curPositionIndex = index
+            }
+          } else {
+            // 点击在内容左侧=视觉结尾=逻辑结尾
+            curPositionIndex = index
+          }
+        } else if (x < headStartX) {
           // 头部元素为空元素时无需选中
           if (~headIndex) {
             if (headPosition.value === ZERO) {
