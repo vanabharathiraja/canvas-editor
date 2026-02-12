@@ -410,6 +410,31 @@ export class ShapeEngine {
     return result.totalAdvance
   }
 
+  /**
+   * Get per-cluster (per-character) advance widths for shaped text.
+   *
+   * Shapes the full text as a unit, then maps each glyph's advance back
+   * to the source character via HarfBuzz cluster IDs. For ligatures where
+   * multiple source characters map to a single glyph, the full advance
+   * is assigned to the first character and subsequent characters get 0.
+   *
+   * @returns Map from character index → contextual advance width in pixels
+   */
+  getPerClusterAdvances(
+    text: string,
+    fontId: string,
+    fontSize: number,
+    options: IShapeOptions = {}
+  ): Map<number, number> {
+    const result = this.shapeText(text, fontId, fontSize, options)
+    const advances = new Map<number, number>()
+    for (const glyph of result.glyphs) {
+      const current = advances.get(glyph.cluster) || 0
+      advances.set(glyph.cluster, current + glyph.xAdvance)
+    }
+    return advances
+  }
+
   /** Get font metrics for a loaded font */
   getFontMetrics(fontId: string): IFontMetrics | null {
     return this.fonts.get(fontId)?.metrics ?? null

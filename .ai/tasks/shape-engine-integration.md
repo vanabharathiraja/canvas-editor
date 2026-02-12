@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
 **Last Updated**: 2025-02-12
-**Current Phase**: Phase 3.5 complete, Phase 5 (cursor/selection for complex scripts) next
+**Current Phase**: Phase 4.5 complete (contextual measurement), Phase 5 (row computation) next
 
 ## Legend
 - `[ ]` Not Started
@@ -311,6 +311,41 @@
   - Split styled runs properly
   - Preserve shaping across style boundaries
   - Render styled clusters correctly
+
+---
+
+## Phase 4.5: Contextual Measurement (NEW)
+**Goal**: Fix per-element Arabic measurement to use contextual (connected) widths
+**Problem**: Each Arabic character was measured individually (isolated form width ~8px each), but rendered connected (~6px each). Sum of isolated widths ≠ rendered width.
+
+### Tasks
+- [x] **4.5.1** - Add `getPerClusterAdvances()` to ShapeEngine
+  - Shapes full text, uses cluster IDs to map glyph advances back to characters
+  - Returns Map<charIndex, contextualWidth> for each source character
+  - Handles ligatures (multi-char → single glyph)
+
+- [x] **4.5.2** - Add `precomputeContextualWidths()` to TextParticle
+  - Scans element list and groups consecutive complex-script same-font elements
+  - Shapes each group as a unit via HarfBuzz
+  - Distributes per-cluster advances back to individual elements
+  - Stores contextual widths in `Map<IElement, number>` by reference
+
+- [x] **4.5.3** - Wire precompute into `computeRowList` (Draw.ts)
+  - Called before the main element iteration loop
+  - Only activates when shaping is enabled and engine is initialized
+  - Zero cost for non-complex-script documents
+
+- [x] **4.5.4** - Update `measureText()` to use precomputed widths
+  - Checks `contextualWidths.get(element)` before cache or ShapeEngine fallback
+  - Still uses Canvas API for vertical metrics (ascent/descent)
+  - Falls through to existing paths for non-precomputed elements
+
+- [ ] **4.5.5** - Write measurement tests
+  - Test Arabic word contextual width < sum of isolated widths
+  - Test mixed English/Arabic paragraph measurement
+  - Test font variant grouping (bold breaks group correctly)
+
+---
 
 - [ ] **4.5** - Write rendering tests
   - Test Arabic text rendering

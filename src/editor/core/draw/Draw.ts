@@ -1452,6 +1452,9 @@ export class Draw {
     const defaultBasicRowMarginHeight = this.getDefaultBasicRowMarginHeight()
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    // Precompute contextual widths for complex-script elements (Arabic, etc.)
+    // before iterating — shapes word groups together for accurate metrics.
+    this.textParticle.precomputeContextualWidths(ctx, elementList)
     // 计算列表偏移宽度
     const listStyleMap = this.listParticle.computeListStyle(ctx, elementList)
     const rowList: IRow[] = []

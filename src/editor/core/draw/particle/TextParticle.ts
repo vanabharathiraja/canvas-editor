@@ -8,7 +8,10 @@ import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
 import { Draw } from '../Draw'
 import { ShapeEngine } from '../../shaping/ShapeEngine'
-import { needsComplexShaping, detectDirection } from '../../../utils/unicode'
+import {
+  needsComplexShaping,
+  detectDirection
+} from '../../../utils/unicode'
 
 export interface IMeasureWordResult {
   width: number
@@ -29,6 +32,9 @@ export class TextParticle {
   public cacheMeasureText: Map<string, TextMetrics>
   // Track fonts that are currently being lazy-loaded to avoid duplicate triggers
   private pendingFontLoads: Set<string>
+  // Precomputed contextual widths: element reference → shaped width in pixels.
+  // Populated by precomputeContextualWidths() before computeRowList iteration.
+  private contextualWidths: Map<IElement, number> = new Map()
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -104,6 +110,120 @@ export class TextParticle {
     return needsComplexShaping(text)
   }
 
+  /**
+   * Precompute contextual advance widths for complex-script elements.
+   *
+   * Groups consecutive TEXT elements that need complex shaping (Arabic, etc.)
+   * with the same font/size, shapes each group as a unit, then distributes
+   * per-cluster advances back to individual elements via HarfBuzz cluster IDs.
+   *
+   * This fixes the measurement gap where isolated-form character widths
+   * (e.g. 3 chars sum to ~24px) don't match contextual rendered widths
+   * (e.g. connected glyphs ~18px).
+   *
+   * Must be called BEFORE computeRowList iteration.
+   */
+  public precomputeContextualWidths(
+    ctx: CanvasRenderingContext2D,
+    elementList: IElement[]
+  ): void {
+    this.contextualWidths.clear()
+    if (!this.options.shaping.enabled) return
+    const engine = ShapeEngine.getInstance()
+    if (!engine.isInitialized()) return
+
+    let groupStart = -1
+    let groupFontId = ''
+    let groupFontSize = 0
+
+    const flushGroup = (end: number) => {
+      if (groupStart < 0) return
+      this._processContextualGroup(
+        ctx, elementList, groupStart, end,
+        groupFontId, groupFontSize
+      )
+      groupStart = -1
+    }
+
+    for (let i = 0; i <= elementList.length; i++) {
+      const el = elementList[i]
+      // Only group plain TEXT elements with complex script content
+      const isTextType = el && (!el.type || el.type === ElementType.TEXT)
+      const isComplex = isTextType
+        && !el.width // skip elements with custom width
+        && needsComplexShaping(el.value)
+
+      if (isComplex) {
+        const fontId = this._resolveShapingFontId(el)
+        const fontSize = this._getElementFontSize(el)
+
+        if (
+          groupStart >= 0 &&
+          fontId === groupFontId &&
+          fontSize === groupFontSize
+        ) {
+          // Continue current group
+          continue
+        }
+        // Start new group (flush previous if any)
+        flushGroup(i - 1)
+        groupStart = i
+        groupFontId = fontId
+        groupFontSize = fontSize
+      } else {
+        flushGroup(i - 1)
+      }
+    }
+  }
+
+  /**
+   * Shape a group of consecutive complex-script elements as a unit
+   * and store per-element contextual widths.
+   */
+  private _processContextualGroup(
+    _ctx: CanvasRenderingContext2D,
+    elementList: IElement[],
+    start: number,
+    end: number,
+    fontId: string,
+    fontSize: number
+  ): void {
+    if (!this._isShapingReady(fontId)) return
+    const engine = ShapeEngine.getInstance()
+
+    // Build concatenated text and track char → element mapping
+    let text = ''
+    const charToElement: Array<{ el: IElement; localIdx: number }> = []
+    for (let i = start; i <= end; i++) {
+      const el = elementList[i]
+      for (let c = 0; c < el.value.length; c++) {
+        charToElement.push({ el, localIdx: c })
+      }
+      text += el.value
+    }
+
+    if (!text) return
+
+    const direction = detectDirection(text)
+    const advances = engine.getPerClusterAdvances(
+      text, fontId, fontSize, { direction }
+    )
+
+    // Distribute per-cluster advances to elements.
+    // Each element's contextual width = sum of cluster advances
+    // for the character indices that belong to it.
+    const elementWidths = new Map<IElement, number>()
+    for (let charIdx = 0; charIdx < charToElement.length; charIdx++) {
+      const { el } = charToElement[charIdx]
+      const advance = advances.get(charIdx) || 0
+      elementWidths.set(el, (elementWidths.get(el) || 0) + advance)
+    }
+
+    for (const [el, width] of elementWidths) {
+      this.contextualWidths.set(el, width)
+    }
+  }
+
   public measureBasisWord(
     ctx: CanvasRenderingContext2D,
     font: string
@@ -163,6 +283,22 @@ export class TextParticle {
       // TextMetrics是类无法解构
       return {
         width: element.width,
+        actualBoundingBoxAscent: textMetrics.actualBoundingBoxAscent,
+        actualBoundingBoxDescent: textMetrics.actualBoundingBoxDescent,
+        actualBoundingBoxLeft: textMetrics.actualBoundingBoxLeft,
+        actualBoundingBoxRight: textMetrics.actualBoundingBoxRight,
+        fontBoundingBoxAscent: textMetrics.fontBoundingBoxAscent,
+        fontBoundingBoxDescent: textMetrics.fontBoundingBoxDescent
+      }
+    }
+    // Use precomputed contextual width if available (from precomputeContextualWidths).
+    // This gives accurate widths for complex-script characters that were shaped
+    // together as a group, rather than isolated single-character shaping.
+    const contextualWidth = this.contextualWidths.get(element)
+    if (contextualWidth !== undefined) {
+      const textMetrics = ctx.measureText(element.value)
+      return {
+        width: contextualWidth,
         actualBoundingBoxAscent: textMetrics.actualBoundingBoxAscent,
         actualBoundingBoxDescent: textMetrics.actualBoundingBoxDescent,
         actualBoundingBoxLeft: textMetrics.actualBoundingBoxLeft,
