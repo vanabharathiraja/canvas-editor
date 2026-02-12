@@ -143,6 +143,19 @@ export class TextParticle {
   }
 
   /**
+  /**
+   * Clear all precomputed contextual width and rendering caches.
+   * Called once at the start of each render cycle (in Draw.render),
+   * NOT per-computeRowList call. This ensures table-cell, header,
+   * and footer computeRowList calls don't destroy the main body's
+   * contextual data before drawRow uses it.
+   */
+  public clearContextualCache(): void {
+    this.contextualWidths.clear()
+    this.contextualRenderInfo.clear()
+  }
+
+  /**
    * Precompute contextual advance widths for complex-script elements.
    *
    * Groups consecutive TEXT elements that need complex shaping (Arabic, etc.)
@@ -159,8 +172,9 @@ export class TextParticle {
     ctx: CanvasRenderingContext2D,
     elementList: IElement[]
   ): void {
-    this.contextualWidths.clear()
-    this.contextualRenderInfo.clear()
+    // NOTE: Maps are NOT cleared here. They are cleared once per render
+    // cycle via clearContextualCache() to avoid table-cell/header/footer
+    // computeRowList calls wiping out main body contextual data.
     if (!this.options.shaping.enabled) return
     const engine = ShapeEngine.getInstance()
     if (!engine.isInitialized()) return

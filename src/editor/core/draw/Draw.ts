@@ -2888,6 +2888,11 @@ export class Draw {
     if (isCompute) {
       // 清空浮动元素位置信息
       this.position.setFloatPositionList([])
+      // Clear contextual shaping caches once per render cycle.
+      // Individual computeRowList calls (header, footer, table cells)
+      // accumulate into these maps without clearing — so by the time
+      // drawRow runs, ALL elements have their contextual data intact.
+      this.textParticle.clearContextualCache()
       if (isPagingMode) {
         // 页眉信息
         if (!header.disabled) {
