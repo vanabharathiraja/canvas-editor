@@ -56,8 +56,21 @@ interface OTGlyph {
   xMax: number
   yMax: number
   path: OTPath
-  getPath(x: number, y: number, fontSize: number): OTPath
-  draw(ctx: CanvasRenderingContext2D, x: number, y: number, fontSize: number): void
+  getPath(
+    x: number,
+    y: number,
+    fontSize: number,
+    options?: Record<string, any>,
+    font?: OTFont
+  ): OTPath
+  draw(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    fontSize: number,
+    options?: Record<string, any>,
+    font?: OTFont
+  ): void
 }
 
 interface OTPath {
@@ -216,6 +229,11 @@ export class ShapeEngine {
       metrics
     })
 
+    // Register as CSS @font-face so native fillText() can also use this font.
+    // The base fontId (e.g. "Noto Sans") becomes the font-family name;
+    // variant suffixes ("|bold", "|italic") set the CSS weight/style.
+    await this._registerCSSFontFace(fontId, fontBuffer)
+
     console.log(
       `[ShapeEngine] Font "${fontId}" loaded. upem=${metrics.unitsPerEm}`
     )
@@ -355,10 +373,19 @@ export class ShapeEngine {
       const glyphX = cursorX + glyph.xOffset
       const glyphY = cursorY - glyph.yOffset // Canvas Y is inverted
 
-      // Get the OpenType.js glyph by ID and draw its path
+      // Get the OpenType.js glyph by ID and draw its path.
+      // Enable TrueType hinting for sharper rendering at small sizes:
+      // hinting aligns glyph outlines to the pixel grid, significantly
+      // reducing the "fuzzy edges" compared to unhinted path drawing.
       const otGlyph = font.otFont.glyphs.get(glyph.glyphId)
       if (otGlyph) {
-        const path = otGlyph.getPath(glyphX, glyphY, fontSize)
+        const path = otGlyph.getPath(
+          glyphX,
+          glyphY,
+          fontSize,
+          { hinting: true },
+          font.otFont
+        )
         path.fill = color
         path.draw(ctx)
       }
@@ -548,6 +575,64 @@ export class ShapeEngine {
   }
 
   // ---- Private helpers ----
+
+  /**
+   * Register a loaded font as a CSS @font-face so that native
+   * Canvas API fillText() can also render with the same font.
+   *
+   * For variant keys like "Noto Sans|bold", we parse the suffix
+   * and set the appropriate CSS font-weight / font-style descriptors
+   * while keeping the font-family as the base name.
+   */
+  private async _registerCSSFontFace(
+    fontId: string,
+    fontBuffer: ArrayBuffer
+  ): Promise<void> {
+    try {
+      const { family, weight, style } = this._parseFontIdForCSS(fontId)
+
+      const descriptors: FontFaceDescriptors = {}
+      if (weight !== 'normal') descriptors.weight = weight
+      if (style !== 'normal') descriptors.style = style
+
+      const face = new FontFace(family, fontBuffer, descriptors)
+      await face.load()
+      ;(document.fonts as any).add(face)
+    } catch {
+      // FontFace API may not be available in all environments (e.g. Node/SSR).
+      // Non-critical — ShapeEngine path rendering still works.
+    }
+  }
+
+  /**
+   * Parse a composite fontId into CSS font-face descriptors.
+   * "Noto Sans"           → { family: "Noto Sans", weight: "normal", style: "normal" }
+   * "Noto Sans|bold"      → { family: "Noto Sans", weight: "bold",   style: "normal" }
+   * "Noto Sans|italic"    → { family: "Noto Sans", weight: "normal", style: "italic" }
+   * "Noto Sans|boldItalic"→ { family: "Noto Sans", weight: "bold",   style: "italic" }
+   */
+  private _parseFontIdForCSS(fontId: string): {
+    family: string
+    weight: string
+    style: string
+  } {
+    const pipeIdx = fontId.indexOf('|')
+    if (pipeIdx === -1) {
+      return { family: fontId, weight: 'normal', style: 'normal' }
+    }
+    const family = fontId.substring(0, pipeIdx)
+    const variant = fontId.substring(pipeIdx + 1)
+    switch (variant) {
+      case 'bold':
+        return { family, weight: 'bold', style: 'normal' }
+      case 'italic':
+        return { family, weight: 'normal', style: 'italic' }
+      case 'boldItalic':
+        return { family, weight: 'bold', style: 'italic' }
+      default:
+        return { family, weight: 'normal', style: 'normal' }
+    }
+  }
 
   private _buildCacheKey(
     text: string,

@@ -8,6 +8,7 @@ import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
 import { Draw } from '../Draw'
 import { ShapeEngine } from '../../shaping/ShapeEngine'
+import { needsComplexShaping } from '../../../utils/unicode'
 
 export interface IMeasureWordResult {
   width: number
@@ -89,6 +90,20 @@ export class TextParticle {
     return false
   }
 
+  /**
+   * Determine whether this text should be routed through the ShapeEngine.
+   *
+   * - If `forceShaping` is true, ALL text goes through ShapeEngine.
+   * - Otherwise, only text containing complex-script characters
+   *   (Arabic, Devanagari, Thai, etc.) uses ShapeEngine.
+   * - Simple scripts (Latin, CJK, Cyrillic) use native Canvas API
+   *   for superior rendering quality (subpixel AA + font hinting).
+   */
+  private _shouldUseShaping(text: string): boolean {
+    if (this.options.shaping.forceShaping) return true
+    return needsComplexShaping(text)
+  }
+
   public measureBasisWord(
     ctx: CanvasRenderingContext2D,
     font: string
@@ -161,9 +176,12 @@ export class TextParticle {
     if (cacheTextMetrics) {
       return cacheTextMetrics
     }
-    // Try ShapeEngine for width measurement
+    // Try ShapeEngine for width measurement (complex scripts or forceShaping)
     const fontId = this._resolveShapingFontId(element)
-    if (this._isShapingReady(fontId)) {
+    if (
+      this._isShapingReady(fontId) &&
+      this._shouldUseShaping(element.value)
+    ) {
       const fontSize = this._getElementFontSize(element)
       const engine = ShapeEngine.getInstance()
       const shapedWidth = engine.getShapedWidth(
@@ -258,9 +276,12 @@ export class TextParticle {
     this.ctx.font = this.curStyle
     const color = this.curColor || this.options.defaultColor
 
-    // Try ShapeEngine rendering
+    // Try ShapeEngine rendering (complex scripts or forceShaping)
     const fontId = this.curFont || this.options.defaultFont
-    if (this._isShapingReady(fontId)) {
+    if (
+      this._isShapingReady(fontId) &&
+      this._shouldUseShaping(this.text)
+    ) {
       const engine = ShapeEngine.getInstance()
       // Extract font size from curStyle (e.g. "italic bold 16px Microsoft YaHei")
       const fontSize = this._parseFontSize(this.curStyle)

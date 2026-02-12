@@ -33,4 +33,14 @@ export interface IShapingOption {
    * ```
    */
   fontMapping?: Record<string, IFontMapping>
+  /**
+   * Force ALL text through the ShapeEngine, even Latin/CJK text.
+   * By default (false), only complex scripts (Arabic, Devanagari, etc.)
+   * use the ShapeEngine — simple scripts use native Canvas API for
+   * sharper rendering (subpixel AA + font hinting).
+   *
+   * Set to true for testing/debugging or when glyph-level consistency
+   * across all scripts is more important than rendering sharpness.
+   */
+  forceShaping?: boolean
 }
