@@ -207,6 +207,30 @@ RTL rendering is fully validated.
 
 ---
 
+### [x] Milestone 5B: Arabic Whitespace Accumulation Fix
+**Target**: Week 7
+**Status**: [x] Complete
+**Completion**: 100%
+
+**Root Cause**:
+`contextualWidths`/`contextualRenderInfo` maps cleared by every `computeRowList`
+call. Table before Arabic text → table's recursive computeRowList cleared Arabic
+contextual data mid-iteration → measureText fell back to wider isolated-form widths
+and ZWSP joined Arabic batch causing different HarfBuzz shaping.
+
+**Fix**:
+- [x] Added `clearContextualCache()` method to TextParticle
+- [x] Removed `.clear()` from `precomputeContextualWidths()`
+- [x] Called `clearContextualCache()` once at start of `Draw.render()`
+- [x] Commit: `9360cfba`
+
+**Success Criteria**:
+- Arabic typing no longer accumulates whitespace ✅
+- Contextual data survives recursive computeRowList calls ✅
+- Existing non-Arabic rendering unaffected ✅
+
+---
+
 ### [~] Milestone 6b: Layout & Row Computation
 **Target**: Week 8-9  
 **Status**: Mostly complete (core layout works, BiDi reordering deferred)
@@ -258,10 +282,7 @@ RTL rendering is fully validated.
 - [ ] Ligature cursor splitting (Lam-Alef)
 
 **Known Bugs**:
-- Arabic typing whitespace accumulation: right-side gap grows with each char typed.
-  Cursor moves correctly but excess space appears right of Arabic text.
-  Investigate: computeRowList() word width, precomputeContextualWidths() re-measurement,
-  computePageRowPosition() isRTL offset.
+- ~~Arabic typing whitespace accumulation~~ — **FIXED** (commit `9360cfba`)
 
 **Key Technique**:
 - Mirror formula: `visualX = rowStart + rowEnd - logicalX`
@@ -289,7 +310,26 @@ RTL rendering is fully validated.
 
 ---
 
-### [ ] Milestone 10: Polish & Release
+### [ ] Milestone 10: RTL Particle Adaptation
+**Target**: Week 10-11
+**Status**: Not Started
+**Completion**: 0%
+
+**Deliverables**:
+- [ ] ListParticle: RTL marker position (right side), RTL indent direction, `ctx.fillText()` → `renderText()`
+- [ ] LineBreakParticle: Mirror arrow icon position and direction for RTL rows
+- [ ] TableParticle: RTL column ordering in `computeRowColInfo()`
+- [ ] PageBreakParticle: Route label text through `renderText()` gateway
+
+**Success Criteria**:
+- List markers appear on right side for RTL paragraphs
+- Line break arrows point right and appear at left end for RTL
+- Table columns render right-to-left for RTL tables
+- All particles use `renderText()` gateway (no direct `ctx.fillText()`)
+
+---
+
+### [ ] Milestone 11: Polish & Release
 **Target**: Week 11-12  
 **Status**: Not Started  
 **Completion**: 0%
@@ -315,10 +355,18 @@ RTL rendering is fully validated.
 
 ## Overall Progress
 
-**Phases Completed**: 0 / 9  
-**Total Tasks**: ~80+ tasks  
-**Tasks Completed**: ~8 / 80 (setup tasks)  
-**Overall Completion**: ~10%
+**Phases Completed**: 8 / 12  
+**Total Tasks**: ~110+ tasks  
+**Tasks Completed**: ~55 / 110  
+**Overall Completion**: ~50%
+
+**Completed Phases**: 0 (POC), 1 (Foundation), 2 (ShapeEngine), 3 (Draw Integration),
+3.5 (Rendering Quality), 4/4.5/4.6/4.7 (TextParticle), 5.5 (RTL Alignment), 5A (Measure-Render Consistency)
+
+**In Progress**: Phase 7 (Cursor & Selection), Phase 5.5 BiDi (not yet started)
+
+**Remaining**: Phase 5.5 BiDi, Phase 6.5 UI Controls, Phase 7 edge cases,
+Phase 9 RTL Particles, Phase 8 Polish
 
 ---
 

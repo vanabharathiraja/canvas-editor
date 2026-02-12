@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2026-02-12
-**Current Phase**: Phase 7 — Pure RTL Cursor & Interaction
+**Last Updated**: 2026-02-13
+**Current Phase**: Step 3 — BiDi Foundations (Phase 5.5)
 
 ## Legend
 - `[ ]` Not Started
@@ -13,13 +13,13 @@
 
 ## Overview
 
-**Total Tasks**: ~95+ tasks across 12 phases  
-**Latest Update** (2026-02-12):
-- Phase 1 audited — most tasks already completed implicitly
-- Phase 5A completed (measurement–rendering consistency fix)
-- Phase 7 refocused: pure RTL cursor/interaction first, mixed BiDi later
-- Phase 6 remains reverted (position reversal approach was wrong)
-- Dependency analysis: BiDi (1.3, 5.5) deferred until mixed-direction needed
+**Total Tasks**: ~110+ tasks across 13 phases  
+**Latest Update** (2026-02-13):
+- Arabic whitespace accumulation bug FIXED (commit `9360cfba`)
+- Comprehensive RTL particle audit completed
+- Phase 9 (RTL Particle Adaptation) added for list, linebreak, table, pagebreak
+- Steps 3-5 roadmap clarified: BiDi → Mixed Layout → RTL Particles
+- Overall progress: ~50% complete
 
 **Key Features Now Covered**:
 ✅ Auto-direction detection (Google Docs-like behavior)  
@@ -405,6 +405,31 @@ re-shaping with different per-cluster advances → visible spacing gaps.
 `renderGlyphs()` always draws left-to-right. For RTL, HarfBuzz returns glyphs in
 visual order, so the batch approach works. Per-element rendering would place
 logical-first elements at visual-left position, breaking RTL layout.
+
+---
+
+## Phase 5B: Arabic Whitespace Accumulation Fix (NEW — completed)
+**Goal**: Fix growing whitespace on right side of Arabic text during typing
+**Commit**: `9360cfba`
+
+### Root Cause
+`contextualWidths`/`contextualRenderInfo` maps on TextParticle are shared singleton
+state. Each `computeRowList` call (header, footer, table cells) cleared these maps
+via `precomputeContextualWidths()`. Table before Arabic text → table's recursive
+`computeRowList` cleared Arabic contextual data mid-iteration.
+
+### Tasks
+- [x] **5B.1** - Add `clearContextualCache()` public method to TextParticle
+  - Clears both `contextualWidths` and `contextualRenderInfo` maps
+  - Single public API for cache lifecycle management
+
+- [x] **5B.2** - Remove `.clear()` from `precomputeContextualWidths()`
+  - Maps now accumulate across multiple `computeRowList` calls
+  - Each call adds its contextual data without destroying previous entries
+
+- [x] **5B.3** - Call `clearContextualCache()` once per render cycle
+  - Added to `Draw.render()` before any `computeRowList` calls
+  - Ensures fresh state per frame without mid-frame data loss
 
 ---
 
@@ -857,6 +882,88 @@ Handle the tricky edge cases at script boundaries.
   - Bi-directional email composition
   - Code snippets in RTL documents
   - URLs in RTL text
+
+---
+
+## Phase 9: RTL Particle Adaptation (NEW)
+**Goal**: Make non-text particles direction-aware for RTL languages
+**Status**: Not Started
+**Priority**: Step 5 (after BiDi foundations and mixed layout)
+
+### Audit Summary
+Particle audit identified 4 particles needing RTL changes out of 18 total.
+5 particles already handled via `renderText()` gateway. 9 are direction-agnostic.
+
+### 9.1 — ListParticle RTL (High Priority)
+- [ ] **9.1.1** - RTL marker position
+  - Move bullet/number marker from left side to right side for RTL paragraphs
+  - Current: `x = startX - offsetX + tabWidth + baseIndent + levelIndent` (always left)
+  - RTL: marker at `rowEnd - tabWidth - baseIndent - levelIndent`
+  - Detect RTL from row's `isRTL` flag or `detectDirection()` on list content
+
+- [ ] **9.1.2** - RTL indent direction
+  - Current: `row.offsetX` pushes content rightward (indent from left)
+  - RTL: indent should push content leftward (indent from right edge)
+  - Affects nested list indentation at all levels
+
+- [ ] **9.1.3** - Route list marker text through `renderText()` gateway
+  - Current: `ctx.fillText()` at ListParticle.ts (bypasses shaping)
+  - Change to `this.draw.getTextParticle().renderText()` for Arabic numerals
+  - Affects: ordered list numbers, bullet characters
+
+- [ ] **9.1.4** - In-list checkbox position
+  - Current: checkbox drawn at `x - gap` (always left of text)
+  - RTL: checkbox should be at right side, text flows leftward from it
+  - Affects: task-list style checkboxes within list items
+
+### 9.2 — LineBreakParticle RTL (Medium Priority)
+- [ ] **9.2.1** - Mirror arrow icon position for RTL rows
+  - Current: arrow is drawn at `x + element.metrics.width` (right end of element)
+  - RTL: arrow should appear at left end of the row
+  - Check `curRow.isRTL` to determine placement
+
+- [ ] **9.2.2** - Mirror arrow shape direction
+  - Current: arrow points left (↵ standard LTR line-break symbol)
+  - RTL: arrow should point right (mirrored ↵)
+  - Hard-coded path at LineBreakParticle.ts lines 38-47 needs conditional mirroring
+
+### 9.3 — TableParticle RTL (Medium Priority)
+- [ ] **9.3.1** - RTL column ordering
+  - Current: `computeRowColInfo()` lays out columns left-to-right (`preX += width`)
+  - RTL tables: column 0 should start at right edge, `preX -= width`
+  - Detect table direction from first cell content or explicit table direction
+
+- [ ] **9.3.2** - RTL table border drawing
+  - Border rendering uses `td.x * scale + startX` — should follow whatever
+    `computeRowColInfo` produces, but verify edge cases
+  - Cell selection/highlight rectangles may need mirroring
+
+- [ ] **9.3.3** - RTL table cell content alignment
+  - Inner content already gets own `drawRow()` → direction auto-detected
+  - Verify text within RTL table cells renders correctly
+  - Test: Arabic text in table cells
+
+### 9.4 — PageBreakParticle RTL (Low Priority)
+- [ ] **9.4.1** - Route label text through `renderText()` gateway
+  - Current: `ctx.fillText()` at PageBreakParticle.ts line 47
+  - Change to `this.draw.getTextParticle().renderText()`
+  - Only affects Arabic UI localization (label is "Page Break" display name)
+  - Centered position is already direction-agnostic
+
+### 9.5 — Verification & Testing
+- [ ] **9.5.1** - Add Arabic list items to mock data
+  - Ordered list with Arabic numerals
+  - Unordered list with Arabic text
+  - Nested lists mixing Arabic and English
+
+- [ ] **9.5.2** - Add Arabic table to mock data
+  - Table with Arabic column headers
+  - Mixed LTR/RTL cell content
+
+- [ ] **9.5.3** - Visual verification against Google Docs
+  - Compare list marker positions
+  - Compare table column ordering
+  - Compare line-break icon placement
 
 ---
 
