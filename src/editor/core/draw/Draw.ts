@@ -122,6 +122,7 @@ import { Area } from './interactive/Area'
 import { Badge } from './frame/Badge'
 import { Graffiti } from './graffiti/Graffiti'
 import { ShapeEngine } from '../shaping/ShapeEngine'
+import { detectDirection } from '../../utils/unicode'
 
 export class Draw {
   private container: HTMLDivElement
@@ -2090,6 +2091,20 @@ export class Draw {
       if (isWrap || i === elementList.length - 1) {
         // 换行原因：宽度不足
         curRow.isWidthNotEnough = isWidthNotEnough && !isForceBreak
+        // RTL auto-alignment: right-align rows with RTL content
+        // when no explicit alignment is set by the user
+        if (
+          !curRow.rowFlex &&
+          this.options.shaping?.enabled &&
+          curRow.elementList.length > 0
+        ) {
+          const rowText = curRow.elementList
+            .map(el => el.value)
+            .join('')
+          if (detectDirection(rowText) === 'rtl') {
+            curRow.rowFlex = RowFlex.RIGHT
+          }
+        }
         // 两端对齐、分散对齐
         if (
           !curRow.isSurround &&
