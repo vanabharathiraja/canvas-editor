@@ -5,10 +5,20 @@
 
 ## Current Objective
 
-Implement accurate cursor positioning and hit testing for complex-script (Arabic)
-text. Currently, positions are in LTR logical order — cursor and mouse interaction
-must correctly interpret these for RTL text without modifying the underlying
-coordinates.
+Pure RTL cursor/hit-testing/selection implemented using mirror formula.
+Next: fix known bugs, then edge cases.
+
+## Known Bugs (to fix next session)
+
+1. **Arabic typing whitespace accumulation**: As Arabic text is typed, whitespace
+   keeps increasing on the right side. The cursor moves correctly, but excess
+   space appears to the right of the Arabic text. Likely a measurement/position
+   recalculation issue when new characters are inserted into a contextual group —
+   the row width or right margin offset may be double-counting something.
+   - **Files to investigate**: `computeRowList()` in Draw.ts (word width accounting),
+     `precomputeContextualWidths()` in TextParticle.ts (re-measurement on edit),
+     `computePageRowPosition()` in Position.ts (isRTL row offset calculation)
+   - **Symptom**: Right-side gap grows with each character typed
 
 ## Critical Architecture Constraints
 
@@ -19,10 +29,13 @@ coordinates.
 3. **Contextual group = measurement + render boundary** — The full contextual
    group must be both measured and rendered as one unit. Any split produces
    measurement/rendering mismatches.
+4. **Mirror formula for RTL interaction** — `visualX = rowStart + rowEnd - logicalX`
+   applied at read-time in cursor, hit testing, and selection rendering.
 
 ## Completed Phases
 
 - ✅ Phase 0: POC (HarfBuzz WASM + OpenType.js)
+- ✅ Phase 1: Foundation (audited — most tasks done implicitly)
 - ✅ Phase 2: ShapeEngine class (singleton, font loading, shaping, cache)
 - ✅ Phase 3: Draw integration (feature flag, font registry, init, fallback)
 - ✅ Phase 3.5: Rendering quality (smart routing, CSS @font-face, hinting)
@@ -33,37 +46,39 @@ coordinates.
 - ✅ Phase 5.5: RTL paragraph auto-alignment + isRTL flag
 - ✅ Phase 5A: Measurement–rendering consistency fix (batch text clean-up)
 
-## Current Phase: Phase 7 — Cursor & Hit Testing
+## Current Phase: Phase 7 — Pure RTL Cursor & Interaction
 
 ### Sub-phases
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 7.1 | Cluster-aware coordinate mapping | Not started |
-| 7.2 | RTL cursor placement (visual position from logical coords) | Not started |
-| 7.3 | RTL hit testing (click → correct element index) | Not started |
-| 7.4 | Arrow key navigation in RTL text | Not started |
-| 7.5 | Selection highlighting for RTL text | Not started |
-| 7.6 | Mixed LTR/RTL boundary handling | Not started |
+| 7.2 | RTL cursor placement (mirror formula) | **Core done** — edge cases remain |
+| 7.3 | RTL hit testing (mirror click X) | **Core done** — edge cases remain |
+| 7.4 | Arrow key navigation in RTL text | Not needed — logical movement correct |
+| 7.5 | Selection highlighting for RTL text | **Core done** — edge cases remain |
+| 7.6 | Mixed LTR/RTL boundary handling | Blocked by BiDi (Phase 5.5) |
 
-### Key Challenges
+### Mirror Formula (used by 7.2, 7.3, 7.5)
 
-1. **Ligature cursor**: When Lam-Alef forms a ligature, 2 chars share 1 cluster.
-   Cursor must split the ligature's visual width proportionally.
-2. **Visual vs logical order**: Arrow-right should move the cursor LEFT visually
-   in RTL text. Position coordinates are logical (LTR), so cursor must be placed
-   at the correct visual position.
-3. **Hit testing inversion**: Clicking on the LEFT side of RTL text corresponds
-   to the END of the text (last logical character). Must map x-coordinate to
-   correct element index using cluster coordinates.
-4. **Selection rendering**: Selection highlight for RTL text must cover the
-   correct visual region even though positions are in logical order.
+```
+visualX = rowStart + rowEnd - logicalX
+```
+where rowStart = first position's leftTop[0], rowEnd = last position's rightTop[0]
 
-## Key Files
+### Key Files Modified This Session
 
-- `src/editor/core/draw/particle/TextParticle.ts` — contextual widths, glyph storage
-- `src/editor/core/shaping/ShapeEngine.ts` — shapeText(), renderGlyphs()
-- `src/editor/core/draw/Draw.ts` — drawRow(), computeRowList()
-- `src/editor/core/position/Position.ts` — computePageRowPosition(), getPositionByXY()
-- `src/editor/core/cursor/Cursor.ts` — cursor rendering
-- `src/editor/core/event/handlers/keydown/` — arrow key navigation
+- `src/editor/core/cursor/Cursor.ts` — mirror cursor X for RTL in `drawCursor()`
+- `src/editor/core/position/Position.ts` — mirror click X in `getPositionByXY()`, RTL non-hit fallback
+- `src/editor/core/draw/Draw.ts` — mirror selection rect X for RTL in `drawRow()`
+
+### Remaining Edge Cases (after bug fix)
+
+- 7.1: Cluster coordinate mapping for ligature cursor splitting
+- 7.2.3: Cursor visual direction indicator (wedge)
+- 7.2.4: Cursor at LTR/RTL boundary
+- 7.2.5: Cursor at row boundary with RTL
+- 7.3.3: Mixed LTR/RTL hit testing
+- 7.3.4: Click on ligature (Lam-Alef)
+- 7.3.6: Empty row after RTL text
+- 7.5.3-6: Mixed-direction selection, shift+click/arrow, cross-row

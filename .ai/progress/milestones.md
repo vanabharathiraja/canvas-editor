@@ -245,24 +245,28 @@ RTL rendering is fully validated.
 
 ### [~] Milestone 8: Cursor & Selection (Phase 7)
 **Target**: Week 9-11
-**Status**: [~] Next up
-**Completion**: 0%
+**Status**: [~] In Progress — core cursor/hit-test/selection done, 1 bug open
+**Completion**: 40%
 
 **Deliverables**:
 - [ ] Cluster-aware coordinate mapping (char → visual x/width)
-- [ ] RTL cursor placement (visual position from logical coords)
-- [ ] RTL hit testing (click → correct element index)
-- [ ] Arrow key navigation in RTL text
-- [ ] Selection highlighting for RTL text
-- [ ] Mixed LTR/RTL boundary handling
+- [x] RTL cursor placement (mirror formula in Cursor.ts drawCursor)
+- [x] RTL hit testing (mirror click X in Position.ts getPositionByXY)
+- [x] RTL selection highlighting (mirror rect X in Draw.ts drawRow)
+- [ ] Arrow key navigation in RTL text (logical movement works, visual OK via cursor)
+- [ ] Mixed LTR/RTL boundary handling (blocked by BiDi)
 - [ ] Ligature cursor splitting (Lam-Alef)
 
-**Success Criteria**:
-- Cursor appears at correct visual position in Arabic text
-- Clicking in Arabic text selects correct character
-- Arrow keys navigate logically (consistent with OS convention)
-- Selection highlight covers rendered glyphs exactly
-- Mixed LTR/RTL boundaries handled gracefully
+**Known Bugs**:
+- Arabic typing whitespace accumulation: right-side gap grows with each char typed.
+  Cursor moves correctly but excess space appears right of Arabic text.
+  Investigate: computeRowList() word width, precomputeContextualWidths() re-measurement,
+  computePageRowPosition() isRTL offset.
+
+**Key Technique**:
+- Mirror formula: `visualX = rowStart + rowEnd - logicalX`
+- Applied at read-time only — positions stay LTR logical order
+- Used consistently in cursor, hit testing, and selection rendering
 
 ---
 
