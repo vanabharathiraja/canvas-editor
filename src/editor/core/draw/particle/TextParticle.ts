@@ -8,6 +8,7 @@ import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
 import { Draw } from '../Draw'
 import { ShapeEngine } from '../../shaping/ShapeEngine'
+import { IShapeResult, IGlyphInfo } from '../../shaping/interface/ShapeEngine'
 import {
   needsComplexShaping,
   detectDirection
@@ -16,6 +17,19 @@ import {
 export interface IMeasureWordResult {
   width: number
   endElement: IElement | null
+}
+
+/**
+ * Per-element contextual rendering info.
+ * Maps each element to its glyphs within the contextual group shape result.
+ */
+interface IContextualRenderInfo {
+  /** The glyphs belonging to this element (subset of the group's shapeResult) */
+  glyphs: IGlyphInfo[]
+  /** Font ID used for shaping */
+  fontId: string
+  /** Font size used for shaping (unscaled) */
+  fontSize: number
 }
 
 export class TextParticle {
@@ -35,6 +49,10 @@ export class TextParticle {
   // Precomputed contextual widths: element reference → shaped width in pixels.
   // Populated by precomputeContextualWidths() before computeRowList iteration.
   private contextualWidths: Map<IElement, number> = new Map()
+  // Precomputed contextual rendering info: element reference → glyph data.
+  // Stores the exact glyphs (from contextual shaping) that belong to each element,
+  // so rendering can use the same shape result as measurement — no re-shaping needed.
+  private contextualRenderInfo: Map<IElement, IContextualRenderInfo> = new Map()
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -142,6 +160,7 @@ export class TextParticle {
     elementList: IElement[]
   ): void {
     this.contextualWidths.clear()
+    this.contextualRenderInfo.clear()
     if (!this.options.shaping.enabled) return
     const engine = ShapeEngine.getInstance()
     if (!engine.isInitialized()) return
@@ -167,6 +186,16 @@ export class TextParticle {
         && !el.width // skip elements with custom width
         && needsComplexShaping(el.value)
 
+      // Allow whitespace (spaces, tabs) to continue an active group.
+      // This ensures space widths come from HarfBuzz (matching the
+      // rendering font) rather than Canvas measureText which may use
+      // a different default font — fixing excessive Arabic word spacing.
+      const isContinuableWhitespace = !isComplex
+        && isTextType
+        && !el.width
+        && groupStart >= 0
+        && /^\s+$/.test(el?.value ?? '')
+
       if (isComplex) {
         const fontId = this._resolveShapingFontId(el)
         const fontSize = this._getElementFontSize(el)
@@ -184,6 +213,10 @@ export class TextParticle {
         groupStart = i
         groupFontId = fontId
         groupFontSize = fontSize
+      } else if (isContinuableWhitespace) {
+        // Continue the current group through whitespace so that
+        // space advances come from HarfBuzz, not Canvas measureText
+        continue
       } else {
         flushGroup(i - 1)
       }
@@ -192,7 +225,12 @@ export class TextParticle {
 
   /**
    * Shape a group of consecutive complex-script elements as a unit
-   * and store per-element contextual widths.
+   * and store per-element contextual widths + rendering glyph data.
+   *
+   * The shape result is also distributed to individual elements so that
+   * the renderer can draw each element's glyphs at its computed position
+   * without re-shaping — ensuring measurement and rendering use the exact
+   * same HarfBuzz output.
    */
   private _processContextualGroup(
     _ctx: CanvasRenderingContext2D,
@@ -219,9 +257,14 @@ export class TextParticle {
     if (!text) return
 
     const direction = detectDirection(text)
-    const advances = engine.getPerClusterAdvances(
-      text, fontId, fontSize, { direction }
-    )
+    const result = engine.shapeText(text, fontId, fontSize, { direction })
+
+    // Build per-cluster advances for width distribution
+    const advances = new Map<number, number>()
+    for (const glyph of result.glyphs) {
+      const current = advances.get(glyph.cluster) || 0
+      advances.set(glyph.cluster, current + glyph.xAdvance)
+    }
 
     // Distribute per-cluster advances to elements.
     // Each element's contextual width = sum of cluster advances
@@ -235,6 +278,31 @@ export class TextParticle {
 
     for (const [el, width] of elementWidths) {
       this.contextualWidths.set(el, width)
+    }
+
+    // Map each glyph to its source element via cluster IDs.
+    // This lets the renderer draw each element's contextual glyphs
+    // at the correct position without re-shaping.
+    const elementGlyphs = new Map<IElement, IGlyphInfo[]>()
+    for (const glyph of result.glyphs) {
+      const charIdx = glyph.cluster
+      if (charIdx < charToElement.length) {
+        const { el } = charToElement[charIdx]
+        let glyphList = elementGlyphs.get(el)
+        if (!glyphList) {
+          glyphList = []
+          elementGlyphs.set(el, glyphList)
+        }
+        glyphList.push(glyph)
+      }
+    }
+
+    for (const [el, glyphs] of elementGlyphs) {
+      this.contextualRenderInfo.set(el, {
+        glyphs,
+        fontId,
+        fontSize
+      })
     }
   }
 
@@ -376,6 +444,68 @@ export class TextParticle {
   }
 
   /**
+   * Check if an element has precomputed contextual rendering info.
+   * Used by drawRow() to decide between position-based rendering
+   * (accurate for complex scripts) and batched record/complete rendering.
+   */
+  public hasContextualRenderInfo(element: IElement): boolean {
+    return this.contextualRenderInfo.has(element)
+  }
+
+  /**
+   * Render an element using its precomputed contextual glyphs.
+   *
+   * Instead of re-shaping the text (which may produce different glyph forms
+   * when shaped out of context), this uses the exact glyphs from the
+   * contextual group shaping — ensuring measurement and rendering match.
+   *
+   * The glyphs are rendered at position (x, y) using their xOffset/yOffset,
+   * advancing by each glyph's xAdvance.
+   */
+  public renderContextualElement(
+    ctx: CanvasRenderingContext2D,
+    element: IRowElement,
+    x: number,
+    y: number,
+    scale: number,
+    color?: string
+  ): void {
+    const info = this.contextualRenderInfo.get(element)
+    if (!info) return
+
+    const fillColor = color || element.color || this.options.defaultColor
+    const engine = ShapeEngine.getInstance()
+    // Scale the font size to match the rendering scale
+    const scaledFontSize = info.fontSize * scale
+
+    // Build a partial IShapeResult with just this element's glyphs,
+    // scaling advances/offsets to match the rendering scale
+    const scaledGlyphs: IGlyphInfo[] = info.glyphs.map(g => ({
+      ...g,
+      xAdvance: g.xAdvance * scale,
+      yAdvance: g.yAdvance * scale,
+      xOffset: g.xOffset * scale,
+      yOffset: g.yOffset * scale
+    }))
+
+    const partialResult: IShapeResult = {
+      glyphs: scaledGlyphs,
+      direction: detectDirection(element.value),
+      totalAdvance: scaledGlyphs.reduce((sum, g) => sum + g.xAdvance, 0)
+    }
+
+    engine.renderGlyphs(
+      ctx,
+      partialResult,
+      info.fontId,
+      scaledFontSize,
+      x,
+      y,
+      fillColor
+    )
+  }
+
+  /**
    * Render a single element's text through the correct pipeline.
    * This is the shared rendering gateway that all text-drawing particles
    * should use instead of calling ctx.fillText() directly.
@@ -413,6 +543,24 @@ export class TextParticle {
   public complete() {
     this._render()
     this.text = ''
+  }
+
+  /**
+   * Flush the current batch if pending text does NOT belong to a contextual
+   * group. Called when entering a contextual group to prevent non-group
+   * characters (like ZWSP \u200B) from joining the Arabic batch — which
+   * would change the batch text, miss the ShapeEngine cache, and produce
+   * different per-cluster advances than the contextual group measurement.
+   */
+  public flushIfNotContextual(): void {
+    // Nothing to flush
+    if (!this.text) return
+    // If the pending text already contains complex-script characters
+    // from a contextual group, don't flush — let it continue accumulating
+    if (needsComplexShaping(this.text)) return
+    // Pending text is non-contextual (e.g. ZWSP) — flush it before
+    // the contextual group elements start recording
+    this.complete()
   }
 
   public record(

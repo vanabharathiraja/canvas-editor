@@ -1,75 +1,69 @@
 # Current Focus
 
-**Last Updated**: 2026-02-05  
-**Active Sprint**: Shape Engine Integration - Phase 0 (POC)
+**Last Updated**: 2026-02-12
+**Active Sprint**: Shape Engine Integration — Phase 7 (Cursor & Hit Testing)
 
 ## Current Objective
 
-Integrate HarfBuzzJS and OpenType.js to enable proper text shaping for complex scripts (Arabic, Devanagari, etc.) and improve bidirectional text support.
+Implement accurate cursor positioning and hit testing for complex-script (Arabic)
+text. Currently, positions are in LTR logical order — cursor and mouse interaction
+must correctly interpret these for RTL text without modifying the underlying
+coordinates.
 
-## Why This Matters
+## Critical Architecture Constraints
 
-The current Canvas API text rendering (`fillText()`, `measureText()`) is insufficient for:
+1. **Positions MUST remain LTR logical order** — `drawRow()` reads x,y from
+   `positionList` for rendering. Changing positions breaks rendering.
+2. **Batch rendering is required for RTL** — `renderGlyphs()` draws left-to-right
+   using HarfBuzz's visual-order glyph output. Per-element rendering breaks RTL.
+3. **Contextual group = measurement + render boundary** — The full contextual
+   group must be both measured and rendered as one unit. Any split produces
+   measurement/rendering mismatches.
 
-1. **Complex Scripts**: Arabic characters change shape based on position (isolated/initial/medial/final)
-2. **Context-Dependent Shaping**: Ligatures, conjuncts, and contextual alternates
-3. **Accurate Metrics**: Character-level metrics differ based on surrounding context
-4. **Partial Styling**: Current word-level rendering prevents mid-cluster styling
-5. **Cursor Positioning**: Logical vs. visual cursor positions in RTL/BiDi text
-6. **Selection Ranges**: Visual selection in mixed LTR/RTL runs
+## Completed Phases
 
-## Current Phase: Phase 0 - POC
+- ✅ Phase 0: POC (HarfBuzz WASM + OpenType.js)
+- ✅ Phase 2: ShapeEngine class (singleton, font loading, shaping, cache)
+- ✅ Phase 3: Draw integration (feature flag, font registry, init, fallback)
+- ✅ Phase 3.5: Rendering quality (smart routing, CSS @font-face, hinting)
+- ✅ Phase 4: TextParticle (measureText, _render, bold/italic variants, lazy load)
+- ✅ Phase 4.5: Contextual measurement (cluster IDs, precompute, per-element widths)
+- ✅ Phase 4.6: Arabic word-break fix (LETTER_CLASS.ARABIC)
+- ✅ Phase 4.7: Font fallback for complex scripts (complexScriptFallback)
+- ✅ Phase 5.5: RTL paragraph auto-alignment + isRTL flag
+- ✅ Phase 5A: Measurement–rendering consistency fix (batch text clean-up)
 
-Validate the approach with a minimal proof-of-concept:
-- [ ] HarfBuzzJS integration works in browser/Canvas context
-- [ ] Can shape Arabic text correctly
-- [ ] Can render shaped glyphs to Canvas
-- [ ] RTL text displays correctly
-- [ ] Measure performance impact
+## Current Phase: Phase 7 — Cursor & Hit Testing
 
-**Recent Updates** (2026-02-05):
-- Added auto-direction detection tasks (Google Docs-like behavior)
-- Added Phase 6.5: UI Controls & Direction Management
-- Added comprehensive edge case scenarios
-- Added direction-specific E2E test cases
-- Total tasks increased from ~60 to ~85+
+### Sub-phases
 
-## Next Phases (Preview)
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 7.1 | Cluster-aware coordinate mapping | Not started |
+| 7.2 | RTL cursor placement (visual position from logical coords) | Not started |
+| 7.3 | RTL hit testing (click → correct element index) | Not started |
+| 7.4 | Arrow key navigation in RTL text | Not started |
+| 7.5 | Selection highlighting for RTL text | Not started |
+| 7.6 | Mixed LTR/RTL boundary handling | Not started |
 
-1. **Phase 1**: Foundation - Add direction-aware interfaces
-2. **Phase 2**: Shaping Engine - RTL shaping support
-3. **Phase 3**: Draw Integration - Connect with BiDiManager
-4. **Phase 4**: TextParticle - RTL rendering path
-5. **Phase 5**: Row Computation - Mixed direction runs
-6. **Phase 5.5**: BiDi Integration - Full paragraph handling
-7. **Phase 6**: Cursor/Selection - Bidirectional navigation
-8. **Phase 7**: Hit Testing - RTL-aware positioning
-9. **Phase 8**: Polish - Edge cases & performance
+### Key Challenges
 
-## Active Task List
+1. **Ligature cursor**: When Lam-Alef forms a ligature, 2 chars share 1 cluster.
+   Cursor must split the ligature's visual width proportionally.
+2. **Visual vs logical order**: Arrow-right should move the cursor LEFT visually
+   in RTL text. Position coordinates are logical (LTR), so cursor must be placed
+   at the correct visual position.
+3. **Hit testing inversion**: Clicking on the LEFT side of RTL text corresponds
+   to the END of the text (last logical character). Must map x-coordinate to
+   correct element index using cluster coordinates.
+4. **Selection rendering**: Selection highlight for RTL text must cover the
+   correct visual region even though positions are in logical order.
 
-See: `.ai/tasks/shape-engine-integration.md`
+## Key Files
 
-## Related Files Currently Under Investigation
-
-- `src/editor/core/draw/Draw.ts` - Main draw orchestrator
-- `src/editor/core/draw/particle/TextParticle.ts` - Text rendering
-- `src/editor/core/draw/interactive/BiDiManager.ts` - Existing BiDi support
-- `src/editor/core/position/` - Position calculation logic
-- `src/editor/core/cursor/` - Cursor management
-
-## Collaboration Notes
-
-This is a multi-session, multi-machine effort. Before starting work:
-
-1. Read this file for current status
-2. Check `.ai/tasks/shape-engine-integration.md` for task details
-3. Review latest session in `.ai/sessions/session-log.md`
-4. Check for any blocking decisions in `.ai/decisions/`
-
-Before ending session:
-
-1. Update task status
-2. Log progress in session log
-3. Update this file if focus changes
-4. Commit all `.ai/` changes
+- `src/editor/core/draw/particle/TextParticle.ts` — contextual widths, glyph storage
+- `src/editor/core/shaping/ShapeEngine.ts` — shapeText(), renderGlyphs()
+- `src/editor/core/draw/Draw.ts` — drawRow(), computeRowList()
+- `src/editor/core/position/Position.ts` — computePageRowPosition(), getPositionByXY()
+- `src/editor/core/cursor/Cursor.ts` — cursor rendering
+- `src/editor/core/event/handlers/keydown/` — arrow key navigation

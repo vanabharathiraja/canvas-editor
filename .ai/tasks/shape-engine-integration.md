@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2025-02-12
-**Current Phase**: Phase 4.5 complete (contextual measurement), Phase 5 (row computation) next
+**Last Updated**: 2026-02-12
+**Current Phase**: Phase 7 — Cursor & Hit Testing for Complex Scripts
 
 ## Legend
 - `[ ]` Not Started
@@ -13,14 +13,11 @@
 
 ## Overview
 
-**Total Tasks**: ~85+ tasks across 11 phases  
-**New Additions** (2026-02-05):
-- Phase 1: Added auto-direction detection tasks (1.5, 1.6)
-- Phase 5.5: Added dynamic direction handling (5.5.4, 5.5.5)
-- **Phase 6.5**: NEW - UI Controls & Direction Management (6 tasks)
-- Phase 8: Added comprehensive edge case tasks (8.2.1, 8.2.2, 8.2.3)
-- Phase 8: Added i18n tasks (8.6.1)
-- Phase 8: Added direction-specific E2E tests (8.8.1, 8.8.2)
+**Total Tasks**: ~95+ tasks across 12 phases  
+**Latest Update** (2026-02-12):
+- Phase 5A completed (measurement–rendering consistency fix)
+- Phase 7 expanded with detailed cursor/hit-testing tasks + edge cases
+- Phase 6 remains reverted (position reversal approach was wrong)
 
 **Key Features Now Covered**:
 ✅ Auto-direction detection (Google Docs-like behavior)  
@@ -29,6 +26,7 @@
 ✅ Keyboard shortcuts for direction  
 ✅ Edge cases for mixed BiDi text  
 ✅ Empty line direction inheritance  
+✅ Measurement–rendering consistency  
 
 ---
 
@@ -340,10 +338,89 @@
   - Still uses Canvas API for vertical metrics (ascent/descent)
   - Falls through to existing paths for non-precomputed elements
 
-- [ ] **4.5.5** - Write measurement tests
-  - Test Arabic word contextual width < sum of isolated widths
-  - Test mixed English/Arabic paragraph measurement
-  - Test font variant grouping (bold breaks group correctly)
+- [ ] **4.5.5** - Write measurement tests (deferred)
+
+---
+
+## Phase 4.6: Arabic Word-Break Fix (NEW — completed)
+**Goal**: Prevent mid-word line breaks in Arabic text
+
+### Tasks
+- [x] **4.6.1** - Add Arabic ranges to LETTER_CLASS
+  - Added `ARABIC` to `LETTER_CLASS` in `Common.ts`
+  - Ranges: U+0600–U+06FF, U+0750–U+077F, U+08A0–U+08FF, U+FB50–U+FDFF, U+FE70–U+FEFF
+  - Auto-extends `letterClass` in Draw constructor when shaping enabled
+  - Makes `WORD_LIKE_REG` and `LETTER_REG` recognize Arabic as word chars
+
+---
+
+## Phase 4.7: Font Fallback for Complex Scripts (NEW — completed)
+**Goal**: Auto-route Arabic text through ShapeEngine even with non-Arabic fonts
+
+### Tasks
+- [x] **4.7.1** - Add `complexScriptFallback` option
+  - Added to `IShapingOption` interface (default: 'Amiri')
+  - Added to `defaultShapingOption` constant
+- [x] **4.7.2** - Add `resolveWithFallback()` to ShapeEngine
+  - Tries requested font first, then complexScriptFallback
+  - Works with bold/italic variant resolution
+- [x] **4.7.3** - Update `_resolveShapingFontId()` with fallback
+  - Now accepts optional `text` parameter
+  - For complex scripts, auto-falls back to configured fallback font
+  - Updated `_render()` to re-resolve font with accumulated text
+
+---
+
+## Phase 5.5: RTL Paragraph Alignment (NEW — completed)
+**Goal**: Auto-right-align paragraphs with RTL content
+
+### Tasks
+- [x] **5.5.0** - Auto-detect RTL rows and set alignment
+  - In `computeRowList()` row-end logic, detects RTL via `detectDirection()`
+  - Sets `rowFlex: RowFlex.RIGHT` when no explicit alignment and text is RTL
+  - Imported `detectDirection` from `unicode.ts` into Draw.ts
+  - Users can still override with explicit alignment
+  - Sets `curRow.isRTL = true` alongside alignment
+
+---
+
+## Phase 5A: Measurement–Rendering Consistency (NEW — completed)
+**Goal**: Fix Arabic word spacing gaps caused by measurement/rendering mismatch
+
+### Root Cause
+`precomputeContextualWidths()` shapes the full contextual group (Arabic words + spaces).
+`drawRow()` renders via `record()`/`complete()` batching, but non-group characters (ZWSP)
+and punctuation splits caused the batch text to differ from what was shaped → cache miss →
+re-shaping with different per-cluster advances → visible spacing gaps.
+
+### Tasks
+- [x] **5A.1** - Add `flushIfNotContextual()` to TextParticle
+  - Flushes pending non-complex-script text when entering a contextual group
+  - Prevents ZWSP and other non-group chars from polluting the Arabic batch
+  
+- [x] **5A.2** - Add contextual batch protection in `drawRow()`
+  - Elements with `hasContextualRenderInfo()` skip punctuation/width splitting
+  - Only `letterSpacing` forces a split within contextual groups
+  - Calls `flushIfNotContextual()` before recording contextual elements
+
+- [x] **5A.3** - Store per-element glyph data in `_processContextualGroup()`
+  - Added `IContextualRenderInfo` interface (glyphs, fontId, fontSize)
+  - Maps each HarfBuzz glyph to its source element via cluster IDs
+  - Stored in `contextualRenderInfo` Map for batch boundary detection
+
+- [x] **5A.4** - Add whitespace group continuation
+  - Spaces/tabs continue active contextual group
+  - Ensures space widths from HarfBuzz match rendering font
+
+- [x] **5A.5** - Add utility methods
+  - `hasContextualRenderInfo(element)` — checks for precomputed glyph data
+  - `renderContextualElement()` — renders element from stored glyphs (utility, 
+    not used in main render path due to RTL visual ordering requirement)
+
+### Key Insight — Per-Element Rendering Breaks RTL
+`renderGlyphs()` always draws left-to-right. For RTL, HarfBuzz returns glyphs in
+visual order, so the batch approach works. Per-element rendering would place
+logical-first elements at visual-left position, breaking RTL layout.
 
 ---
 
@@ -425,40 +502,29 @@
 
 ---
 
-## Phase 6: Cursor & Selection
-**Goal**: Bidirectional cursor navigation
+## Phase 6: Cursor & Selection — RTL Interaction ⚠️ REVERTED
+**Goal**: Make cursor, hit testing, arrow keys, and text input work correctly for RTL text
+**Status**: REVERTED — position reversal broke rendering (text overflow past margin)
 
-### Tasks
-- [ ] **6.1** - Analyze cursor positioning logic
-  - Document current cursor code
-  - Identify RTL-specific issues
-  - Plan logical vs. visual cursor movement
+### Architecture Note — LESSON LEARNED
+`drawRow()` reads x,y from `positionList` for rendering. Reversing positions for
+cursor support also reversed the rendering anchor. Position system serves dual purpose
+(rendering + cursor), so coordinates MUST stay in LTR logical order.
 
-- [ ] **6.2** - Implement logical cursor movement
-  - Left/right arrow keys move logically
-  - Home/End keys
-  - Word boundaries in RTL
+### What's Kept
+- [x] **6.1** - `isRTL` flag on IRow and IElementPosition (data only, no behavior)
 
-- [ ] **6.3** - Implement visual cursor movement
-  - Option for visual left/right (if needed)
-  - Handle direction boundaries
-  - Cursor shape/direction indicator
+### What's Reverted
+- **6.2** - Position coordinate reversal (broke rendering)
+- **6.3** - Cursor placement flip
+- **6.4** - Hit-testing inversion
+- **6.5** - Arrow key swap
+- **6.6** - CursorAgent `dir` attribute
 
-- [ ] **6.4** - Update selection logic
-  - Visual selection highlighting
-  - Handle RTL selections
-  - Handle mixed-direction selections
-
-- [ ] **6.5** - Keyboard navigation
-  - Arrow keys in RTL text
-  - Shift+arrows for selection
-  - Ctrl/Cmd+arrows for word movement
-
-- [ ] **6.6** - Write cursor tests
-  - Test LTR cursor movement
-  - Test RTL cursor movement
-  - Test cursor at LTR/RTL boundaries
-  - Test selection in mixed text
+### Correct Future Approach
+Keep positions LTR. For cursor/hit-testing, interpret position coordinates
+for RTL text without modifying them. Cursor goes at `leftTop[0]` of the
+NEXT element (or row start), not by reversing this element's coordinates.
 
 ---
 
@@ -503,39 +569,208 @@
 
 ---
 
-## Phase 7: Hit Testing
-**Goal**: RTL-aware click positioning
+## Phase 7: Cursor & Hit Testing for Complex Scripts
+**Goal**: Accurate cursor placement, hit testing, selection, and keyboard navigation for RTL/Arabic text
+**Status**: Not Started
+**Constraint**: Positions MUST remain in LTR logical order (rendering depends on this)
 
-### Tasks
-- [ ] **7.1** - Analyze click-to-position logic
-  - Document current hit testing
-  - Identify RTL issues
-  - Plan character-cluster-aware hit testing
+### 7.1 — Cluster-Aware Coordinate Mapping
+Build a mapping of `charIndex → { visualX, width }` for each contextual group,
+reused by cursor, hit testing, and selection.
 
-- [ ] **7.2** - Implement character hit testing
-  - Map canvas X position to character offset
-  - Handle clusters (ligatures, multi-char glyphs)
-  - Account for RTL direction
+- [ ] **7.1.1** - Add `IClusterCoordinate` interface
+  ```typescript
+  interface IClusterCoordinate {
+    charIndex: number      // Index in the contextual group
+    element: IElement      // Source element
+    visualStart: number    // Visual X start (relative to group start)
+    visualEnd: number      // Visual X end
+    width: number          // Visual width of this cluster
+    isLigature: boolean    // Multiple chars share this cluster
+  }
+  ```
 
-- [ ] **7.3** - Handle mixed-direction hit testing
-  - Determine which run was clicked
-  - Calculate position within run
-  - Handle boundary cases
+- [ ] **7.1.2** - Build cluster coordinate map in `_processContextualGroup()`
+  - For each glyph, map `cluster → { visualStart, visualEnd }` in visual order
+  - Handle ligatures: when N chars share 1 cluster, split width proportionally
+  - Handle RTL: HarfBuzz returns glyphs in visual order (rightmost char first)
+  - Store result on contextual group for cursor/hit-testing use
 
-- [ ] **7.4** - Double-click word selection
-  - Define "word" in RTL context
-  - Select logical words
-  - Handle mixed-direction words
+- [ ] **7.1.3** - Add `getClusterCoordinates(element)` public method
+  - Returns the cluster coordinate data for cursor and hit-testing use
+  - Serves as the single source of truth for "where is character X visually"
 
-- [ ] **7.5** - Triple-click line selection
-  - Select full line including RTL runs
-  - Visual vs. logical selection
+- [ ] **7.1.4** - Edge case: diacritics and combining marks
+  - Combining marks (U+0610–U+061A, U+064B–U+065F) share cluster with base char
+  - Must not create separate cursor positions for marks
+  - Width attribution: full advance goes to the base character
 
-- [ ] **7.6** - Write hit testing tests
-  - Test LTR click positioning
-  - Test RTL click positioning
-  - Test mixed-direction click positioning
-  - Test word/line selection
+- [ ] **7.1.5** - Edge case: Lam-Alef ligature
+  - لا (Lam+Alef) renders as single glyph
+  - Split the ligature width 50/50 between the two source chars
+  - Cursor between them should be at the midpoint
+
+### 7.2 — RTL Cursor Placement
+Position the cursor correctly for RTL text without modifying position coordinates.
+
+- [ ] **7.2.1** - Analyze current cursor drawing
+  - Document `Cursor.ts` / `drawCursor()` / `CursorAgent` flow
+  - Identify where cursor x,y is determined
+  - map the flow: position → cursor x → cursor DOM element
+
+- [ ] **7.2.2** - Implement RTL cursor offset
+  - For LTR: cursor at `leftTop[0]` (left edge of next char)
+  - For RTL: cursor at `leftTop[0] + metrics.width` (right edge of current char)
+  - Use `isRTL` flag from position to decide which edge
+  - Handle boundary: cursor at start of RTL row → use row right margin
+
+- [ ] **7.2.3** - Cursor visual direction indicator
+  - Add subtle directional flag to cursor (e.g. small wedge pointing RTL)
+  - CSS-based on `CursorAgent` — use `dir` attribute or class
+  - Shows user which direction text will flow from cursor
+
+- [ ] **7.2.4** - Edge case: cursor at LTR/RTL boundary
+  - When cursor is between LTR and RTL text, which side shows cursor?
+  - Follow UAX#9: cursor affinity based on paragraph direction
+  - Test: "Hello مرحبا" — cursor between 'o' and 'م'
+
+- [ ] **7.2.5** - Edge case: cursor at row boundary with RTL
+  - Cursor at end of RTL row → should be at visual left
+  - Cursor at start of next row → should be at visual right
+  - Test wrapping Arabic text
+
+### 7.3 — RTL Hit Testing (Click → Element Index)
+Map mouse click coordinates to the correct element for RTL text.
+
+- [ ] **7.3.1** - Analyze current `getPositionByXY()` flow
+  - Document how click x,y maps to element index
+  - Identify the comparison logic: `x < leftTop[0] + metrics.width/2`
+  - Understand `isLastArea` fallback
+
+- [ ] **7.3.2** - Implement RTL-aware hit testing
+  - For RTL rows, the visual order is reversed from logical order
+  - Click at visual-left of row = logical END of text
+  - Click at visual-right of row = logical START of text
+  - Use cluster coordinates to find the correct element
+
+- [ ] **7.3.3** - Handle mixed LTR/RTL hit testing
+  - Detect which run (LTR or RTL) the click is in
+  - Within LTR run: normal left-to-right mapping
+  - Within RTL run: reversed mapping
+  - At boundaries: use adjacent element's direction
+
+- [ ] **7.3.4** - Edge case: click on ligature
+  - Lam-Alef ligature occupies one visual glyph for 2 chars
+  - Click on left half → select the visually-left char
+  - Click on right half → select the visually-right char
+  - Use proportional splitting from 7.1.5
+
+- [ ] **7.3.5** - Edge case: click after last char on RTL row
+  - Should position cursor at logical start (visual right)
+  - Current code assumes last letter is at visual right — wrong for RTL
+  - Fix `isLastArea` logic to check `isRTL`
+
+- [ ] **7.3.6** - Edge case: empty row after RTL text
+  - Clicking on empty line should respect direction inheritance
+  - Cursor placed at visual right for inherited-RTL lines
+
+### 7.4 — Arrow Key Navigation
+Make arrow keys work correctly in RTL text.
+
+- [ ] **7.4.1** - Analyze current arrow key handling
+  - Document `keydown/index.ts` Left/Right/Up/Down handlers
+  - Identify how index is incremented/decremented
+  - Understand word-jump (Ctrl+Arrow) logic
+
+- [ ] **7.4.2** - Implement RTL arrow key navigation
+  - Arrow-Right in RTL text → move cursor LOGICALLY right (visually left)
+  - Arrow-Left in RTL text → move cursor LOGICALLY left (visually right)
+  - This matches Windows/Mac convention for Arabic text
+  - Do NOT swap keys — logical movement is consistent
+
+- [ ] **7.4.3** - Handle arrow keys at LTR/RTL boundaries
+  - Moving from LTR into RTL: visual continuity vs logical continuity
+  - Follow OS convention: logical movement stays consistent
+  - Test: "Hello مرحبا" — arrow-right past 'o' goes to 'ا' (last logical Arabic char)
+
+- [ ] **7.4.4** - Implement Ctrl+Arrow word jump for Arabic
+  - Define word boundaries in Arabic text (space-delimited)
+  - Ctrl+Right: jump to end of next word (logical)
+  - Ctrl+Left: jump to start of previous word (logical)
+  - Handle mixed: jumping from English word to Arabic word
+
+- [ ] **7.4.5** - Implement Home/End for RTL rows
+  - Home: cursor to logical start of line (visual right for RTL)
+  - End: cursor to logical end of line (visual left for RTL)
+  - Match OS convention
+
+- [ ] **7.4.6** - Edge case: Up/Down arrow in RTL text
+  - Should maintain approximate visual column position
+  - Moving from RTL row to LTR row: map visual x to new row's element
+  - Moving from RTL row to RTL row: maintain visual position
+
+### 7.5 — Selection Highlighting for RTL
+Draw selection rectangles correctly for RTL and mixed text.
+
+- [ ] **7.5.1** - Analyze current selection rendering
+  - Document how selection highlight rectangles are drawn
+  - Identify the x, width calculation for highlight rects
+  - Understand multi-row selection
+
+- [ ] **7.5.2** - RTL selection highlight
+  - Selection from cursor at logical index A to B
+  - In RTL row: highlight from visual position of B to visual position of A
+  - The highlight rect x is `min(visualA, visualB)`, width is `|visualA - visualB|`
+  - Use cluster coordinates for accurate visual bounds
+
+- [ ] **7.5.3** - Mixed-direction selection
+  - Selection spanning LTR + RTL text on same row
+  - May produce multiple non-contiguous highlight rects
+  - Each directional run gets its own highlight rect
+
+- [ ] **7.5.4** - Shift+Click selection for RTL
+  - Click at position A, Shift+click at position B
+  - Selection extends between logical A and B
+  - Highlight follows visual ordering per-run
+
+- [ ] **7.5.5** - Shift+Arrow selection for RTL
+  - Shift+Right extends selection logically right (visually left in RTL)
+  - Selection rect updates per-run
+  - Test: select partial Arabic word
+
+- [ ] **7.5.6** - Edge case: selection across row boundary in RTL
+  - First row: highlight from selection start to visual left edge
+  - Middle rows: full row highlight
+  - Last row: highlight from visual right edge to selection end
+
+### 7.6 — Mixed LTR/RTL Boundary Handling
+Handle the tricky edge cases at script boundaries.
+
+- [ ] **7.6.1** - Direction run segmentation
+  - Segment row elements into directional runs (consecutive LTR or RTL)
+  - Each run is a self-contained unit for cursor/hit-testing
+  - Shared by cursor, hit test, and selection code
+
+- [ ] **7.6.2** - Cursor at run boundary
+  - Cursor between LTR and RTL run: which run owns it?
+  - Default: cursor belongs to the paragraph direction's run
+  - Visual indicator should show which direction new text will go
+
+- [ ] **7.6.3** - Text input at run boundary
+  - Typing Arabic at end of English text: starts new RTL run
+  - Typing English within Arabic text: starts new LTR run
+  - Input direction follows character's script
+
+- [ ] **7.6.4** - Delete/Backspace at boundaries
+  - Deleting at LTR→RTL boundary: cursor moves to correct position
+  - Backspace from start of RTL run: moves into LTR run
+  - Text re-shapes after deletion
+
+- [ ] **7.6.5** - Word selection at boundaries
+  - Double-click on Arabic word adjacent to English: selects only Arabic word
+  - Double-click on space between scripts: selects the space
+  - Word boundary detection respects script boundaries
+
 
 ---
 

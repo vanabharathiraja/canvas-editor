@@ -116,7 +116,7 @@
 ### [x] Milestone 5: TextParticle Rendering
 **Target**: Week 6-7  
 **Status**: [x] Complete  
-**Completion**: 90% (partial styling deferred)
+**Completion**: 100%
 
 **Deliverables**:
 - [x] TextParticle.measureText() uses ShapeEngine.getShapedWidth() when available
@@ -124,20 +124,93 @@
 - [x] Canvas API metrics (ascent/descent) still used for vertical layout
 - [x] curFont tracking in record() for font name resolution
 - [x] _parseFontSize() helper for CSS font string parsing
-- [ ] Partial styling across shaping boundaries (future)
-- [x] Performance acceptable (shaping cached, no extra overhead when disabled)
+- [x] Bold/italic font variant support with fallback chain
+- [x] Lazy font loading on font-switch
+- [x] Contextual measurement via HarfBuzz cluster IDs (Phase 4.5)
+- [x] Arabic word-break fix (LETTER_CLASS.ARABIC)
+- [x] Font fallback for complex scripts (complexScriptFallback)
+- [ ] Partial styling across shaping boundaries (deferred)
 
 **Success Criteria**:
-- Arabic text renders correctly in editor (needs font file testing)
-- Can style individual characters in complex scripts (partial — same-style batches work)
-- No performance regression for simple text ✅
+- Arabic text renders correctly in editor ✅
+- Contextual measurement matches rendered widths ✅
+- No mid-word Arabic line breaks ✅
+- Automatic font fallback for complex scripts ✅
 
 ---
 
-### [ ] Milestone 6: Layout & Row Computation
-**Target**: Week 7-8  
-**Status**: Not Started  
-**Completion**: 0%
+### [x] Milestone 5.5: RTL Paragraph Alignment
+**Target**: Week 7
+**Status**: [x] Complete
+**Completion**: 100%
+
+**Deliverables**:
+- [x] Auto-detect RTL rows via `detectDirection()`
+- [x] Set `rowFlex: RowFlex.RIGHT` for RTL paragraphs
+- [x] Validated against Google Docs reference rendering
+
+**Success Criteria**:
+- Arabic paragraphs flush-right automatically ✅
+- English paragraphs remain flush-left ✅
+- User can override alignment ✅
+
+---
+
+### [!] Milestone 6: RTL Cursor & Interaction — REVERTED
+**Target**: Week 7-8
+**Status**: [!] Reverted — position reversal broke rendering
+**Completion**: 0% (approach was fundamentally wrong)
+
+**Lesson Learned**:
+`drawRow()` reads x,y from `positionList` for rendering. Reversing position
+coordinates for RTL cursor support also reversed the rendering anchor, causing
+Arabic text to overflow past the right margin. Position system serves DUAL purpose
+(rendering + cursor), so positions MUST stay in LTR logical order.
+
+**What's Kept**:
+- [x] `isRTL` flag on IRow and IElementPosition (data only)
+
+**What's Reverted**:
+- Position coordinate reversal in `computePageRowPosition()`
+- Cursor placement flip in `drawCursor()`
+- Hit-testing inversion in `getPositionByXY()`
+- Arrow key swap in `keydown/index.ts`
+- CursorAgent `dir` attribute
+
+**Correct Approach (for future)**:
+Keep positions LTR. Cursor/hit-testing must interpret LTR positions for RTL
+text without modifying underlying coordinates. This is a separate phase after
+RTL rendering is fully validated.
+
+---
+
+### [x] Milestone 5A: Measurement–Rendering Consistency
+**Target**: Week 7
+**Status**: [x] Complete
+**Completion**: 100%
+
+**Deliverables**:
+- [x] `flushIfNotContextual()` — cleans batch text before contextual groups
+- [x] Contextual batch protection in `drawRow()` — skip punctuation splitting
+- [x] Per-element glyph storage via cluster IDs in `_processContextualGroup()`
+- [x] Whitespace group continuation in `precomputeContextualWidths()`
+- [x] `hasContextualRenderInfo()` and `renderContextualElement()` utility methods
+
+**Root Cause Fixed**:
+- Non-group characters (ZWSP) joined render batch → cache miss → different advances
+- Punctuation splitting broke contextual group → reshaping smaller text → different glyph forms
+
+**Success Criteria**:
+- Render batch text matches contextual measurement text ✅
+- No spacing gaps between Arabic words ✅
+- English text rendering unaffected ✅
+
+---
+
+### [~] Milestone 6b: Layout & Row Computation
+**Target**: Week 8-9  
+**Status**: Mostly complete (core layout works, BiDi reordering deferred)
+**Completion**: 70%
 
 **Deliverables**:
 - [ ] Character position tracking implemented
@@ -170,22 +243,26 @@
 
 ---
 
-### [ ] Milestone 8: Cursor & Selection
-**Target**: Week 9-10  
-**Status**: Not Started  
+### [~] Milestone 8: Cursor & Selection (Phase 7)
+**Target**: Week 9-11
+**Status**: [~] Next up
 **Completion**: 0%
 
 **Deliverables**:
-- [ ] Logical cursor movement working
-- [ ] Visual cursor movement (if needed)
-- [ ] Selection in RTL text working
-- [ ] Mixed-direction selection working
-- [ ] Keyboard navigation tests passing
+- [ ] Cluster-aware coordinate mapping (char → visual x/width)
+- [ ] RTL cursor placement (visual position from logical coords)
+- [ ] RTL hit testing (click → correct element index)
+- [ ] Arrow key navigation in RTL text
+- [ ] Selection highlighting for RTL text
+- [ ] Mixed LTR/RTL boundary handling
+- [ ] Ligature cursor splitting (Lam-Alef)
 
 **Success Criteria**:
-- Arrow keys navigate correctly in RTL text
-- Selection highlights correctly in all scenarios
-- User experience feels natural
+- Cursor appears at correct visual position in Arabic text
+- Clicking in Arabic text selects correct character
+- Arrow keys navigate logically (consistent with OS convention)
+- Selection highlight covers rendered glyphs exactly
+- Mixed LTR/RTL boundaries handled gracefully
 
 ---
 

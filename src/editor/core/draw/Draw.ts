@@ -1943,7 +1943,10 @@ export class Draw {
             // 后面存在元素 && 单词宽度大于行可用宽度，无需折行
             const wordWidth = width * scale
             if (endElement && wordWidth <= availableWidth) {
-              curRowWidth += wordWidth
+              // Subtract metrics.width to avoid double-counting: it is
+              // already included in curRowWidth and also inside wordWidth
+              // (measureWord starts from the current element).
+              curRowWidth += wordWidth - metrics.width
               nextElement = endElement
             }
           }
@@ -2103,6 +2106,7 @@ export class Draw {
             .join('')
           if (detectDirection(rowText) === 'rtl') {
             curRow.rowFlex = RowFlex.RIGHT
+            curRow.isRTL = true
           }
         }
         // 两端对齐、分散对齐
@@ -2412,14 +2416,38 @@ export class Draw {
           if (element.left) {
             this.textParticle.complete()
           }
+          // Flush any pending non-contextual text (e.g. ZWSP \u200B)
+          // when entering a contextual group. This ensures the render
+          // batch text matches the contextual group text shaped by
+          // precomputeContextualWidths() — required for consistent
+          // HarfBuzz cache hits and matching advances between
+          // measurement and rendering.
+          const hasContextualInfo =
+            this.textParticle.hasContextualRenderInfo(element)
+          if (hasContextualInfo) {
+            // If there's pending non-contextual text, flush it first
+            this.textParticle.flushIfNotContextual()
+          }
           this.textParticle.record(ctx, element, x, y + offsetY)
-          // 如果设置字宽、字间距、标点符号（避免浏览器排版缩小间距）需单独绘制
-          if (
-            element.width ||
-            element.letterSpacing ||
-            PUNCTUATION_REG.test(element.value)
-          ) {
-            this.textParticle.complete()
+          // For complex-script text (Arabic, etc.), skip punctuation-based
+          // splitting to keep the render batch aligned with the contextual
+          // measurement group from precomputeContextualWidths().
+          // Splitting at punctuation makes the renderer re-shape a smaller
+          // sub-string, which produces different advances than the full
+          // contextual group — causing inter-word spacing gaps.
+          if (hasContextualInfo) {
+            // Only split on letterSpacing within contextual groups
+            if (element.letterSpacing) {
+              this.textParticle.complete()
+            }
+          } else {
+            if (
+              element.letterSpacing ||
+              element.width ||
+              PUNCTUATION_REG.test(element.value)
+            ) {
+              this.textParticle.complete()
+            }
           }
         }
         // 换行符绘制

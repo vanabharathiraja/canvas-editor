@@ -604,7 +604,7 @@ export const options: IEditorOption = {
     tipDisabled: false
   },
   maskMargin: [60, 0, 30, 0], // Menu bar height 60, bottom toolbar 30 as mask layer
-  defaultFont: 'Noto Sans',
+  defaultFont: 'Amiri',
   shaping: {
     enabled: true,
     basePath: '/canvas-editor/harfbuzz',

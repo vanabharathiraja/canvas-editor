@@ -176,6 +176,7 @@ export class Position {
           lineHeight: curRow.height,
           isFirstLetter: j === 0,
           isLastLetter: j === curRow.elementList.length - 1,
+          isRTL: curRow.isRTL,
           coordinate: {
             leftTop: [x, y],
             leftBottom: [x, y + curRow.height],

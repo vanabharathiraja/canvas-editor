@@ -24,4 +24,5 @@ export interface IRow {
   isWidthNotEnough?: boolean
   rowIndex: number
   isSurround?: boolean
+  isRTL?: boolean
 }

@@ -1,7 +1,7 @@
 # Testing Constraints — Shape Engine Integration
 
 **Purpose**: Validation checklist to run before every commit on the `shape-engine` branch.
-**Last Updated**: 2025-02-12
+**Last Updated**: 2026-02-12
 
 ---
 
@@ -28,6 +28,9 @@
 | R8 | Hyperlink with Arabic | Create Arabic hyperlink | Shaped rendering, underline aligned |
 | R9 | Label with Arabic | Create Arabic label | Background rect aligned to text, shaped rendering |
 | R10 | TrueType hinting | Complex script at 12-14px | Glyph outlines snapped to pixel grid, minimal fuzz |
+| R11 | No word spacing gaps | Arabic paragraph text | No excessive gaps between Arabic words |
+| R12 | RTL paragraph alignment | Arabic paragraphs | Flush-right alignment (auto-detected) |
+| R13 | Arabic at row boundary | Long Arabic text wrapping | Consistent spacing after line break |
 
 ## 2. Measurement — Cursor & Selection
 
@@ -40,6 +43,8 @@
 | M5 | Selection across mixed script | Drag from English into Arabic | Highlight spans correctly, no gap/overlap |
 | M6 | Line breaking with Arabic | Type long Arabic text | Wraps at correct width, no overlap |
 | M7 | Line breaking mixed | Long line with English + Arabic | Wraps correctly, no text outside margins |
+| M8 | Contextual width accuracy | Arabic word width | Sum of contextual widths ≤ isolated-form sum |
+| M9 | Whitespace in Arabic | Spaces between Arabic words | Space width from HarfBuzz, not Canvas API |
 
 ## 3. Commands — Core Operations
 
@@ -152,3 +157,74 @@ These MUST remain true after every change:
 3. **Clean fallback**: When shaping is disabled or font not loaded, Canvas API path produces identical results to pre-shaping codebase.
 4. **Cache invalidation**: `cacheMeasureText.clear()` is called whenever a ShapeEngine font loads.
 5. **No breaking changes**: `shaping.enabled: false` (the default) produces zero behavioral changes.
+6. **Contextual group = batch boundary**: A contextual group (consecutive complex-script elements + whitespace, same font/size) must be measured AND rendered as one unit. Splitting mid-group via ZWSP, punctuation, or decoration changes → cache miss → different HarfBuzz advances → spacing gaps.
+7. **Positions stay LTR logical order**: `positionList` stores element positions in logical (insertion) order, NOT visual order. The draw pipeline reads x,y from positions; reversing them breaks rendering because `renderGlyphs()` always draws left-to-right using HarfBuzz's visual-order output.
+8. **Batch rendering for RTL**: Per-element glyph rendering DOES NOT work for RTL. HarfBuzz returns glyphs in visual order; `renderGlyphs()` draws them sequentially left-to-right. Breaking this into individual element renders places logical-first elements at the wrong visual position.
+
+## Phase 7 Testing Constraints (Cursor & Hit Testing)
+
+These tests must pass before Phase 7 sub-phases can be considered complete:
+
+### 7.1 — Cluster-Aware Coordinate Mapping
+
+| # | Test | Expected |
+|---|------|----------|
+| P7-1 | Click on Lam-Alef ligature (لا) | Cursor distinguishes between Lam and Alef within the single glyph |
+| P7-2 | Click on Shadda+Fatha (Arabic diacritics) | Cursor positions on base char, not on diacritic |
+| P7-3 | getPositionByXY for Arabic word | Returns correct element index based on cluster boundaries, not glyph boundaries |
+| P7-4 | Coordinate map cache invalidation | Resizing text → coordinate map regenerated |
+
+### 7.2 — RTL Cursor Placement
+
+| # | Test | Expected |
+|---|------|----------|
+| P7-5 | Cursor at start of Arabic text | Cursor renders at right edge of first element |
+| P7-6 | Cursor between Arabic chars | Cursor at correct x between cluster boundaries |
+| P7-7 | Cursor at end of Arabic text | Cursor at left edge of last element |
+| P7-8 | Cursor at LTR→RTL boundary | Cursor visually jumps from left-side to right-side |
+| P7-9 | Cursor at RTL→LTR boundary | Cursor visually jumps from right-side to left-side |
+| P7-10 | Cursor at row start (RTL row) | Cursor at rightmost position |
+| P7-11 | Cursor at row end (RTL row) | Cursor at leftmost position |
+
+### 7.3 — RTL Hit Testing
+
+| # | Test | Expected |
+|---|------|----------|
+| P7-12 | Click on Arabic character | Correct element identified despite visual reversal |
+| P7-13 | Click on ligature glyph | Correct sub-ligature element chosen based on x offset within ligature |
+| P7-14 | Click at LTR/RTL boundary | Correct element on correct side of boundary |
+| P7-15 | Click past end of RTL row | Cursor at logical end (visual left) |
+| P7-16 | Click before start of RTL row | Cursor at logical start (visual right) |
+
+### 7.4 — Arrow Key Navigation
+
+| # | Test | Expected |
+|---|------|----------|
+| P7-17 | Left arrow in Arabic text | Moves to next logical character (visually right) |
+| P7-18 | Right arrow in Arabic text | Moves to previous logical character (visually left) |
+| P7-19 | Arrow across LTR→RTL boundary | Direction reversal handled smoothly |
+| P7-20 | Ctrl+Left in Arabic | Jumps to previous word boundary |
+| P7-21 | Ctrl+Right in Arabic | Jumps to next word boundary |
+| P7-22 | Home in RTL row | Cursor at visual right (logical start) |
+| P7-23 | End in RTL row | Cursor at visual left (logical end) |
+| P7-24 | Up/Down across RTL rows | Maintains approximate visual column |
+
+### 7.5 — Selection Highlighting
+
+| # | Test | Expected |
+|---|------|----------|
+| P7-25 | Shift+Right in Arabic text | Selection extends visually left (logical forward) |
+| P7-26 | Shift+Click in Arabic text | Selection from cursor to click point, correct highlight |
+| P7-27 | Drag-select in Arabic text | Correct contiguous highlight rectangle(s) |
+| P7-28 | Selection across mixed direction | Multiple highlight rects for non-contiguous visual ranges |
+| P7-29 | Select all in mixed document | Full coverage, no gaps or overlaps |
+
+### 7.6 — Mixed Direction Boundaries
+
+| # | Test | Expected |
+|---|------|----------|
+| P7-30 | Type at LTR→RTL boundary | Input inserts at correct logical position |
+| P7-31 | Delete at RTL→LTR boundary | Correct character deleted |
+| P7-32 | Backspace at LTR→RTL boundary | Correct character deleted |
+| P7-33 | Double-click Arabic word | Full word selected (space-delimited) |
+| P7-34 | Double-click at direction boundary | Selects word in correct direction run |
