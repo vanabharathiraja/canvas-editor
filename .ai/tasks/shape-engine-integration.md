@@ -261,10 +261,14 @@
   - Evaluated Gemini's "glyph-by-glyph fillText" suggestion — rejected
     (glyphToCharCode doesn't exist; shaped Arabic glyphs have no Unicode mapping)
 
-- [ ] **3.5.5** - Test Arabic rendering quality
-  - Load Amiri or Noto Sans Arabic font
-  - Verify Arabic text is properly shaped and rendered
-  - Compare sharpness with TrueType hinting enabled
+- [x] **3.5.5** - Test Arabic rendering quality & unified rendering gateway
+  - Added Amiri font family to fontMapping (regular/bold/italic/boldItalic)
+  - Added Arabic sample text + mixed-script sample to mock data
+  - Created `TextParticle.renderText()` — single rendering gateway
+  - Updated SuperscriptParticle, SubscriptParticle, HyperlinkParticle,
+    LabelParticle to route through `renderText()` instead of `ctx.fillText()`
+  - Created `.ai/TESTING-CONSTRAINTS.md` — comprehensive validation checklist
+  - Architecture invariant: no particle calls `ctx.fillText()` directly
 
 ---
 

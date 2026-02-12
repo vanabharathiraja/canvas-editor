@@ -487,6 +487,69 @@ elementList.push(
   ...[
     {
       value: '\n'
+    }
+  ]
+)
+
+// Arabic text sample (uses Amiri font via ShapeEngine)
+const arabicTitle = 'الملاحظات السريرية:'
+const arabicBody =
+  'يعاني المريض من حمى منذ ثلاثة أيام مع سعال جاف. الفحص السريري يظهر احمرار في الحلق مع تضخم في اللوزتين.'
+const arabicChars = `${arabicTitle}\n${arabicBody}`.split('')
+for (let i = 0; i < arabicChars.length; i++) {
+  const isTitle = i < arabicTitle.length
+  if (isTitle && i === 0) {
+    elementList.push({
+      value: '',
+      type: ElementType.TITLE,
+      level: TitleLevel.FIRST,
+      valueList: [
+        {
+          value: arabicTitle,
+          size: 18,
+          font: 'Amiri'
+        }
+      ]
+    })
+    i += arabicTitle.length // skip title chars (includes \n)
+  }
+  if (i < arabicChars.length) {
+    elementList.push({
+      value: arabicChars[i],
+      size: 16,
+      font: 'Amiri'
+    })
+  }
+}
+
+// Mixed script sample: English + Arabic in same paragraph
+elementList.push(
+  { value: '\n' },
+  { value: 'M', size: 16 },
+  { value: 'i', size: 16 },
+  { value: 'x', size: 16 },
+  { value: 'e', size: 16 },
+  { value: 'd', size: 16 },
+  { value: ':', size: 16 },
+  { value: ' ', size: 16 },
+  { value: 'م', size: 16, font: 'Amiri' },
+  { value: 'ر', size: 16, font: 'Amiri' },
+  { value: 'ح', size: 16, font: 'Amiri' },
+  { value: 'ب', size: 16, font: 'Amiri' },
+  { value: 'ا', size: 16, font: 'Amiri' },
+  { value: ' ', size: 16 },
+  { value: 'H', size: 16 },
+  { value: 'e', size: 16 },
+  { value: 'l', size: 16 },
+  { value: 'l', size: 16 },
+  { value: 'o', size: 16 }
+)
+
+// EOF marker
+elementList.push(
+  ...[
+    {
+      value: '\n'
     },
     {
       value: '',
@@ -553,6 +616,12 @@ export const options: IEditorOption = {
         boldUrl: '/canvas-editor/fonts/NotoSans-Bold.ttf',
         italicUrl: '/canvas-editor/fonts/NotoSans-Italic.ttf',
         boldItalicUrl: '/canvas-editor/fonts/NotoSans-BoldItalic.ttf'
+      },
+      'Amiri': {
+        url: '/canvas-editor/fonts/Amiri/Amiri-Regular.ttf',
+        boldUrl: '/canvas-editor/fonts/Amiri/Amiri-Bold.ttf',
+        italicUrl: '/canvas-editor/fonts/Amiri/Amiri-Italic.ttf',
+        boldItalicUrl: '/canvas-editor/fonts/Amiri/Amiri-BoldItalic.ttf'
       }
     }
   }

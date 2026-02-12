@@ -76,11 +76,12 @@ export class HyperlinkParticle {
     if (!element.color) {
       element.color = this.options.defaultHyperlinkColor
     }
-    ctx.fillStyle = element.color
     if (element.underline === undefined) {
       element.underline = true
     }
-    ctx.fillText(element.value, x, y)
+    this.draw.getTextParticle().renderText(
+      ctx, element, x, y, element.color
+    )
     ctx.restore()
   }
 }

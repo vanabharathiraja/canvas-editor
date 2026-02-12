@@ -223,6 +223,40 @@ export class TextParticle {
     return this.measureBasisWord(ctx, font).fontBoundingBoxDescent
   }
 
+  /**
+   * Render a single element's text through the correct pipeline.
+   * This is the shared rendering gateway that all text-drawing particles
+   * should use instead of calling ctx.fillText() directly.
+   *
+   * Routes to ShapeEngine for complex scripts (Arabic, Devanagari, etc.)
+   * and native Canvas API for simple scripts (Latin, CJK, Cyrillic).
+   *
+   * Callers must set ctx.font before calling this method.
+   */
+  public renderText(
+    ctx: CanvasRenderingContext2D,
+    element: IRowElement,
+    x: number,
+    y: number,
+    color?: string
+  ): void {
+    const fontId = this._resolveShapingFontId(element)
+    const fillColor = color || element.color || this.options.defaultColor
+
+    if (
+      this._isShapingReady(fontId) &&
+      this._shouldUseShaping(element.value)
+    ) {
+      const engine = ShapeEngine.getInstance()
+      const fontSize = this._getElementFontSize(element)
+      const result = engine.shapeText(element.value, fontId, fontSize)
+      engine.renderGlyphs(ctx, result, fontId, fontSize, x, y, fillColor)
+    } else {
+      ctx.fillStyle = fillColor
+      ctx.fillText(element.value, x, y)
+    }
+  }
+
   public complete() {
     this._render()
     this.text = ''

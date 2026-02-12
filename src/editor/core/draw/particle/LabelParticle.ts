@@ -4,9 +4,11 @@ import { IRowElement } from '../../../interface/Row'
 import { Draw } from '../Draw'
 
 export class LabelParticle {
+  private draw: Draw
   private options: DeepRequired<IEditorOption>
 
   constructor(draw: Draw) {
+    this.draw = draw
     this.options = draw.getOptions()
   }
 
@@ -50,9 +52,10 @@ export class LabelParticle {
     )
     ctx.fill()
 
-    // 绘制文本
-    ctx.fillStyle = color
-    ctx.fillText(element.value, x + padding[3] * scale, y)
+    // 绘制文本 via rendering gateway (ShapeEngine for complex scripts)
+    this.draw.getTextParticle().renderText(
+      ctx, element, x + padding[3] * scale, y, color
+    )
     ctx.restore()
   }
 
