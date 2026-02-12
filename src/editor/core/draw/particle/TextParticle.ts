@@ -8,7 +8,7 @@ import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
 import { Draw } from '../Draw'
 import { ShapeEngine } from '../../shaping/ShapeEngine'
-import { needsComplexShaping } from '../../../utils/unicode'
+import { needsComplexShaping, detectDirection } from '../../../utils/unicode'
 
 export interface IMeasureWordResult {
   width: number
@@ -184,10 +184,12 @@ export class TextParticle {
     ) {
       const fontSize = this._getElementFontSize(element)
       const engine = ShapeEngine.getInstance()
+      const direction = detectDirection(element.value)
       const shapedWidth = engine.getShapedWidth(
         element.value,
         fontId,
-        fontSize
+        fontSize,
+        { direction }
       )
       // Use Canvas API for vertical metrics (ascent/descent)
       // since ShapeEngine doesn't provide pixel-space metrics
@@ -249,7 +251,8 @@ export class TextParticle {
     ) {
       const engine = ShapeEngine.getInstance()
       const fontSize = this._getElementFontSize(element)
-      const result = engine.shapeText(element.value, fontId, fontSize)
+      const direction = detectDirection(element.value)
+      const result = engine.shapeText(element.value, fontId, fontSize, { direction })
       engine.renderGlyphs(ctx, result, fontId, fontSize, x, y, fillColor)
     } else {
       ctx.fillStyle = fillColor
@@ -316,10 +319,12 @@ export class TextParticle {
       this._isShapingReady(fontId) &&
       this._shouldUseShaping(this.text)
     ) {
+      console.log(`Shaping & rendering text: "${this.text}" with fontId: ${fontId}`)
       const engine = ShapeEngine.getInstance()
       // Extract font size from curStyle (e.g. "italic bold 16px Microsoft YaHei")
       const fontSize = this._parseFontSize(this.curStyle)
-      const result = engine.shapeText(this.text, fontId, fontSize)
+      const direction = detectDirection(this.text)
+      const result = engine.shapeText(this.text, fontId, fontSize, { direction })
       engine.renderGlyphs(
         this.ctx,
         result,

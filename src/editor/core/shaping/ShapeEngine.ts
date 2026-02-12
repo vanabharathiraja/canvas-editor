@@ -373,19 +373,20 @@ export class ShapeEngine {
       const glyphX = cursorX + glyph.xOffset
       const glyphY = cursorY - glyph.yOffset // Canvas Y is inverted
 
-      // Get the OpenType.js glyph by ID and draw its path.
-      // Enable TrueType hinting for sharper rendering at small sizes:
-      // hinting aligns glyph outlines to the pixel grid, significantly
-      // reducing the "fuzzy edges" compared to unhinted path drawing.
       const otGlyph = font.otFont.glyphs.get(glyph.glyphId)
       if (otGlyph) {
-        const path = otGlyph.getPath(
-          glyphX,
-          glyphY,
-          fontSize,
-          { hinting: true },
-          font.otFont
-        )
+        // Try hinted path first for sharper rendering at small sizes.
+        // Falls back to unhinted if hinting module fails (e.g. CJS
+        // `exports` not available in Vite/ESM browser environments).
+        let path: OTPath
+        try {
+          path = otGlyph.getPath(
+            glyphX, glyphY, fontSize,
+            { hinting: true }, font.otFont
+          )
+        } catch {
+          path = otGlyph.getPath(glyphX, glyphY, fontSize)
+        }
         path.fill = color
         path.draw(ctx)
       }
