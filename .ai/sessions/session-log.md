@@ -247,3 +247,5 @@ Copy this template for new sessions:
 ### Shape Engine Integration
 - Session #001 (2026-02-04) - Project initialization and planning
 - Session #002 (2026-02-05) - Edge cases and direction control enhancements
+- Session #008 (2026-02-13) - Arabic whitespace bug fix, RTL particle audit
+- Session #009 (2026-02-13) - BiDi integration, overflow bug fix
