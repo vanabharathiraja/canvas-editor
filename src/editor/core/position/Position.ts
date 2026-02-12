@@ -146,6 +146,28 @@ export class Position {
       // 当前td所在位置
       const tablePreX = x
       const tablePreY = y
+      // BiDi visual ordering: pre-compute x positions in visual order
+      // for mixed LTR/RTL rows, then map back to logical order
+      let bidiVisualX: number[] | null = null
+      if (
+        curRow.isBidiMixed &&
+        curRow.visualOrder &&
+        curRow.visualOrder.length === curRow.elementList.length
+      ) {
+        bidiVisualX = new Array(curRow.elementList.length)
+        let vx = x
+        for (let v = 0; v < curRow.visualOrder.length; v++) {
+          const logicalIdx = curRow.visualOrder[v]
+          const el = curRow.elementList[logicalIdx]
+          if (el) {
+            // Apply per-element offsets in visual order
+            if (el.left) vx += el.left
+            if (el.translateX) vx += el.translateX * scale
+            bidiVisualX[logicalIdx] = vx
+            vx += el.metrics.width
+          }
+        }
+      }
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
         const metrics = element.metrics
@@ -156,13 +178,22 @@ export class Position {
             element.type === ElementType.LATEX)
             ? curRow.ascent - metrics.height
             : curRow.ascent
-        // 偏移量（内部计算使用）
-        if (element.left) {
-          x += element.left
-        }
-        // 偏移量（外部传入）
-        if (element.translateX) {
-          x += element.translateX * scale
+        // Use BiDi visual position when available, otherwise logical
+        let posX: number
+        if (bidiVisualX !== null && bidiVisualX[j] !== undefined) {
+          // BiDi: x was pre-computed in visual order (offsets already applied)
+          posX = bidiVisualX[j]
+        } else {
+          // Standard: logical left-to-right positioning
+          // 偏移量（内部计算使用）
+          if (element.left) {
+            x += element.left
+          }
+          // 偏移量（外部传入）
+          if (element.translateX) {
+            x += element.translateX * scale
+          }
+          posX = x
         }
         const positionItem: IElementPosition = {
           pageNo,
@@ -176,12 +207,14 @@ export class Position {
           lineHeight: curRow.height,
           isFirstLetter: j === 0,
           isLastLetter: j === curRow.elementList.length - 1,
-          isRTL: curRow.isRTL,
+          isRTL: curRow.bidiLevels
+            ? (curRow.bidiLevels[j] & 1) === 1
+            : curRow.isRTL,
           coordinate: {
-            leftTop: [x, y],
-            leftBottom: [x, y + curRow.height],
-            rightTop: [x + metrics.width, y],
-            rightBottom: [x + metrics.width, y + curRow.height]
+            leftTop: [posX, y],
+            leftBottom: [posX, y + curRow.height],
+            rightTop: [posX + metrics.width, y],
+            rightBottom: [posX + metrics.width, y + curRow.height]
           }
         }
         // 缓存浮动元素信息
@@ -199,7 +232,7 @@ export class Position {
           // 兼容浮动元素初始坐标为空的情况-默认使用左上坐标
           if (!element.imgFloatPosition) {
             element.imgFloatPosition = {
-              x,
+              x: posX,
               y,
               pageNo
             }
@@ -218,7 +251,9 @@ export class Position {
         }
         positionList.push(positionItem)
         index++
-        x += metrics.width
+        if (bidiVisualX === null || bidiVisualX[j] === undefined) {
+          x += metrics.width
+        }
         // 计算表格内元素位置
         if (element.type === ElementType.TABLE && !element.hide) {
           const tdPaddingWidth = tdPadding[1] + tdPadding[3]

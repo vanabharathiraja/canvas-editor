@@ -543,6 +543,22 @@ elementList.push(
   { value: 'o', size: 16 }
 )
 
+// BiDi test: English sentence with Arabic name (LTR paragraph)
+const bidiTest1 = 'The patient محمد أحمد visited the clinic today.'
+const bidiChars1 = bidiTest1.split('')
+elementList.push({ value: '\n' })
+for (const ch of bidiChars1) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// BiDi test: Arabic sentence with English term (RTL paragraph)
+const bidiTest2 = 'تم تشخيص المريض بـ COVID-19 في المستشفى.'
+const bidiChars2 = bidiTest2.split('')
+elementList.push({ value: '\n' })
+for (const ch of bidiChars2) {
+  elementList.push({ value: ch, size: 16 })
+}
+
 // EOF marker
 elementList.push(
   ...[

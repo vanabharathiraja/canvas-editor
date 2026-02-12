@@ -123,6 +123,7 @@ import { Badge } from './frame/Badge'
 import { Graffiti } from './graffiti/Graffiti'
 import { ShapeEngine } from '../shaping/ShapeEngine'
 import { detectDirection } from '../../utils/unicode'
+import { analyzeBidi, computeElementVisualOrder } from '../../utils/bidi'
 
 export class Draw {
   private container: HTMLDivElement
@@ -2109,6 +2110,29 @@ export class Draw {
             curRow.isRTL = true
           }
         }
+        // BiDi analysis: compute embedding levels and visual order
+        // for rows that may contain mixed LTR/RTL content
+        if (
+          this.options.shaping?.enabled &&
+          curRow.elementList.length > 1
+        ) {
+          const elementValues = curRow.elementList.map(el => el.value)
+          const bidiResult = computeElementVisualOrder(elementValues)
+          if (bidiResult.isMixed) {
+            curRow.bidiLevels = bidiResult.levels
+            curRow.visualOrder = bidiResult.visualOrder
+            curRow.isBidiMixed = true
+            // For mixed BiDi, detect paragraph direction for alignment
+            if (!curRow.rowFlex) {
+              const rowText = elementValues.join('')
+              const result = analyzeBidi(rowText)
+              if (result.paragraphLevel === 1) {
+                curRow.rowFlex = RowFlex.RIGHT
+                curRow.isRTL = true
+              }
+            }
+          }
+        }
         // 两端对齐、分散对齐
         if (
           !curRow.isSurround &&
@@ -2416,37 +2440,41 @@ export class Draw {
           if (element.left) {
             this.textParticle.complete()
           }
-          // Flush any pending non-contextual text (e.g. ZWSP \u200B)
-          // when entering a contextual group. This ensures the render
-          // batch text matches the contextual group text shaped by
-          // precomputeContextualWidths() — required for consistent
-          // HarfBuzz cache hits and matching advances between
-          // measurement and rendering.
           const hasContextualInfo =
             this.textParticle.hasContextualRenderInfo(element)
-          if (hasContextualInfo) {
-            // If there's pending non-contextual text, flush it first
-            this.textParticle.flushIfNotContextual()
-          }
-          this.textParticle.record(ctx, element, x, y + offsetY)
-          // For complex-script text (Arabic, etc.), skip punctuation-based
-          // splitting to keep the render batch aligned with the contextual
-          // measurement group from precomputeContextualWidths().
-          // Splitting at punctuation makes the renderer re-shape a smaller
-          // sub-string, which produces different advances than the full
-          // contextual group — causing inter-word spacing gaps.
-          if (hasContextualInfo) {
-            // Only split on letterSpacing within contextual groups
-            if (element.letterSpacing) {
+          // BiDi mixed rows: render each element individually at its
+          // own visual x position. Batching would use the first logical
+          // element's x (wrong position) for the entire batch.
+          if (curRow.isBidiMixed) {
+            this.textParticle.complete()
+            if (hasContextualInfo) {
+              // Use precomputed contextual glyphs (Arabic/complex script)
+              this.textParticle.renderContextualElement(
+                ctx, element, x, y + offsetY, scale
+              )
+            } else {
+              // Render individual character (English/simple script)
+              this.textParticle.record(ctx, element, x, y + offsetY)
               this.textParticle.complete()
             }
           } else {
-            if (
-              element.letterSpacing ||
-              element.width ||
-              PUNCTUATION_REG.test(element.value)
-            ) {
-              this.textParticle.complete()
+            // Standard (non-BiDi) rendering: batch consecutive elements
+            if (hasContextualInfo) {
+              this.textParticle.flushIfNotContextual()
+            }
+            this.textParticle.record(ctx, element, x, y + offsetY)
+            if (hasContextualInfo) {
+              if (element.letterSpacing) {
+                this.textParticle.complete()
+              }
+            } else {
+              if (
+                element.letterSpacing ||
+                element.width ||
+                PUNCTUATION_REG.test(element.value)
+              ) {
+                this.textParticle.complete()
+              }
             }
           }
         }

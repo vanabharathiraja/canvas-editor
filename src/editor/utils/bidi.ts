@@ -134,12 +134,13 @@ export function computeVisualOrder(
   text: string,
   levels: Uint8Array,
   start = 0,
-  end = text.length - 1
+  end = text.length - 1,
+  paragraphLevel = 0
 ): number[] {
   // Get the reversal segments from bidi-js
   const reorderSegments = bidi.getReorderSegments(
     text,
-    { levels, paragraphs: [{ start: 0, end: text.length - 1, level: 0 }] },
+    { levels, paragraphs: [{ start: 0, end: text.length - 1, level: paragraphLevel }] },
     start,
     end
   )
@@ -303,8 +304,10 @@ export function computeElementVisualOrder(
   }
 
   // Get character-level BiDi analysis
-  const { levels } = computeEmbeddingLevels(text, direction)
-  const charVisualOrder = computeVisualOrder(text, levels)
+  const { levels, paragraphLevel } = computeEmbeddingLevels(text, direction)
+  const charVisualOrder = computeVisualOrder(
+    text, levels, 0, text.length - 1, paragraphLevel
+  )
 
   // Map character positions back to element indices
   const charToElement: number[] = []
