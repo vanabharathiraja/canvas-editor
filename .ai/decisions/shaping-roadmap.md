@@ -1,7 +1,7 @@
 # ADR: Shaping Engine Rendering Quality & Multi-Font Strategy
 
-**Date**: 2025-02-10
-**Status**: Proposed
+**Date**: 2025-02-10 (updated 2025-02-12)
+**Status**: Implemented (Phases A-C complete, commit `3b1076e`)
 **Context**: ShapeEngine path rendering vs native Canvas API quality
 
 ---
@@ -17,7 +17,8 @@ Canvas API `ctx.fillText()`.
 1. **Subpixel AA**: Native `fillText()` uses ClearType (Windows) / subpixel
    anti-aliasing (Mac). Path drawing only gets grayscale AA.
 2. **Font Hinting**: TrueType fonts contain hinting instructions that align
-   outlines to the pixel grid. `fillText()` applies these; OpenType.js does not.
+   outlines to the pixel grid. `fillText()` applies these; OpenType.js supports
+   this via `{hinting: true}` option (implemented in Session 004).
 3. **DPR handling is correct**: The editor's `ctx.scale(dpr, dpr)` properly
    scales path drawing to device resolution. This is NOT the issue.
 4. **Font size matters**: At 48px (POC), aliasing is barely visible. At 12-16px
@@ -158,10 +159,11 @@ This is **intentional and correct** because:
 
 ---
 
-## 5. Priority Order for Next Session
+## 5. Implementation Status
 
-1. **Script detection utility** — `needsComplexShaping()` function
-2. **Smart routing** — integrate into TextParticle._render() and measureText()
-3. **CSS @font-face** — register fonts for native fillText() use
-4. **Test with Arabic** — load Amiri or Noto Sans Arabic, verify shaping quality
-5. **Performance benchmark** — compare ShapeEngine vs Canvas API rendering times
+- [x] **Script detection utility** — `needsComplexShaping()` in `src/editor/utils/unicode.ts`
+- [x] **Smart routing** — `_shouldUseShaping()` in TextParticle
+- [x] **CSS @font-face** — `_registerCSSFontFace()` in ShapeEngine
+- [x] **TrueType hinting** — `{hinting: true}` in `renderGlyphs()`
+- [ ] **Test with Arabic** — load Amiri or Noto Sans Arabic, verify shaping quality
+- [ ] **Performance benchmark** — compare ShapeEngine vs Canvas API rendering times

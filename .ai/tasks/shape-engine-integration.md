@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2025-02-10
-**Current Phase**: Phase 3-4 (Integration complete, quality improvements planned)
+**Last Updated**: 2025-02-12
+**Current Phase**: Phase 3.5 complete, Phase 5 (cursor/selection for complex scripts) next
 
 ## Legend
 - `[ ]` Not Started
@@ -235,25 +235,36 @@
 **Reference**: `.ai/decisions/shaping-roadmap.md`
 
 ### Tasks
-- [ ] **3.5.1** - Script detection utility
-  - Create `needsComplexShaping(text)` function
-  - Detect Arabic, Devanagari, Bengali, Thai, etc. Unicode ranges
-  - Handle mixed-script text (any complex char → use shaping)
+- [x] **3.5.1** - Script detection utility
+  - Created `src/editor/utils/unicode.ts`
+  - `needsComplexShaping(text)` with binary-search over 27 Unicode ranges
+  - `detectScript(text)` returns ISO 15924 tags (Arab, Deva, Latn, etc.)
+  - `detectDirection(text)` returns 'ltr'/'rtl' from first strong char
 
-- [ ] **3.5.2** - Smart routing in TextParticle
-  - If text is simple Latin/CJK → use native Canvas API fillText()
-  - If text needs complex shaping → use ShapeEngine renderGlyphs()
-  - Add `forceShaping` option for testing/debugging
+- [x] **3.5.2** - Smart routing in TextParticle
+  - Added `_shouldUseShaping()` method — gates on `forceShaping` OR `needsComplexShaping()`
+  - `measureText()` uses ShapeEngine only for complex scripts
+  - `_render()` uses ShapeEngine only for complex scripts
+  - Latin/CJK always uses native Canvas API (sharper rendering)
+  - Added `forceShaping` option to `IShapingOption`
 
-- [ ] **3.5.3** - CSS @font-face registration
-  - When ShapeEngine loads a font file, also register as CSS @font-face
-  - Ensures native fillText() can use the loaded font
-  - Use FontFace API: `new FontFace(name, data)`
+- [x] **3.5.3** - CSS @font-face registration
+  - `_registerCSSFontFace()` auto-registers loaded fonts as CSS @font-face
+  - `_parseFontIdForCSS()` maps composite keys to CSS weight/style descriptors
+  - Uses FontFace API: `new FontFace(family, buffer, descriptors)`
+  - Ensures native fillText() can render with ShapeEngine-loaded fonts
 
-- [ ] **3.5.4** - Test Arabic rendering quality
+- [x] **3.5.4** - TrueType hinting for path rendering
+  - Enabled `{hinting: true}` in OpenType.js `getPath()` calls
+  - Passes font reference for proper hinting instruction execution
+  - Aligns glyph outlines to pixel grid at small sizes (12-16px)
+  - Evaluated Gemini's "glyph-by-glyph fillText" suggestion — rejected
+    (glyphToCharCode doesn't exist; shaped Arabic glyphs have no Unicode mapping)
+
+- [ ] **3.5.5** - Test Arabic rendering quality
   - Load Amiri or Noto Sans Arabic font
   - Verify Arabic text is properly shaped and rendered
-  - Compare with native Canvas API rendering
+  - Compare sharpness with TrueType hinting enabled
 
 ---
 
