@@ -321,16 +321,20 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
 
 ---
 
-### [ ] Milestone 10: RTL Particle Adaptation
+### [~] Milestone 10: RTL Particle Adaptation
 **Target**: Week 10-11
-**Status**: Not Started
-**Completion**: 0%
+**Status**: [~] In Progress
+**Completion**: 70%
 
 **Deliverables**:
-- [ ] ListParticle: RTL marker position (right side), RTL indent direction, `ctx.fillText()` → `renderText()`
-- [ ] LineBreakParticle: Mirror arrow icon position and direction for RTL rows
-- [ ] TableParticle: RTL column ordering in `computeRowColInfo()`
-- [ ] PageBreakParticle: Route label text through `renderText()` gateway
+- [x] ListParticle: RTL marker format (.1), right-side positioning, checkbox RTL (commit `a260acb`)
+- [x] LineBreakParticle: Mirror arrow icon position and direction for RTL rows (commit `a260acb`)
+- [x] Hyperlink: Arabic contextual shaping via `precomputeContextualWidths` (commit `a260acb`)
+- [x] Position: RTL list row offsetX handling (commit `a260acb`)
+- [x] Mock data: 15 Arabic/BiDi test scenarios (commit `a260acb`)
+- [ ] TableParticle: RTL column ordering in `computeRowColInfo()` (deferred)
+- [ ] PageBreakParticle: Route label text through `renderText()` gateway (assessed, no change needed)
+- [ ] RTL selection/formatting fix for pure Arabic text (NEW BUG)
 
 **Success Criteria**:
 - List markers appear on right side for RTL paragraphs
@@ -376,7 +380,7 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
 5A (Measure-Render Consistency), 5B (Whitespace Fix), 5.5.1-5.5.3 (BiDi Foundations),
 7 (Full BiDi Support), 8/9 (Cursor & Selection & Hit Testing)
 
-**In Progress**: None currently
+**In Progress**: Phase 10 (RTL Particles — 70%, RTL selection bug open)
 
 **Remaining**: Phase 10 (RTL Particles), Phase 11 (Polish & Release)
 

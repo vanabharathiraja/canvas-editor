@@ -1,21 +1,20 @@
 # Current Focus
 
-**Last Updated**: 2026-02-16
-**Active Sprint**: Shape Engine Integration — Step 5 (RTL Particle Adaptation)
+**Last Updated**: 2026-02-17
+**Active Sprint**: Shape Engine Integration — RTL Selection Fix
 
 ## Current Objective
 
-Step 4 fully complete including selection fixes:
-- 4A: Arabic line breaking (word backtracking, RTL detection)
-- 4B: BiDi cursor/hit-testing/selection (isBidiMixed guards)
-- 4C: Word-backtrack height/ascent recalculation
-- 4D: BiDi midpoint hit testing (visual boundary matching)
-- 4E: Selection RTL fixes (getIsPointInRange mirror, drag-check mirror,
-  BiDi mixed per-visual-run selection rects)
-- Table cells: Verified — same recursive pipeline, no bypasses
-- Commands audit: Copy/Cut/Paste/Undo/Redo/Delete all work (logical indices)
+Step 5 (RTL Particle Adaptation) mostly complete (commit `a260acb`):
+- ListParticle: RTL marker format (.1), checkbox RTL positioning
+- LineBreakParticle: RTL arrow direction + mirrored position
+- Hyperlink: Contextual shaping for Arabic hyperlinks
+- Position: RTL list row offset handling
+- Mock data: 15 Arabic/BiDi test scenarios
 
-Next: Step 5 (RTL Particle Adaptation).
+**CURRENT BUG**: RTL selection/formatting broken in pure Arabic text.
+Selecting text and applying formatting applies to wrong position.
+Copy/cut/delete also affected. BiDi mixed rows work correctly.
 
 ## Roadmap: Steps 3-5
 
@@ -47,11 +46,13 @@ Next: Step 5 (RTL Particle Adaptation).
 - ⚠️ Visual arrow movement at BiDi boundaries — cursor jumps logically (acceptable)
 
 ### Step 5: RTL Particle Adaptation (Phase 9 — NEW)
-- **ListParticle**: Move markers to right side; reverse indent direction;
-  route marker text through `renderText()` gateway
-- **LineBreakParticle**: Mirror arrow icon position and shape direction
-- **TableParticle**: RTL column ordering in `computeRowColInfo()`
-- **PageBreakParticle**: Route label through `renderText()` gateway
+- ✅ **ListParticle**: RTL marker format (.1), checkbox RTL positioning,
+  right-side marker placement (commit `a260acb`)
+- ✅ **LineBreakParticle**: Mirror arrow icon position and shape direction
+  (commit `a260acb`)
+- ✅ **Hyperlink**: Arabic hyperlink contextual shaping (commit `a260acb`)
+- ⬜ **TableParticle**: RTL column ordering in `computeRowColInfo()` (deferred)
+- ⬜ **PageBreakParticle**: Route label through `renderText()` gateway (assessed, no change needed)
 
 ## Bug Status
 
@@ -64,6 +65,10 @@ Next: Step 5 (RTL Particle Adaptation).
 - ~~Selection getIsPointInRange fails on RTL text~~ — **FIXED** (session 010)
 - ~~Mousemove drag-check fails on RTL text~~ — **FIXED** (session 010)
 - ~~BiDi mixed selection draws single rect for non-contiguous~~ — **FIXED** (session 010)
+- **RTL selection/formatting in pure Arabic text** — **OPEN** (session 011)
+  - Formatting applies to wrong position in pure RTL rows
+  - Copy/cut/delete also affected
+  - BiDi mixed rows work correctly
 
 ## Critical Architecture Constraints
 

@@ -2591,6 +2591,14 @@ export class Draw {
             // Standard (non-BiDi) rendering: batch consecutive elements
             if (hasContextualInfo) {
               this.textParticle.flushIfNotContextual()
+            } else if (curRow.isRTL) {
+              // Pure RTL: flush any pending contextual batch before
+              // non-contextual elements (spaces, ZWSP). If spaces join
+              // the Arabic batch, HarfBuzz reshapes the full text but
+              // measurement used Canvas for space widths — the width
+              // mismatch causes the mirror formula in hit testing and
+              // selection rendering to be off.
+              this.textParticle.complete()
             }
             this.textParticle.record(ctx, element, x, y + offsetY)
             if (hasContextualInfo) {
@@ -2599,6 +2607,7 @@ export class Draw {
               }
             } else {
               if (
+                curRow.isRTL ||
                 element.letterSpacing ||
                 element.width ||
                 PUNCTUATION_REG.test(element.value)
