@@ -2066,17 +2066,45 @@ export class Draw {
             // and the backtracked word can fit on a full line
             if (wordStartIdx > 0) {
               const backtracked = curRow.elementList.splice(wordStartIdx)
-              // Recalculate curRow width
+              // Recalculate curRow width, height, and ascent
               let newCurRowWidth = 0
+              let newCurRowHeight = 0
+              let newCurRowAscent = 0
               for (const el of curRow.elementList) {
                 newCurRowWidth += el.metrics.width
+                const elRowMargin = this.getElementRowMargin(el)
+                const elAscent = el.metrics.boundingBoxAscent + elRowMargin
+                const elHeight =
+                  elRowMargin +
+                  el.metrics.boundingBoxAscent +
+                  el.metrics.boundingBoxDescent +
+                  elRowMargin
+                if (elHeight > newCurRowHeight) {
+                  newCurRowHeight = elHeight
+                  newCurRowAscent = elAscent
+                }
               }
               curRow.width = newCurRowWidth
+              curRow.height = newCurRowHeight
+              curRow.ascent = newCurRowAscent
               // Prepend backtracked elements to new row
               row.elementList = [...backtracked, ...row.elementList]
               row.width = 0
+              row.height = 0
+              row.ascent = 0
               for (const el of row.elementList) {
                 row.width += el.metrics.width
+                const elRowMargin = this.getElementRowMargin(el)
+                const elAscent = el.metrics.boundingBoxAscent + elRowMargin
+                const elHeight =
+                  elRowMargin +
+                  el.metrics.boundingBoxAscent +
+                  el.metrics.boundingBoxDescent +
+                  elRowMargin
+                if (elHeight > row.height) {
+                  row.height = elHeight
+                  row.ascent = elAscent
+                }
               }
               row.startIndex = i - backtracked.length
             }
