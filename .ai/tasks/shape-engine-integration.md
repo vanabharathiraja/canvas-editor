@@ -888,12 +888,80 @@ Handle the tricky edge cases at script boundaries.
 
 ## Phase 9: RTL Particle Adaptation (NEW)
 **Goal**: Make non-text particles direction-aware for RTL languages
-**Status**: Not Started
+**Status**: Phase A (Popup RTL) — Complete. Bug fixes done.
 **Priority**: Step 5 (after BiDi foundations and mixed layout)
 
 ### Audit Summary
 Particle audit identified 4 particles needing RTL changes out of 18 total.
 5 particles already handled via `renderText()` gateway. 9 are direction-agnostic.
+Full control/popup audit found 7 HIGH priority items, 4 MEDIUM.
+
+### Phase A — Popup/Control RTL Positioning (HIGH) ✅ COMPLETE
+
+- [x] **9.A.1** - SelectControl popup RTL — Session 013
+  - Set `direction: rtl` on popup DOM when control is in RTL row
+  - Position popup aligned to right edge for RTL content
+  - File: `src/editor/core/draw/control/select/SelectControl.ts`
+
+- [x] **9.A.2** - DatePicker popup RTL — Session 013
+  - Set `direction: rtl` on date picker container when in RTL context
+  - Position popup aligned to right edge for RTL content
+  - File: `src/editor/core/draw/particle/date/DatePicker.ts`
+
+- [x] **9.A.3** - Calculator popup RTL — Session 013
+  - Position popup correctly for RTL number controls
+  - File: `src/editor/core/draw/control/number/Calculator.ts`
+
+- [x] **9.A.4** - Arabic control mock data — Session 013
+  - Added 4 Arabic control test scenarios (select, date, text, checkbox)
+  - File: `src/mock.ts`
+
+- [x] **9.A.5** - Control placeholder contextual shaping — Session 013
+  - Arabic placeholder text shows connected forms (not isolated)
+  - Root cause: `isTextType` in `precomputeContextualWidths()` excluded `CONTROL`
+  - Fix: Added PLACEHOLDER/VALUE to contextual shaping in TextParticle.ts
+
+- [x] **9.A.6** - Control bracket display verified — Session 013
+  - Visual reordering already places `{` and `}` at correct visual positions
+  - No character mirroring needed (mirroring was double-correcting)
+  - File: `src/editor/core/draw/Draw.ts`
+
+- [x] **9.A.7** - Cursor off-by-one at RTL text end — Session 013
+  - Cursor rendering: use `leftTop[0]` for RTL in BiDi mixed rows
+  - Hit-testing: skip position decrement for RTL left-half clicks
+  - Hit-testing: add right-half RTL handler (find visual-right neighbor)
+  - Files: `src/editor/core/cursor/Cursor.ts`, `src/editor/core/position/Position.ts`
+
+### Phase B — Table RTL Column Ordering (HIGH)
+
+- [ ] **9.B.1** - RTL column ordering in `computeRowColInfo()`
+  - Column 0 starts at right edge for RTL tables
+  - File: `src/editor/core/draw/particle/table/TableParticle.ts`
+
+- [ ] **9.B.2** - TableTool RTL positions
+  - Row/column tool DOM positioned correctly for RTL tables
+  - File: `src/editor/core/draw/particle/table/TableTool.ts`
+
+### Phase C — Rendering Pipeline Fixes (HIGH)
+
+- [ ] **9.C.1** - PageBreakParticle shaping gateway
+  - Route label text through `TextParticle.renderText()` instead of `ctx.fillText()`
+  - Affects Arabic UI localization
+  - File: `src/editor/core/draw/particle/PageBreakParticle.ts`
+
+- [ ] **9.C.2** - Control border RTL
+  - Border rect uses visual positions for RTL controls
+  - File: `src/editor/core/draw/control/richtext/Border.ts`
+
+### Phase D — Minor Fixes (MEDIUM)
+
+- [ ] **9.D.1** - Checkbox/Radio vertical alignment
+  - Alignment reference picks visual-next element in RTL rows
+  - Files: `CheckboxParticle.ts`, `RadioParticle.ts`
+
+- [ ] **9.D.2** - LabelParticle padding direction
+  - Use padding-start instead of hardcoded padding-left for RTL
+  - File: `src/editor/core/draw/particle/LabelParticle.ts`
 
 ### 9.1 — ListParticle RTL (High Priority)
 - [ ] **9.1.1** - RTL marker position

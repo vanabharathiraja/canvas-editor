@@ -525,12 +525,21 @@ export class SelectControl implements IControlInstance {
     // 定位
     const {
       coordinate: {
-        leftTop: [left, top]
+        leftTop: [left, top],
+        rightTop: [right]
       },
-      lineHeight
+      lineHeight,
+      isRTL
     } = position
     const preY = this.control.getPreY()
-    selectPopupContainer.style.left = `${left}px`
+    if (isRTL) {
+      selectPopupContainer.style.direction = 'rtl'
+      selectPopupContainer.style.right =
+        `${this.control.getContainer().clientWidth - right}px`
+      selectPopupContainer.style.left = 'auto'
+    } else {
+      selectPopupContainer.style.left = `${left}px`
+    }
     selectPopupContainer.style.top = `${top + preY + lineHeight}px`
     // 追加至container
     const container = this.control.getContainer()

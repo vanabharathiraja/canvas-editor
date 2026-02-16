@@ -3,6 +3,7 @@ import {
   PUNCTUATION_LIST,
   METRICS_BASIS_TEXT
 } from '../../../dataset/constant/Common'
+import { ControlComponent } from '../../../dataset/enum/Control'
 import { DeepRequired } from '../../../interface/Common'
 import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
@@ -194,13 +195,20 @@ export class TextParticle {
 
     for (let i = 0; i <= elementList.length; i++) {
       const el = elementList[i]
-      // Group plain TEXT and HYPERLINK elements with complex script content.
-      // HYPERLINK elements are flattened to individual characters and need
-      // contextual shaping for Arabic/complex scripts just like TEXT.
+      // Group plain TEXT, HYPERLINK, and control PLACEHOLDER/VALUE elements
+      // with complex script content. HYPERLINK elements are flattened to
+      // individual characters and need contextual shaping for Arabic/complex
+      // scripts just like TEXT. Control placeholders and values are also
+      // split into individual characters by addPlaceholder() and need
+      // contextual shaping to render connected Arabic forms.
       const isTextType = el && (
         !el.type ||
         el.type === ElementType.TEXT ||
-        el.type === ElementType.HYPERLINK
+        el.type === ElementType.HYPERLINK ||
+        (el.type === ElementType.CONTROL && (
+          el.controlComponent === ControlComponent.PLACEHOLDER ||
+          el.controlComponent === ControlComponent.VALUE
+        ))
       )
       const isComplex = isTextType
         && !el.width // skip elements with custom width

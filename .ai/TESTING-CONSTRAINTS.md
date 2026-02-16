@@ -1,7 +1,37 @@
 # Testing Constraints — Shape Engine Integration
 
 **Purpose**: Validation checklist to run before every commit on the `shape-engine` branch.
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-16
+
+---
+
+## BiDi/RTL Implementation Policy
+
+**Every feature, bug fix, or new component MUST evaluate and test all three text directions:**
+
+1. **LTR (Latin/English)** — Standard left-to-right text behavior
+2. **RTL (Arabic/Hebrew)** — Pure right-to-left text (right-aligned, mirrored UI)
+3. **BiDi Mixed** — Mixed LTR+RTL text on the same line (visual reordering)
+
+### Checklist for Every Change
+
+- [ ] Does the feature render correctly with English (LTR) text?
+- [ ] Does the feature render correctly with Arabic (RTL) text?
+- [ ] Does the feature render correctly with mixed English+Arabic (BiDi) text?
+- [ ] Are popup/dialog positions correct for RTL content?
+- [ ] Is `direction: rtl` set on DOM elements when displaying RTL content?
+- [ ] Does the feature use `TextParticle.renderText()` for any text rendering (not `ctx.fillText()`)?
+- [ ] Are position coordinates used as visual (not assumed LTR logical)?
+- [ ] Does selection/formatting apply to the correct elements in RTL rows?
+- [ ] Do keyboard interactions (arrow, delete, backspace) work correctly in RTL?
+
+### Mock Data Requirements
+
+When adding new features, include test data for:
+- Pure English text (LTR baseline)
+- Pure Arabic text (RTL baseline)
+- Mixed Arabic+English text (BiDi stress test)
+- Arabic text inside controls (checkbox, select, date, etc.)
 
 ---
 
@@ -228,3 +258,21 @@ These tests must pass before Phase 7 sub-phases can be considered complete:
 | P7-32 | Backspace at LTR→RTL boundary | Correct character deleted |
 | P7-33 | Double-click Arabic word | Full word selected (space-delimited) |
 | P7-34 | Double-click at direction boundary | Selects word in correct direction run |
+
+## 10. Controls & Popups — RTL Verification
+
+| # | Test | Steps | Expected |
+|---|------|-------|----------|
+| CP-1 | Select control popup (LTR) | Click select control in English text | Popup appears below control, left-aligned, LTR text |
+| CP-2 | Select control popup (RTL) | Click select control in Arabic text | Popup appears below control, right-aligned, RTL text direction |
+| CP-3 | Select control popup (BiDi) | Click select control in mixed text | Popup appears at correct position, correct text direction |
+| CP-4 | Date picker popup (LTR) | Click date control in English text | Calendar appears below, correct position |
+| CP-5 | Date picker popup (RTL) | Click date control in Arabic text | Calendar appears below, correct position, RTL layout |
+| CP-6 | Date picker popup (BiDi) | Click date control in mixed text | Calendar at correct position |
+| CP-7 | Calculator popup (LTR) | Click number control in English text | Calculator appears below, correct position |
+| CP-8 | Calculator popup (RTL) | Click number control in Arabic text | Calculator appears below, correct position |
+| CP-9 | Checkbox in RTL row | Insert checkbox in Arabic text | Checkbox renders at correct visual position |
+| CP-10 | Radio in RTL row | Insert radio in Arabic text | Radio renders at correct visual position |
+| CP-11 | Text control (RTL) | Text control with Arabic content | Control displays RTL text correctly |
+| CP-12 | Control border (RTL) | Text control with border in Arabic text | Border rect covers correct visual extent |
+| CP-13 | Select value display (RTL) | Select Arabic value from dropdown | Selected value displays correctly in editor |

@@ -266,10 +266,12 @@ export class DatePicker {
     const {
       position: {
         coordinate: {
-          leftTop: [left, top]
+          leftTop: [left, top],
+          rightTop: [right]
         },
         lineHeight,
-        pageNo
+        pageNo,
+        isRTL
       }
     } = this.renderOptions
     const height = this.draw.getHeight()
@@ -277,7 +279,14 @@ export class DatePicker {
     const currentPageNo = pageNo ?? this.draw.getPageNo()
     const preY = currentPageNo * (height + pageGap)
     // 位置
-    this.dom.container.style.left = `${left}px`
+    if (isRTL) {
+      this.dom.container.style.direction = 'rtl'
+      this.dom.container.style.right =
+        `${this.draw.getContainer().clientWidth - right}px`
+      this.dom.container.style.left = 'auto'
+    } else {
+      this.dom.container.style.left = `${left}px`
+    }
     this.dom.container.style.top = `${top + preY + lineHeight}px`
   }
 

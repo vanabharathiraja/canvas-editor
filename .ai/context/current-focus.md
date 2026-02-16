@@ -1,24 +1,15 @@
 # Current Focus
 
-**Last Updated**: 2026-02-17
-**Active Sprint**: Shape Engine Integration — RTL Selection Fix
+**Last Updated**: 2026-02-16
+**Active Sprint**: Shape Engine Integration — Phase A (Popup/Control RTL)
 
 ## Current Objective
 
-Step 5 (RTL Particle Adaptation) mostly complete (commit `a260acb`):
-- ListParticle: RTL marker format (.1), checkbox RTL positioning
-- LineBreakParticle: RTL arrow direction + mirrored position
-- Hyperlink: Contextual shaping for Arabic hyperlinks
-- Position: RTL list row offset handling
-- Mock data: 15 Arabic/BiDi test scenarios
+Implementing RTL support for editor controls and popups. Phase A focuses on
+popup positioning: SelectControl, DatePicker, and Calculator popups must
+position correctly and display RTL text for Arabic content.
 
-**CURRENT BUG**: RTL selection/formatting broken in pure Arabic text.
-Selecting leftmost (visual) text selects rightmost (logical) text.
-The mirror formula maps visual click → logical index correctly, BUT
-the resulting logical indices are used directly for `elementList.slice()`,
-which means the *visual* selection highlight (mirrored back) appears at
-the wrong position. Copy/cut/delete/formatting all affected.
-BiDi mixed rows work correctly because they use `bidiVisualX` positions.
+**Policy**: Every feature/fix MUST evaluate LTR, RTL, and BiDi mixed behavior.
 
 ### Root Cause Analysis (Session 012)
 
@@ -112,6 +103,19 @@ single click) but breaks for **range** operations (drag selection) because:
 - ~~Selection getIsPointInRange fails on RTL text~~ — **FIXED** (session 010)
 - ~~Mousemove drag-check fails on RTL text~~ — **FIXED** (session 010)
 - ~~BiDi mixed selection draws single rect for non-contiguous~~ — **FIXED** (session 010)
+- ~~Arabic placeholder text shows isolated forms~~ — **FIXED** (session 013)
+  - Root cause: `isTextType` in `precomputeContextualWidths()` excluded `ElementType.CONTROL`
+  - Fix: Added PLACEHOLDER and VALUE control components to contextual shaping
+- ~~Curly braces not mirrored in RTL controls~~ — **FIXED** (session 013)
+  - Root cause: Visual reordering already places PREFIX/POSTFIX at correct
+    visual positions. No character mirroring needed — braces looked wrong
+    initially because they were correct all along after visual reorder.
+- ~~Cursor off-by-one at end of RTL text~~ — **FIXED** (session 013)
+  - Root cause: (1) Cursor rendered at `rightTop[0]` for RTL elements in BiDi mixed
+    rows, but should be `leftTop[0]`; (2) Hit-testing left-half click decremented
+    position for RTL elements
+  - Fix: Use `leftTop[0]` for RTL cursor in BiDi mixed rows; skip decrement for
+    RTL left-half clicks; add right-half RTL handler
 - **RTL selection/formatting in pure Arabic text** — **OPEN** (session 011-012)
   - Selecting leftmost (visual) text selects rightmost (logical) text
   - Mirror formula correct for cursor, wrong for range selection

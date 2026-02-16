@@ -599,33 +599,60 @@ export class Position {
           const valueWidth = rightTop[0] - leftTop[0]
           if (x < leftTop[0] + valueWidth / 2) {
             if (positionList[j].isBidiMixed) {
-              // BiDi mixed row: find the position whose rightTop is
-              // nearest to x from the left. This correctly handles both
-              // LTR and RTL elements — logical neighbors may not be
-              // visual neighbors due to reordering.
-              const rowNo = positionList[j].rowNo
-              const hitPageNo = positionList[j].pageNo
-              let bestIdx = j - 1
-              let bestDist = Infinity
-              for (let k = 0; k < positionList.length; k++) {
-                const pk = positionList[k]
-                if (pk.pageNo !== hitPageNo || pk.rowNo !== rowNo) continue
-                const rt = pk.coordinate.rightTop[0]
-                if (rt <= x) {
-                  const dist = x - rt
-                  if (dist < bestDist) {
-                    bestDist = dist
-                    bestIdx = k
+              if (positionList[j].isRTL) {
+                // RTL element in BiDi row: clicking on the left half
+                // means cursor AFTER this element (direction-flipped).
+                // curPositionIndex already = j; leave unchanged.
+              } else {
+                // LTR element in BiDi row: find the position whose
+                // rightTop is nearest to x from the left. Logical
+                // neighbors may not be visual neighbors due to reorder.
+                const rowNo = positionList[j].rowNo
+                const hitPageNo = positionList[j].pageNo
+                let bestIdx = j - 1
+                let bestDist = Infinity
+                for (let k = 0; k < positionList.length; k++) {
+                  const pk = positionList[k]
+                  if (pk.pageNo !== hitPageNo || pk.rowNo !== rowNo) continue
+                  const rt = pk.coordinate.rightTop[0]
+                  if (rt <= x) {
+                    const dist = x - rt
+                    if (dist < bestDist) {
+                      bestDist = dist
+                      bestIdx = k
+                    }
                   }
                 }
+                curPositionIndex = bestIdx
               }
-              curPositionIndex = bestIdx
             } else {
               curPositionIndex = j - 1
             }
             if (isFirstLetter) {
               hitLineStartIndex = j
             }
+          } else if (positionList[j].isBidiMixed && positionList[j].isRTL) {
+            // RTL element in BiDi row: clicking on the right half
+            // means cursor BEFORE this element (direction-flipped).
+            // Find the visual neighbor to the right.
+            const rowNo = positionList[j].rowNo
+            const hitPageNo = positionList[j].pageNo
+            let bestIdx = j
+            let bestDist = Infinity
+            for (let k = 0; k < positionList.length; k++) {
+              const pk = positionList[k]
+              if (pk.pageNo !== hitPageNo || pk.rowNo !== rowNo) continue
+              if (k === j) continue
+              const lt = pk.coordinate.leftTop[0]
+              if (lt >= x) {
+                const dist = lt - x
+                if (dist < bestDist) {
+                  bestDist = dist
+                  bestIdx = k
+                }
+              }
+            }
+            curPositionIndex = bestIdx
           }
         }
         return {

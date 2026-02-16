@@ -141,12 +141,21 @@ export class Calculator {
     // 定位
     const {
       coordinate: {
-        leftTop: [left, top]
+        leftTop: [left, top],
+        rightTop: [right]
       },
-      lineHeight
+      lineHeight,
+      isRTL
     } = position
     const preY = this.control.getPreY()
-    calculatorPopupContainer.style.left = `${left}px`
+    if (isRTL) {
+      calculatorPopupContainer.style.direction = 'rtl'
+      calculatorPopupContainer.style.right =
+        `${this.control.getContainer().clientWidth - right}px`
+      calculatorPopupContainer.style.left = 'auto'
+    } else {
+      calculatorPopupContainer.style.left = `${left}px`
+    }
     calculatorPopupContainer.style.top = `${top + preY + lineHeight}px`
 
     // 追加至container

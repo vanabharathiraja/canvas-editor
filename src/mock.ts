@@ -794,6 +794,101 @@ for (const word of shortRTL) {
 
 // ─── End Arabic / BiDi extended test scenarios ───────────────────────
 
+// ─── Arabic Controls Test Scenarios ──────────────────────────────────
+
+elementList.push({ value: '\n' })
+
+// 16. Arabic select control (tests RTL popup positioning)
+const selectLabel = 'الحالة الصحية: '
+for (const ch of selectLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-select-1',
+    type: ControlType.SELECT,
+    value: null,
+    code: null,
+    placeholder: 'اختر الحالة',
+    prefix: '{',
+    postfix: '}',
+    valueSets: [
+      { value: 'مستقر', code: 'stable' },
+      { value: 'حرج', code: 'critical' },
+      { value: 'تحت المراقبة', code: 'observation' },
+      { value: 'متعافي', code: 'recovered' }
+    ]
+  }
+})
+
+// 17. Arabic date control (tests RTL date picker positioning)
+elementList.push({ value: '\n' })
+const dateLabel = 'تاريخ الدخول: '
+for (const ch of dateLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-date-1',
+    type: ControlType.DATE,
+    value: null,
+    placeholder: 'تاريخ الدخول',
+    dateFormat: 'yyyy-MM-dd',
+    prefix: '{',
+    postfix: '}'
+  }
+})
+
+// 18. Arabic text control (tests RTL text input)
+elementList.push({ value: '\n' })
+const textLabel = 'اسم الطبيب: '
+for (const ch of textLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-text-1',
+    type: ControlType.TEXT,
+    value: null,
+    placeholder: 'اسم الطبيب المعالج',
+    prefix: '{',
+    postfix: '}'
+  }
+})
+
+// 19. Arabic checkbox control (tests RTL checkbox positioning)
+elementList.push({ value: '\n' })
+const checkboxLabel = 'الأعراض: '
+for (const ch of checkboxLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-checkbox-1',
+    type: ControlType.CHECKBOX,
+    value: null,
+    code: null,
+    prefix: '',
+    postfix: '',
+    valueSets: [
+      { value: 'حمى', code: 'fever' },
+      { value: 'سعال', code: 'cough' },
+      { value: 'صداع', code: 'headache' },
+      { value: 'إرهاق', code: 'fatigue' }
+    ]
+  }
+})
+
+// ─── End Arabic Controls Test Scenarios ──────────────────────────────
+
 // ─── Bilingual Contract Table (English / Arabic) ─────────────────────
 
 elementList.push({ value: '\n' }, { value: '\n' })

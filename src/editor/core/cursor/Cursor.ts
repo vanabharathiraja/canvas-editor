@@ -157,6 +157,17 @@ export class Cursor {
     const cursorTop =
       leftTop[1] + ascent + descent - (cursorHeight - increaseHeight) + preY
     let cursorLeft = hitLineStartIndex ? leftTop[0] : rightTop[0]
+    // BiDi mixed RTL cursor: for RTL elements in visual-order rows,
+    // cursor "after" an element is at the LEFT edge (leftTop), not
+    // rightTop — because RTL reads right-to-left so the insertion
+    // point after a character visually appears to its left.
+    if (
+      !hitLineStartIndex &&
+      cursorPosition.isBidiMixed &&
+      cursorPosition.isRTL
+    ) {
+      cursorLeft = leftTop[0]
+    }
     // RTL光标位置镜像：位置坐标按逻辑顺序排列（左→右），
     // 但RTL文本视觉顺序相反，需要在行范围内镜像光标X坐标。
     // Skip mirroring for BiDi mixed rows — their position coordinates
