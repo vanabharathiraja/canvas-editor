@@ -211,6 +211,7 @@ export interface IElementPosition {
   isFirstLetter: boolean
   isLastLetter: boolean
   isRTL?: boolean
+  isBidiMixed?: boolean
   coordinate: {
     leftTop: number[]
     leftBottom: number[]

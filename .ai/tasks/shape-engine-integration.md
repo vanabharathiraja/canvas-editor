@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2026-02-13
-**Current Phase**: Step 3 — BiDi Foundations (Phase 5.5)
+**Last Updated**: 2026-02-16
+**Current Phase**: Step 4 — Mixed-Direction Interaction (Phase 7)
 
 ## Legend
 - `[ ]` Not Started
@@ -14,12 +14,11 @@
 ## Overview
 
 **Total Tasks**: ~110+ tasks across 13 phases  
-**Latest Update** (2026-02-13):
-- Arabic whitespace accumulation bug FIXED (commit `9360cfba`)
-- Comprehensive RTL particle audit completed
-- Phase 9 (RTL Particle Adaptation) added for list, linebreak, table, pagebreak
-- Steps 3-5 roadmap clarified: BiDi → Mixed Layout → RTL Particles
-- Overall progress: ~50% complete
+**Latest Update** (2026-02-16):
+- Arabic line breaking fixed: word-backtracking + unterminated word handling
+- BiDi cursor/hit-testing/selection fixed: isBidiMixed guard skips mirror formula
+- RTL detection added for wrap-created rows at end of content
+- Overall progress: ~55% complete
 
 **Key Features Now Covered**:
 ✅ Auto-direction detection (Google Docs-like behavior)  
@@ -444,25 +443,26 @@ via `precomputeContextualWidths()`. Table before Arabic text → table's recursi
 **Goal**: Character-level layout for mixed-direction text
 
 ### Tasks
-- [ ] **5.1** - Analyze row/line breaking logic
-  - Document current word-based breaking
-  - Identify where character metrics are needed
-  - Plan transition to character-aware breaking
+- [x] **5.1** - Analyze row/line breaking logic
+  - Documented current word-based breaking (WORD_LIKE_REG + measureWord)
+  - Identified Arabic line break bug: measureWord returns null endElement
+  - Fixed word-wrap backtracking for mid-word overflow
 
 - [ ] **5.2** - Implement character position tracking
   - Track logical position (in text)
   - Track visual position (on canvas)
   - Map between logical and visual
 
-- [ ] **5.3** - Update line breaking
-  - Use character metrics from shaping
-  - Handle cluster boundaries (don't break ligatures)
-  - Respect BiDi run boundaries
+- [x] **5.3** - Update line breaking
+  - Use character metrics from shaping (contextual widths via precompute)
+  - Handle cluster boundaries (don't break ligatures) — LETTER_CLASS.ARABIC
+  - Word-backtracking moves partial words to next row on overflow
+  - RTL detection on wrap-created rows at end of content
 
-- [ ] **5.4** - Handle mixed direction runs
-  - LTR run followed by RTL run
-  - Proper visual ordering
-  - Correct cursor positions at boundaries
+- [x] **5.4** - Handle mixed direction runs
+  - LTR run followed by RTL run — BiDi visual ordering via bidi-js
+  - Proper visual ordering — bidiVisualX in Position.ts
+  - Correct cursor positions at boundaries — isBidiMixed flag on positions
 
 - [ ] **5.5** - Write layout tests
   - Test simple LTR line breaking
@@ -475,20 +475,21 @@ via `precomputeContextualWidths()`. Table before Arabic text → table's recursi
 **Goal**: Full bidirectional paragraph handling
 
 ### Tasks
-- [ ] **5.5.1** - Implement Unicode BiDi algorithm
-  - Full UAX#9 implementation or library integration
-  - Resolve embedding levels
-  - Reorder runs for display
+- [x] **5.5.1** - Implement Unicode BiDi algorithm
+  - Integrated `bidi-js` library (UAX#9 conformant, Unicode 13.0.0)
+  - Created `src/editor/utils/bidi.ts` with full analysis pipeline
+  - Resolve embedding levels via `computeEmbeddingLevels()`
+  - Reorder runs for display via `computeVisualOrder()`
 
-- [ ] **5.5.2** - Update paragraph layout
-  - Apply BiDi algorithm to paragraphs
-  - Handle nested embeddings
-  - Support explicit directional controls (LRM, RLM, etc.)
+- [x] **5.5.2** - Update paragraph layout
+  - Apply BiDi algorithm to paragraphs in `computeRowList()`
+  - Handle nested embeddings — bidi-js handles UAX#9 nesting
+  - `bidiVisualX` pre-computed in `computePageRowPosition()`
 
-- [ ] **5.5.3** - Handle neutral characters
-  - Spaces between LTR and RTL
-  - Punctuation resolution
-  - Number handling in RTL context
+- [x] **5.5.3** - Handle neutral characters
+  - Spaces between LTR and RTL — resolved by bidi-js
+  - Punctuation resolution — resolved by bidi-js
+  - Number handling in RTL context — resolved by bidi-js
 
 - [ ] **5.5.4** - Dynamic direction handling
   - Auto-detect direction as user types

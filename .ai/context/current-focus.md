@@ -1,12 +1,12 @@
 # Current Focus
 
-**Last Updated**: 2026-02-13
-**Active Sprint**: Shape Engine Integration — Step 3 ✅ → Step 4 (Mixed-Direction Interaction)
+**Last Updated**: 2026-02-16
+**Active Sprint**: Shape Engine Integration — Step 4 (Mixed-Direction Interaction)
 
 ## Current Objective
 
-Step 3 (BiDi Foundations) is substantially complete — rendering works correctly
-for mixed LTR/RTL text. Next: cursor/hit-testing/selection for mixed BiDi rows.
+Step 4A (Arabic line breaking) and Step 4B (BiDi cursor) fixed in session 010.
+Next: remaining Step 4 work (arrow keys, edge cases) and Step 5 (RTL particles).
 
 ## Roadmap: Steps 3-5
 
@@ -20,10 +20,12 @@ for mixed LTR/RTL text. Next: cursor/hit-testing/selection for mixed BiDi rows.
 
 ### Step 4: Mixed-Direction Layout & Interaction (Phase 7 remaining) — CURRENT
 - ✅ Render mixed LTR/RTL text on the same line
-- ⬜ Cursor placement at direction boundaries
-- ⬜ Hit testing across directional runs
-- ⬜ Selection highlighting for mixed-direction text
+- ✅ Arabic line breaking fix — word backtracking + RTL detection (session 010)
+- ✅ BiDi cursor placement — skip mirror for `isBidiMixed` rows (session 010)
+- ✅ BiDi hit testing — skip mirror for `isBidiMixed` rows (session 010)
+- ✅ BiDi selection — skip mirror for `isBidiMixed` rows (session 010)
 - ⬜ Arrow key navigation across direction boundaries
+- ⬜ Edge cases: ligature cursor, run boundaries
 
 ### Step 5: RTL Particle Adaptation (Phase 9 — NEW)
 - **ListParticle**: Move markers to right side; reverse indent direction;
@@ -36,7 +38,8 @@ for mixed LTR/RTL text. Next: cursor/hit-testing/selection for mixed BiDi rows.
 
 - ~~Arabic typing whitespace accumulation~~ — **FIXED** (commit `9360cfba`)
 - ~~BiDi mixed text overflow~~ — **FIXED** (commit `78d121b1`)
-- **Mixed BiDi cursor handling** — KNOWN ISSUE, deferred to Step 4
+- ~~Arabic line breaking mid-word~~ — **FIXED** (session 010)
+- ~~BiDi cursor jumping edge/wrong position~~ — **FIXED** (session 010)
 
 ## Critical Architecture Constraints
 

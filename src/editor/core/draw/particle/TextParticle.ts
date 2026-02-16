@@ -354,6 +354,12 @@ export class TextParticle {
       width += this.measureText(ctx, element).width
       i++
     }
+    // When the word extends to the end of the element list (no terminator
+    // found, e.g. user is still typing), use a sentinel so the caller
+    // still treats it as a complete word for line-breaking purposes.
+    if (!endElement && i > curIndex && i === elementList.length) {
+      endElement = elementList[i - 1]
+    }
     return {
       width,
       endElement

@@ -158,8 +158,10 @@ export class Cursor {
       leftTop[1] + ascent + descent - (cursorHeight - increaseHeight) + preY
     let cursorLeft = hitLineStartIndex ? leftTop[0] : rightTop[0]
     // RTL光标位置镜像：位置坐标按逻辑顺序排列（左→右），
-    // 但RTL文本视觉顺序相反，需要在行范围内镜像光标X坐标
-    if (cursorPosition.isRTL) {
+    // 但RTL文本视觉顺序相反，需要在行范围内镜像光标X坐标。
+    // Skip mirroring for BiDi mixed rows — their position coordinates
+    // are already computed in visual order via bidiVisualX.
+    if (cursorPosition.isRTL && !cursorPosition.isBidiMixed) {
       const positionList = this.position.getPositionList()
       const rowNo = cursorPosition.rowNo
       const curPageNo2 = cursorPosition.pageNo

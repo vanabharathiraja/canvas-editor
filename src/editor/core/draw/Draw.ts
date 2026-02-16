@@ -2031,6 +2031,57 @@ export class Draw {
           rowFlex: elementList[i]?.rowFlex || elementList[i + 1]?.rowFlex,
           isPageBreak: element.type === ElementType.PAGE_BREAK
         }
+        // Word-wrap backtracking: when line overflows mid-word (both the
+        // current element and previous are word-like letters), move the
+        // partial word from the end of curRow to the new row so the whole
+        // word wraps together. This prevents Arabic words from splitting
+        // across two lines character by character.
+        if (
+          isWidthNotEnough &&
+          !isForceBreak &&
+          this.options.wordBreak === WordBreak.BREAK_WORD &&
+          curRow.elementList.length > 1
+        ) {
+          const LETTER_REG = this.LETTER_REG
+          const curEl = curRow.elementList[curRow.elementList.length - 1]
+          if (
+            (!curEl.type || curEl.type === ElementType.TEXT) &&
+            LETTER_REG.test(curEl.value) &&
+            (!element.type || element.type === ElementType.TEXT) &&
+            LETTER_REG.test(element.value)
+          ) {
+            // Find word start in curRow by scanning backward
+            let wordStartIdx = curRow.elementList.length - 1
+            while (wordStartIdx > 0) {
+              const el = curRow.elementList[wordStartIdx - 1]
+              if (
+                (el.type && el.type !== ElementType.TEXT) ||
+                !LETTER_REG.test(el.value)
+              ) {
+                break
+              }
+              wordStartIdx--
+            }
+            // Only backtrack if it leaves at least one element on curRow
+            // and the backtracked word can fit on a full line
+            if (wordStartIdx > 0) {
+              const backtracked = curRow.elementList.splice(wordStartIdx)
+              // Recalculate curRow width
+              let newCurRowWidth = 0
+              for (const el of curRow.elementList) {
+                newCurRowWidth += el.metrics.width
+              }
+              curRow.width = newCurRowWidth
+              // Prepend backtracked elements to new row
+              row.elementList = [...backtracked, ...row.elementList]
+              row.width = 0
+              for (const el of row.elementList) {
+                row.width += el.metrics.width
+              }
+              row.startIndex = i - backtracked.length
+            }
+          }
+        }
         // 控件缩进
         if (
           rowElement.controlComponent !== ControlComponent.PREFIX &&
@@ -2076,6 +2127,23 @@ export class Draw {
             ? element.area.top * scale
             : 0
         rowList.push(row)
+        // RTL detection for the new row that was just created by a wrap.
+        // When this is the last element, the new row won't get another
+        // iteration, so detect RTL here to avoid the row staying left-aligned.
+        if (
+          i === elementList.length - 1 &&
+          !row.rowFlex &&
+          this.options.shaping?.enabled &&
+          row.elementList.length > 0
+        ) {
+          const newRowText = row.elementList
+            .map(el => el.value)
+            .join('')
+          if (detectDirection(newRowText) === 'rtl') {
+            row.rowFlex = RowFlex.RIGHT
+            row.isRTL = true
+          }
+        }
       } else {
         curRow.width += metrics.width
         // 减小块元素前第一行空行行高
@@ -2673,8 +2741,9 @@ export class Draw {
         if (rangeRecord.width && rangeRecord.height) {
           let rangeX = rangeRecord.x
           const { y: rangeY, width: rangeW, height: rangeH } = rangeRecord
-          // RTL行：选区矩形需要在行范围内镜像
-          if (curRow.isRTL) {
+          // RTL行：选区矩形需要在行範围内镜像
+          // Skip for BiDi mixed rows — coordinates are already visual.
+          if (curRow.isRTL && !curRow.isBidiMixed) {
             const firstPos = positionList[curRow.startIndex]
             const lastPos =
               positionList[

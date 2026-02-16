@@ -210,6 +210,7 @@ export class Position {
           isRTL: curRow.bidiLevels
             ? (curRow.bidiLevels[j] & 1) === 1
             : curRow.isRTL,
+          isBidiMixed: curRow.isBidiMixed,
           coordinate: {
             leftTop: [posX, y],
             leftBottom: [posX, y + curRow.height],
@@ -541,8 +542,9 @@ export class Position {
           }
         }
         let hitLineStartIndex: number | undefined
-        // RTL行：镜像x坐标以找到视觉位置对应的正确逻辑元素
-        if (positionList[j].isRTL) {
+        // RTL行：镜像x坐标以找到视觉位置对应的正确逻辑元素。
+        // Skip mirroring for BiDi mixed rows — coordinates are already visual.
+        if (positionList[j].isRTL && !positionList[j].isBidiMixed) {
           const rowNo = positionList[j].rowNo
           const rowPageNo = positionList[j].pageNo
           let rowStart = leftTop[0]
@@ -654,7 +656,8 @@ export class Position {
             : headPosition.coordinate.leftTop[0]
         // RTL行：视觉方向与逻辑方向相反
         // 视觉右侧=逻辑起始，视觉左侧=逻辑结尾
-        if (lastLetterList[j].isRTL) {
+        // Skip for BiDi mixed rows — coordinates are already visual.
+        if (lastLetterList[j].isRTL && !lastLetterList[j].isBidiMixed) {
           const rowEnd = lastRightTop[0]
           if (x > rowEnd) {
             // 点击在内容右侧=视觉起始=逻辑起始
