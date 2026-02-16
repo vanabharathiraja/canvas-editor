@@ -1,20 +1,21 @@
 # Current Focus
 
 **Last Updated**: 2026-02-16
-**Active Sprint**: Shape Engine Integration — Step 4 (Mixed-Direction Interaction)
+**Active Sprint**: Shape Engine Integration — Step 5 (RTL Particle Adaptation)
 
 ## Current Objective
 
-Step 4 substantially complete. All BiDi interaction bugs fixed:
+Step 4 fully complete including selection fixes:
 - 4A: Arabic line breaking (word backtracking, RTL detection)
 - 4B: BiDi cursor/hit-testing/selection (isBidiMixed guards)
 - 4C: Word-backtrack height/ascent recalculation
 - 4D: BiDi midpoint hit testing (visual boundary matching)
+- 4E: Selection RTL fixes (getIsPointInRange mirror, drag-check mirror,
+  BiDi mixed per-visual-run selection rects)
 - Table cells: Verified — same recursive pipeline, no bypasses
-- Architecture invariants: All 5 verified ✓
-- Testing constraints: Full audit complete
+- Commands audit: Copy/Cut/Paste/Undo/Redo/Delete all work (logical indices)
 
-Next: Step 5 (RTL Particle Adaptation) and remaining Phase 7 polish.
+Next: Step 5 (RTL Particle Adaptation).
 
 ## Roadmap: Steps 3-5
 
@@ -34,7 +35,10 @@ Next: Step 5 (RTL Particle Adaptation) and remaining Phase 7 polish.
 - ✅ BiDi selection — skip mirror for `isBidiMixed` rows (session 010)
 - ✅ Word-backtrack height/ascent recalculation (session 010)
 - ✅ BiDi midpoint hit testing — visual boundary matching (session 010)
+- ✅ Selection RTL mirror for getIsPointInRange + drag-check (session 010)
+- ✅ BiDi mixed per-visual-run selection rects (session 010)
 - ✅ Table cells — verified recursive pipeline handles BiDi correctly
+- ✅ Commands audit — Copy/Cut/Paste/Undo/Redo/Delete all BiDi-transparent
 - ✅ Arrow key navigation — logical movement works, visual cursor correct
 - ✅ Ctrl+Arrow word jump — Arabic in LETTER_REG when shaping enabled
 - ✅ Up/Down — uses visual x coordinates, works with BiDi positions
@@ -57,6 +61,9 @@ Next: Step 5 (RTL Particle Adaptation) and remaining Phase 7 polish.
 - ~~BiDi cursor jumping edge/wrong position~~ — **FIXED** (session 010)
 - ~~Word-backtrack height/ascent stale~~ — **FIXED** (session 010)
 - ~~BiDi midpoint cursor placement incorrect~~ — **FIXED** (session 010)
+- ~~Selection getIsPointInRange fails on RTL text~~ — **FIXED** (session 010)
+- ~~Mousemove drag-check fails on RTL text~~ — **FIXED** (session 010)
+- ~~BiDi mixed selection draws single rect for non-contiguous~~ — **FIXED** (session 010)
 
 ## Critical Architecture Constraints
 

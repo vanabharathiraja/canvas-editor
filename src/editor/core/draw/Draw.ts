@@ -2426,6 +2426,9 @@ export class Draw {
         width: 0,
         height: 0
       }
+      // BiDi mixed rows: collect per-element selection rects
+      // (logically contiguous selections may be visually non-contiguous)
+      const bidiRangeRects: IElementFillRect[] = []
       let tableRangeElement: IElement | null = null
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
@@ -2698,28 +2701,54 @@ export class Draw {
             (!positionContext.isTable && !element.tdId) ||
             positionContext.tdId === element.tdId
           ) {
-            // 从行尾开始-绘制最小宽度
-            if (startIndex === index) {
-              const nextElement = elementList[startIndex + 1]
-              if (nextElement && nextElement.value === ZERO) {
-                rangeRecord.x = x + metrics.width
-                rangeRecord.y = y
-                rangeRecord.height = curRow.height
-                rangeRecord.width += this.options.rangeMinWidth
+            // BiDi mixed rows: collect individual element rects
+            if (curRow.isBidiMixed) {
+              if (startIndex === index) {
+                const nextElement = elementList[startIndex + 1]
+                if (nextElement && nextElement.value === ZERO) {
+                  bidiRangeRects.push({
+                    x: x + metrics.width,
+                    y,
+                    width: this.options.rangeMinWidth,
+                    height: curRow.height
+                  })
+                }
+              } else {
+                let rangeWidth = metrics.width
+                if (rangeWidth === 0 && curRow.elementList.length === 1) {
+                  rangeWidth = this.options.rangeMinWidth
+                }
+                bidiRangeRects.push({
+                  x,
+                  y,
+                  width: rangeWidth,
+                  height: curRow.height
+                })
               }
             } else {
-              let rangeWidth = metrics.width
-              // 最小选区宽度
-              if (rangeWidth === 0 && curRow.elementList.length === 1) {
-                rangeWidth = this.options.rangeMinWidth
+              // 从行尾开始-绘制最小宽度
+              if (startIndex === index) {
+                const nextElement = elementList[startIndex + 1]
+                if (nextElement && nextElement.value === ZERO) {
+                  rangeRecord.x = x + metrics.width
+                  rangeRecord.y = y
+                  rangeRecord.height = curRow.height
+                  rangeRecord.width += this.options.rangeMinWidth
+                }
+              } else {
+                let rangeWidth = metrics.width
+                // 最小选区宽度
+                if (rangeWidth === 0 && curRow.elementList.length === 1) {
+                  rangeWidth = this.options.rangeMinWidth
+                }
+                // 记录第一次位置、行高
+                if (!rangeRecord.width) {
+                  rangeRecord.x = x
+                  rangeRecord.y = y
+                  rangeRecord.height = curRow.height
+                }
+                rangeRecord.width += rangeWidth
               }
-              // 记录第一次位置、行高
-              if (!rangeRecord.width) {
-                rangeRecord.x = x
-                rangeRecord.y = y
-                rangeRecord.height = curRow.height
-              }
-              rangeRecord.width += rangeWidth
             }
           }
         }
@@ -2766,6 +2795,28 @@ export class Draw {
       this.group.render(ctx)
       // 绘制选区
       if (!isPrintMode && !isGraffitiMode) {
+        // BiDi mixed rows: merge visually adjacent rects and render
+        if (bidiRangeRects.length) {
+          // Sort by visual x position
+          bidiRangeRects.sort((a, b) => a.x - b.x)
+          // Merge visually adjacent rects (tolerance of 1px for rounding)
+          const merged: IElementFillRect[] = [{ ...bidiRangeRects[0] }]
+          for (let r = 1; r < bidiRangeRects.length; r++) {
+            const prev = merged[merged.length - 1]
+            const cur = bidiRangeRects[r]
+            const prevRight = prev.x + prev.width
+            if (Math.abs(cur.x - prevRight) <= 1) {
+              // Adjacent: extend the previous rect
+              prev.width = cur.x + cur.width - prev.x
+            } else {
+              // Non-adjacent: start a new rect
+              merged.push({ ...cur })
+            }
+          }
+          for (const rect of merged) {
+            this.range.render(ctx, rect.x, rect.y, rect.width, rect.height)
+          }
+        }
         if (rangeRecord.width && rangeRecord.height) {
           let rangeX = rangeRecord.x
           const { y: rangeY, width: rangeW, height: rangeH } = rangeRecord

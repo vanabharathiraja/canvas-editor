@@ -334,17 +334,43 @@ export class RangeManager {
   public getIsPointInRange(x: number, y: number): boolean {
     const { startIndex, endIndex } = this.range
     const positionList = this.position.getPositionList()
+    // Cache row mirror bounds for pure RTL rows
+    const rowMirrorCache = new Map<number, { start: number; end: number }>()
     for (let p = startIndex + 1; p <= endIndex; p++) {
       const position = positionList[p]
       if (!position) break
       const {
-        coordinate: { leftTop, rightBottom }
-      } = positionList[p]
+        coordinate: { leftTop, rightTop, leftBottom }
+      } = position
+      let visualLeft = leftTop[0]
+      let visualRight = rightTop[0]
+      // Pure RTL: mirror logical coords to visual coords
+      if (position.isRTL && !position.isBidiMixed) {
+        const rowNo = position.rowNo
+        if (!rowMirrorCache.has(rowNo)) {
+          let rStart = leftTop[0]
+          let rEnd = rightTop[0]
+          for (let k = 0; k < positionList.length; k++) {
+            const pk = positionList[k]
+            if (pk.rowNo !== rowNo || pk.pageNo !== position.pageNo) continue
+            if (pk.isFirstLetter) rStart = pk.coordinate.leftTop[0]
+            if (pk.isLastLetter) {
+              rEnd = pk.coordinate.rightTop[0]
+              break
+            }
+          }
+          rowMirrorCache.set(rowNo, { start: rStart, end: rEnd })
+        }
+        const mirror = rowMirrorCache.get(rowNo)!
+        // Mirror: visualX = rowStart + rowEnd - logicalX
+        visualRight = mirror.start + mirror.end - leftTop[0]
+        visualLeft = mirror.start + mirror.end - rightTop[0]
+      }
       if (
-        x >= leftTop[0] &&
-        x <= rightBottom[0] &&
+        x >= visualLeft &&
+        x <= visualRight &&
         y >= leftTop[1] &&
-        y <= rightBottom[1]
+        y <= leftBottom[1]
       ) {
         return true
       }
