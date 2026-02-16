@@ -113,15 +113,22 @@ export class TableTool {
     const colIndex = td.colIndex
     const tableHeight = element.height! * scale
     const tableWidth = element.width! * scale
+    const isRTL = this.draw.getTableParticle().isTableRTL(element)
     // 表格选择工具
     const tableSelectBtn = document.createElement('div')
     tableSelectBtn.classList.add(`${EDITOR_PREFIX}-table-tool__select`)
     tableSelectBtn.style.height = `${tableHeight * scale}`
-    tableSelectBtn.style.left = `${tableX}px`
+    tableSelectBtn.style.left = isRTL
+      ? `${tableX + tableWidth}px`
+      : `${tableX}px`
     tableSelectBtn.style.top = `${tableY}px`
-    tableSelectBtn.style.transform = `translate(-${
-      this.TABLE_SELECT_OFFSET * scale
-    }px, ${-this.TABLE_SELECT_OFFSET * scale}px)`
+    tableSelectBtn.style.transform = isRTL
+      ? `translate(${this.TABLE_SELECT_OFFSET * scale}px, ${
+          -this.TABLE_SELECT_OFFSET * scale
+        }px)`
+      : `translate(-${this.TABLE_SELECT_OFFSET * scale}px, ${
+          -this.TABLE_SELECT_OFFSET * scale
+        }px)`
     // 快捷全选
     tableSelectBtn.onclick = () => {
       this.draw.getTableOperate().tableSelectAll()
@@ -132,9 +139,9 @@ export class TableTool {
     const rowHeightList = trList!.map(tr => tr.height)
     const rowContainer = document.createElement('div')
     rowContainer.classList.add(`${EDITOR_PREFIX}-table-tool__row`)
-    rowContainer.style.transform = `translateX(-${
-      this.ROW_COL_OFFSET * scale
-    }px)`
+    rowContainer.style.transform = isRTL
+      ? `translateX(${this.ROW_COL_OFFSET * scale}px)`
+      : `translateX(-${this.ROW_COL_OFFSET * scale}px)`
     for (let r = 0; r < rowHeightList.length; r++) {
       const rowHeight = rowHeightList[r] * scale
       const rowItem = document.createElement('div')
@@ -187,7 +194,9 @@ export class TableTool {
       rowItem.style.height = `${rowHeight}px`
       rowContainer.append(rowItem)
     }
-    rowContainer.style.left = `${tableX}px`
+    rowContainer.style.left = isRTL
+      ? `${tableX + tableWidth}px`
+      : `${tableX}px`
     rowContainer.style.top = `${tableY}px`
     this.container.append(rowContainer)
     this.toolRowContainer = rowContainer
@@ -195,11 +204,17 @@ export class TableTool {
     const rowAddBtn = document.createElement('div')
     rowAddBtn.classList.add(`${EDITOR_PREFIX}-table-tool__quick__add`)
     rowAddBtn.style.height = `${tableHeight * scale}`
-    rowAddBtn.style.left = `${tableX}px`
+    rowAddBtn.style.left = isRTL
+      ? `${tableX + tableWidth}px`
+      : `${tableX}px`
     rowAddBtn.style.top = `${tableY + tableHeight}px`
-    rowAddBtn.style.transform = `translate(-${
-      this.ROW_COL_QUICK_POSITION * scale
-    }px, ${this.ROW_COL_QUICK_OFFSET * scale}px)`
+    rowAddBtn.style.transform = isRTL
+      ? `translate(${this.ROW_COL_QUICK_POSITION * scale}px, ${
+          this.ROW_COL_QUICK_OFFSET * scale
+        }px)`
+      : `translate(-${this.ROW_COL_QUICK_POSITION * scale}px, ${
+          this.ROW_COL_QUICK_OFFSET * scale
+        }px)`
     // 快捷添加行
     rowAddBtn.onclick = () => {
       this.position.setPositionContext({
@@ -280,21 +295,31 @@ export class TableTool {
     const colAddBtn = document.createElement('div')
     colAddBtn.classList.add(`${EDITOR_PREFIX}-table-tool__quick__add`)
     colAddBtn.style.height = `${tableHeight * scale}`
-    colAddBtn.style.left = `${tableX + tableWidth}px`
+    colAddBtn.style.left = isRTL
+      ? `${tableX}px`
+      : `${tableX + tableWidth}px`
     colAddBtn.style.top = `${tableY}px`
-    colAddBtn.style.transform = `translate(${
-      this.ROW_COL_QUICK_OFFSET * scale
-    }px, -${this.ROW_COL_QUICK_POSITION * scale}px)`
+    colAddBtn.style.transform = isRTL
+      ? `translate(-${this.ROW_COL_QUICK_OFFSET * scale}px, -${
+          this.ROW_COL_QUICK_POSITION * scale
+        }px)`
+      : `translate(${this.ROW_COL_QUICK_OFFSET * scale}px, -${
+          this.ROW_COL_QUICK_POSITION * scale
+        }px)`
     // 快捷添加列
     colAddBtn.onclick = () => {
       this.position.setPositionContext({
         index,
         isTable: true,
         trIndex: 0,
-        tdIndex: trList![0].tdList.length - 1 || 0,
+        tdIndex: isRTL ? 0 : trList![0].tdList.length - 1 || 0,
         tableId: element.id
       })
-      this.draw.getTableOperate().insertTableRightCol()
+      if (isRTL) {
+        this.draw.getTableOperate().insertTableLeftCol()
+      } else {
+        this.draw.getTableOperate().insertTableRightCol()
+      }
     }
     this.container.append(colAddBtn)
     this.toolColAddBtn = colAddBtn
@@ -454,6 +479,10 @@ export class TableTool {
         } else {
           const { colgroup } = element
           if (colgroup && dx) {
+            // RTL table: negate dx so dragging visually behaves correctly
+            // (the column border positions are mirrored)
+            const isRTLTable = this.draw.getTableParticle().isTableRTL(element)
+            if (isRTLTable) dx = -dx
             // 第一列特殊处理：更改表格宽度并移动位置
             if (overflow && isLeftStartBorder) {
               // 列减少宽度不能小于最小宽度

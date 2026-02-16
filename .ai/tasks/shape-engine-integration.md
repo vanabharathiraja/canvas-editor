@@ -921,9 +921,11 @@ Full control/popup audit found 7 HIGH priority items, 4 MEDIUM.
   - Root cause: `isTextType` in `precomputeContextualWidths()` excluded `CONTROL`
   - Fix: Added PLACEHOLDER/VALUE to contextual shaping in TextParticle.ts
 
-- [x] **9.A.6** - Control bracket display verified — Session 013
-  - Visual reordering already places `{` and `}` at correct visual positions
-  - No character mirroring needed (mirroring was double-correcting)
+- [x] **9.A.6** - BiDi bracket mirroring for all paired characters — Session 013
+  - UAX #9: visual reorder reverses positions; mirroring restores correct form
+  - Applied to ALL elements with odd BiDi level, not just PREFIX/POSTFIX
+  - Covers `{} () [] 〈〉 《》 ‹› «»`
+  - Temporary value swap during rendering, restored after draw
   - File: `src/editor/core/draw/Draw.ts`
 
 - [x] **9.A.7** - Cursor off-by-one at RTL text end — Session 013
@@ -932,15 +934,28 @@ Full control/popup audit found 7 HIGH priority items, 4 MEDIUM.
   - Hit-testing: add right-half RTL handler (find visual-right neighbor)
   - Files: `src/editor/core/cursor/Cursor.ts`, `src/editor/core/position/Position.ts`
 
-### Phase B — Table RTL Column Ordering (HIGH)
+### Phase B — Table RTL Column Ordering (HIGH) ✅ COMPLETE
 
-- [ ] **9.B.1** - RTL column ordering in `computeRowColInfo()`
-  - Column 0 starts at right edge for RTL tables
-  - File: `src/editor/core/draw/particle/table/TableParticle.ts`
+- [x] **9.B.1** - RTL column ordering in `computeRowColInfo()` — Session 013
+  - Added `direction` field to `ITableAttr` interface ('ltr' | 'rtl')
+  - Auto-detect table direction from first cell content via `detectDirection()`
+  - Mirror all `td.x` values after LTR computation: `td.x = tableWidth - td.x - td.width`
+  - Borders, backgrounds, cell content positioning all follow automatically
+  - Files: `TableParticle.ts`, `Element.ts`
 
-- [ ] **9.B.2** - TableTool RTL positions
-  - Row/column tool DOM positioned correctly for RTL tables
-  - File: `src/editor/core/draw/particle/table/TableTool.ts`
+- [x] **9.B.2** - TableTool RTL positions — Session 013
+  - Table select button: top-right corner for RTL tables
+  - Row tool container: right side of table for RTL
+  - Row add button: offset to right side for RTL
+  - Column add button: left edge for RTL (inserts left col)
+  - Column resize: negate dx for RTL drag direction
+  - Border drag handles: auto-correct via mirrored `td.x`
+  - File: `TableTool.ts`
+
+- [x] **9.B.3** - Arabic RTL table mock data — Session 013
+  - 3x3 patient info table (diagnosis, date, patient name)
+  - Auto-detected RTL from Arabic first cell content
+  - File: `src/mock.ts`
 
 ### Phase C — Rendering Pipeline Fixes (HIGH)
 

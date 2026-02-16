@@ -107,9 +107,10 @@ single click) but breaks for **range** operations (drag selection) because:
   - Root cause: `isTextType` in `precomputeContextualWidths()` excluded `ElementType.CONTROL`
   - Fix: Added PLACEHOLDER and VALUE control components to contextual shaping
 - ~~Curly braces not mirrored in RTL controls~~ — **FIXED** (session 013)
-  - Root cause: Visual reordering already places PREFIX/POSTFIX at correct
-    visual positions. No character mirroring needed — braces looked wrong
-    initially because they were correct all along after visual reorder.
+  - Root cause: Visual reorder reverses bracket positions; UAX #9 requires
+    character mirroring (`{`→`}`, `}`→`{`) to restore correct visual form.
+  - Fix: Apply BIDI_BRACKET_MIRROR during rendering for RTL-resolved elements,
+    restore original value after draw.
 - ~~Cursor off-by-one at end of RTL text~~ — **FIXED** (session 013)
   - Root cause: (1) Cursor rendered at `rightTop[0]` for RTL elements in BiDi mixed
     rows, but should be `leftTop[0]`; (2) Hit-testing left-half click decremented

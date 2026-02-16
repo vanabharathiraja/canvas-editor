@@ -5,6 +5,7 @@ import { IEditorOption } from '../../../../interface/Editor'
 import { ITd } from '../../../../interface/table/Td'
 import { ITr } from '../../../../interface/table/Tr'
 import { deepClone } from '../../../../utils'
+import { detectDirection } from '../../../../utils/unicode'
 import { RangeManager } from '../../../range/RangeManager'
 import { Draw } from '../../Draw'
 
@@ -489,6 +490,39 @@ export class TableParticle {
         }
       }
     }
+    // RTL table: mirror all column x-positions so column 0 starts
+    // at the right edge. Auto-detect if no explicit direction set.
+    const isRTLTable = this.isTableRTL(element)
+    if (isRTLTable) {
+      const tableWidth = this.getTableWidth(element)
+      for (let t = 0; t < trList.length; t++) {
+        const tr = trList[t]
+        for (let d = 0; d < tr.tdList.length; d++) {
+          const td = tr.tdList[d]
+          td.x = tableWidth - td.x! - td.width!
+        }
+      }
+    }
+  }
+
+  /**
+   * Determine if a table should use RTL column ordering.
+   * Uses explicit `direction` field if set, otherwise auto-detects
+   * from the first cell's text content.
+   */
+  public isTableRTL(element: IElement): boolean {
+    if (element.direction === 'rtl') return true
+    if (element.direction === 'ltr') return false
+    // Auto-detect: check text direction of first cell content
+    if (!this.draw.getOptions().shaping?.enabled) return false
+    const trList = element.trList
+    if (!trList?.length) return false
+    const firstTd = trList[0].tdList[0]
+    if (!firstTd?.value?.length) return false
+    const text = (firstTd.value as IElement[])
+      .map(el => el.value)
+      .join('')
+    return detectDirection(text) === 'rtl'
   }
 
   public drawRange(

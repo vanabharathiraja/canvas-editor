@@ -73,6 +73,7 @@ export interface ITableAttr {
   borderWidth?: number
   borderExternalWidth?: number
   translateX?: number
+  direction?: 'ltr' | 'rtl'
 }
 
 export interface ITableRule {

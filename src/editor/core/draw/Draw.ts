@@ -125,6 +125,19 @@ import { ShapeEngine } from '../shaping/ShapeEngine'
 import { detectDirection } from '../../utils/unicode'
 import { analyzeBidi, computeElementVisualOrder } from '../../utils/bidi'
 
+// Unicode BiDi bracket mirroring pairs (UAX #9).
+// Visual reorder reverses bracket positions; mirroring restores
+// correct visual appearance so {text} looks like {text} not }text{.
+const BIDI_BRACKET_MIRROR: Record<string, string> = {
+  '{': '}', '}': '{',
+  '(': ')', ')': '(',
+  '[': ']', ']': '[',
+  '\u3008': '\u3009', '\u3009': '\u3008', // \u3008 \u3009
+  '\u300A': '\u300B', '\u300B': '\u300A', // \u300a \u300b
+  '\u2039': '\u203A', '\u203A': '\u2039', // \u2039 \u203a
+  '\u00AB': '\u00BB', '\u00BB': '\u00AB'  // \u00ab \u00bb
+}
+
 export class Draw {
   private container: HTMLDivElement
   private pageContainer: HTMLDivElement
@@ -2463,6 +2476,21 @@ export class Draw {
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
         const metrics = element.metrics
+        // BiDi bracket mirroring: swap paired bracket characters when
+        // their resolved BiDi level is RTL (odd). Visual reorder already
+        // reversed positions; mirroring restores correct visual form.
+        let originalBracketValue: string | undefined
+        if (
+          (curRow.bidiLevels
+            ? (curRow.bidiLevels[j] & 1) === 1
+            : curRow.isRTL)
+        ) {
+          const mirrored = BIDI_BRACKET_MIRROR[element.value]
+          if (mirrored) {
+            originalBracketValue = element.value
+            element.value = mirrored
+          }
+        }
         // 当前元素位置信息
         const {
           ascent: offsetY,
@@ -2670,9 +2698,15 @@ export class Draw {
             element.metrics.width,
             curRow.height - 2 * rowMargin
           )
-          // BiDi mixed rows: render each border segment individually
+          // BiDi mixed rows: defer border drawing to end of control
+          // (don't draw per-element, which creates duplicate verticals).
+          // Flush only when this is the last element of this control in
+          // the row, or when the next element belongs to a different control.
           if (curRow.isBidiMixed) {
-            this.control.drawBorder(ctx)
+            const nextEl = curRow.elementList[j + 1]
+            if (!nextEl || nextEl.controlId !== element.controlId) {
+              this.control.drawBorder(ctx)
+            }
           }
         } else if (preElement?.control?.border) {
           this.control.drawBorder(ctx)
@@ -2836,6 +2870,10 @@ export class Draw {
           }
         }
         index++
+        // Restore original bracket value after rendering
+        if (originalBracketValue !== undefined) {
+          element.value = originalBracketValue
+        }
         // 绘制表格内元素
         if (element.type === ElementType.TABLE && !element.hide) {
           const tdPaddingWidth = tdPadding[1] + tdPadding[3]

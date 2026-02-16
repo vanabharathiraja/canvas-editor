@@ -28,8 +28,17 @@ export class ControlBorder {
       this.borderRect.x = x
       this.borderRect.y = y
       this.borderRect.height = height
+      this.borderRect.width = width
+    } else {
+      // Track visual extent: expand to cover min-x to max-(x+width)
+      // This handles BiDi rows where elements may not be visually contiguous
+      const curRight = this.borderRect.x + this.borderRect.width
+      const newRight = x + width
+      const minX = Math.min(this.borderRect.x, x)
+      const maxRight = Math.max(curRight, newRight)
+      this.borderRect.x = minX
+      this.borderRect.width = maxRight - minX
     }
-    this.borderRect.width += width
   }
 
   public render(ctx: CanvasRenderingContext2D) {

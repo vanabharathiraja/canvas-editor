@@ -887,6 +887,114 @@ elementList.push({
   }
 })
 
+// 20. Arabic select control — gender (tests select popup with short Arabic values)
+elementList.push({ value: '\n' })
+const genderLabel = 'الجنس: '
+for (const ch of genderLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-select-gender',
+    type: ControlType.SELECT,
+    value: null,
+    code: null,
+    placeholder: 'جنس',
+    prefix: '{',
+    postfix: '}',
+    valueSets: [
+      { value: 'ذكر', code: 'male' },
+      { value: 'أنثى', code: 'female' }
+    ]
+  }
+})
+
+// 21. Arabic number control (tests RTL calculator popup)
+elementList.push({ value: '\n' })
+const ageLabel = 'العمر: '
+for (const ch of ageLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-number-age',
+    type: ControlType.NUMBER,
+    value: null,
+    placeholder: 'أدخل العمر',
+    prefix: '{',
+    postfix: '}',
+    min: 0,
+    max: 150
+  }
+})
+
+// 22. Arabic text control with pre-filled value
+elementList.push({ value: '\n' })
+const addressLabel = 'العنوان: '
+for (const ch of addressLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-text-address',
+    type: ControlType.TEXT,
+    value: [
+      { value: 'ش' },
+      { value: 'ا' },
+      { value: 'ر' },
+      { value: 'ع' },
+      { value: ' ' },
+      { value: 'ا' },
+      { value: 'ل' },
+      { value: 'م' },
+      { value: 'ل' },
+      { value: 'ك' },
+      { value: ' ' },
+      { value: 'ف' },
+      { value: 'ه' },
+      { value: 'د' }
+    ],
+    placeholder: 'أدخل العنوان',
+    prefix: '{',
+    postfix: '}'
+  }
+})
+
+// 23. Arabic select with border (tests control border RTL rendering)
+elementList.push({ value: '\n' })
+const bloodLabel = 'فصيلة الدم: '
+for (const ch of bloodLabel.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.CONTROL,
+  value: '',
+  control: {
+    conceptId: 'rtl-select-blood',
+    type: ControlType.SELECT,
+    value: null,
+    code: null,
+    placeholder: 'اختر الفصيلة',
+    border: true,
+    valueSets: [
+      { value: 'A+', code: 'a-pos' },
+      { value: 'A-', code: 'a-neg' },
+      { value: 'B+', code: 'b-pos' },
+      { value: 'B-', code: 'b-neg' },
+      { value: 'O+', code: 'o-pos' },
+      { value: 'O-', code: 'o-neg' },
+      { value: 'AB+', code: 'ab-pos' },
+      { value: 'AB-', code: 'ab-neg' }
+    ]
+  }
+})
+
 // ─── End Arabic Controls Test Scenarios ──────────────────────────────
 
 // ─── Bilingual Contract Table (English / Arabic) ─────────────────────
@@ -913,6 +1021,188 @@ for (const ch of contractTitleAR.split('')) {
     rowFlex: RowFlex.CENTER
   })
 }
+elementList.push({ value: '\n' })
+
+// 24. RTL table: Arabic patient info (auto-detected direction from first cell)
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 184 },
+    { width: 184 },
+    { width: 184 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'التشخيص'.split('').map(ch => ({
+            value: ch, size: 14, bold: true
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'تاريخ الدخول'.split('').map(ch => ({
+            value: ch, size: 14, bold: true
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'اسم المريض'.split('').map(ch => ({
+            value: ch, size: 14, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'كسر في الساق'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: '٢٠٢٦/٠٢/١٥'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'أحمد محمد'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'التهاب رئوي'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: '٢٠٢٦/٠٢/١٠'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'فاطمة علي'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
+
+// 25. RTL table with explicit direction: medical report summary
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  direction: 'rtl' as const,
+  colgroup: [
+    { width: 277 },
+    { width: 277 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'القيمة'.split('').map(ch => ({
+            value: ch, size: 14, bold: true
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'البيان'.split('').map(ch => ({
+            value: ch, size: 14, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'أحمد بن سعيد'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'اسم المريض'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: '٣٥ سنة'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'العمر'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'A+ موجب'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'فصيلة الدم'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    }
+  ]
+})
 elementList.push({ value: '\n' })
 
 // Contract table: English clause (left) | Arabic clause (right)
