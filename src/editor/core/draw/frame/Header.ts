@@ -174,26 +174,26 @@ export class Header {
     height: number
   } {
     const { fullWidth } = this.options.header
-    const { scale } = this.options
     const margins = this.draw.getMargins()
     const headerTop = this.getHeaderTop()
     const headerHeight = this.getHeight()
 
     if (fullWidth) {
       // Full-width: from edge to edge, top to margin top
+      // getWidth() and getMargins() already return scaled values
       return {
         x: 0,
         y: 0,
-        width: this.draw.getWidth() * scale,
-        height: margins[0] * scale
+        width: this.draw.getWidth(),
+        height: margins[0]
       }
     } else {
       // Standard: within margins
       return {
-        x: margins[3] * scale,
-        y: headerTop * scale,
-        width: this.draw.getInnerWidth() * scale,
-        height: headerHeight * scale
+        x: margins[3],
+        y: headerTop,
+        width: this.draw.getInnerWidth(),
+        height: headerHeight
       }
     }
   }

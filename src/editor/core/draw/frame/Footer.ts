@@ -171,7 +171,6 @@ export class Footer {
     height: number
   } {
     const { fullWidth } = this.options.footer
-    const { scale } = this.options
     const margins = this.draw.getMargins()
     const pageHeight = this.draw.getHeight()
     const footerBottom = this.getFooterBottom()
@@ -179,20 +178,21 @@ export class Footer {
 
     if (fullWidth) {
       // Full-width: from edge to edge, from margin bottom to page bottom
+      // getWidth/getHeight/getMargins already return scaled values
       return {
         x: 0,
-        y: (pageHeight - margins[2]) * scale,
-        width: this.draw.getWidth() * scale,
-        height: margins[2] * scale
+        y: pageHeight - margins[2],
+        width: this.draw.getWidth(),
+        height: margins[2]
       }
     } else {
       // Standard: within margins
       const startY = pageHeight - footerBottom - footerHeight
       return {
-        x: margins[3] * scale,
-        y: startY * scale,
-        width: this.draw.getInnerWidth() * scale,
-        height: footerHeight * scale
+        x: margins[3],
+        y: startY,
+        width: this.draw.getInnerWidth(),
+        height: footerHeight
       }
     }
   }
