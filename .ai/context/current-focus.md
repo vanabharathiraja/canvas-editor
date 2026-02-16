@@ -1,13 +1,13 @@
 # Current Focus
 
-**Last Updated**: 2026-02-16
-**Active Sprint**: Shape Engine Integration — Phase A (Popup/Control RTL)
+**Last Updated**: 2026-02-17
+**Active Sprint**: Shape Engine Integration — Phase 11 preparation (RTL Particles nearly complete)
 
 ## Current Objective
 
-Implementing RTL support for editor controls and popups. Phase A focuses on
-popup positioning: SelectControl, DatePicker, and Calculator popups must
-position correctly and display RTL text for Arabic content.
+Phase 9 RTL Particle Adaptation is 90% complete. All particle types now have
+RTL support: popups, tables, borders, lists, line breaks, page breaks, labels.
+The remaining open item is the RTL selection/formatting bug for pure Arabic text.
 
 **Policy**: Every feature/fix MUST evaluate LTR, RTL, and BiDi mixed behavior.
 
@@ -89,8 +89,15 @@ single click) but breaks for **range** operations (drag selection) because:
 - ✅ **LineBreakParticle**: Mirror arrow icon position and shape direction
   (commit `a260acb`)
 - ✅ **Hyperlink**: Arabic hyperlink contextual shaping (commit `a260acb`)
-- ⬜ **TableParticle**: RTL column ordering in `computeRowColInfo()` (deferred)
-- ⬜ **PageBreakParticle**: Route label through `renderText()` gateway (assessed, no change needed)
+- ✅ **SelectControl/DatePicker/Calculator**: Popup RTL positioning (commit `9e066299`)
+- ✅ **Placeholder shaping + bracket mirroring**: Contextual forms + UAX#9 mirrors (commit `9e066299`)
+- ✅ **Cursor off-by-one**: RTL cursor/hit-testing boundary fix (commit `9e066299`)
+- ✅ **TableParticle**: RTL column ordering + auto-detect direction (commit `cefb4984`)
+- ✅ **TableTool**: RTL-aware positioning for all table UI controls (commit `cefb4984`)
+- ✅ **Control border**: Min/max extent tracking for BiDi rows (commit `cefb4984`)
+- ✅ **PageBreakParticle**: `renderString()` shaping gateway (commit `05416fd0`)
+- ✅ **LabelParticle**: Direction-aware padding + background height fix (commit `05416fd0`)
+- ⬜ **RTL selection/formatting**: Pure Arabic text selection bug (OPEN — see plan below)
 
 ## Bug Status
 

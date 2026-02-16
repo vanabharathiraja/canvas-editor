@@ -324,7 +324,7 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
 ### [~] Milestone 10: RTL Particle Adaptation
 **Target**: Week 10-11
 **Status**: [~] In Progress
-**Completion**: 70%
+**Completion**: 90%
 
 **Deliverables**:
 - [x] ListParticle: RTL marker format (.1), right-side positioning, checkbox RTL (commit `a260acb`)
@@ -332,15 +332,24 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
 - [x] Hyperlink: Arabic contextual shaping via `precomputeContextualWidths` (commit `a260acb`)
 - [x] Position: RTL list row offsetX handling (commit `a260acb`)
 - [x] Mock data: 15 Arabic/BiDi test scenarios (commit `a260acb`)
-- [ ] TableParticle: RTL column ordering in `computeRowColInfo()` (deferred)
-- [ ] PageBreakParticle: Route label text through `renderText()` gateway (assessed, no change needed)
-- [ ] RTL selection/formatting fix for pure Arabic text (NEW BUG)
+- [x] SelectControl/DatePicker/Calculator popup RTL positioning (commit `9e066299`)
+- [x] Control placeholder contextual shaping + bracket mirroring (commit `9e066299`)
+- [x] Cursor/hit-testing off-by-one at RTL text boundaries (commit `9e066299`)
+- [x] TableParticle: RTL column ordering in `computeRowColInfo()` (commit `cefb4984`)
+- [x] TableTool: RTL-aware positioning for select/add buttons and resize (commit `cefb4984`)
+- [x] Control border fix: min/max extent tracking for BiDi rows (commit `cefb4984`)
+- [x] PageBreakParticle: `renderString()` shaping gateway (commit `05416fd0`)
+- [x] LabelParticle: direction-aware padding + background height fix (commit `05416fd0`)
+- [ ] Checkbox/Radio RTL alignment (analyzed — no change needed, logical walk correct)
+- [ ] RTL selection/formatting fix for pure Arabic text (NEW BUG — deferred)
 
 **Success Criteria**:
-- List markers appear on right side for RTL paragraphs
-- Line break arrows point right and appear at left end for RTL
-- Table columns render right-to-left for RTL tables
-- All particles use `renderText()` gateway (no direct `ctx.fillText()`)
+- List markers appear on right side for RTL paragraphs ✅
+- Line break arrows point right and appear at left end for RTL ✅
+- Table columns render right-to-left for RTL tables ✅
+- All particles use `renderText()` or `renderString()` gateway ✅
+- Control popups position correctly for RTL content ✅
+- Labels use direction-aware padding ✅
 
 ---
 
@@ -372,17 +381,17 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
 
 **Phases Completed**: 12 / 14  
 **Total Tasks**: ~110+ tasks  
-**Tasks Completed**: ~85 / 110  
-**Overall Completion**: ~77%
+**Tasks Completed**: ~95 / 110  
+**Overall Completion**: ~86%
 
 **Completed Phases**: 0 (POC), 1 (Foundation), 2 (ShapeEngine), 3 (Draw Integration),
 3.5 (Rendering Quality), 4/4.5/4.6/4.7 (TextParticle), 5.5 (RTL Alignment),
 5A (Measure-Render Consistency), 5B (Whitespace Fix), 5.5.1-5.5.3 (BiDi Foundations),
 7 (Full BiDi Support), 8/9 (Cursor & Selection & Hit Testing)
 
-**In Progress**: Phase 10 (RTL Particles — 70%, RTL selection bug open)
+**In Progress**: Phase 10 (RTL Particles — 90%, RTL selection bug deferred)
 
-**Remaining**: Phase 10 (RTL Particles), Phase 11 (Polish & Release)
+**Remaining**: Phase 10 completion (RTL selection fix), Phase 11 (Polish & Release)
 
 ---
 

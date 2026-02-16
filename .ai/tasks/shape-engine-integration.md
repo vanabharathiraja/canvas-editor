@@ -1,7 +1,7 @@
 # Active Tasks - Shape Engine Integration
 
-**Last Updated**: 2026-02-16
-**Current Phase**: Step 4 — Mixed-Direction Interaction (Phase 7)
+**Last Updated**: 2026-02-17
+**Current Phase**: Step 5 — RTL Particle Adaptation (Phase 9)
 
 ## Legend
 - `[ ]` Not Started
@@ -14,11 +14,12 @@
 ## Overview
 
 **Total Tasks**: ~110+ tasks across 13 phases  
-**Latest Update** (2026-02-16):
-- Arabic line breaking fixed: word-backtracking + unterminated word handling
-- BiDi cursor/hit-testing/selection fixed: isBidiMixed guard skips mirror formula
-- RTL detection added for wrap-created rows at end of content
-- Overall progress: ~55% complete
+**Latest Update** (2026-02-17):
+- Phase A: RTL popup/control positioning complete (Session 013)
+- Phase B: RTL table column ordering + control border fix (Session 013)
+- Phase C+D: PageBreak/Label rendering pipeline + padding fixes (Session 014)
+- ListParticle RTL marker + LineBreak RTL arrow (Session 011)
+- Overall progress: ~65% complete
 
 **Key Features Now Covered**:
 ✅ Auto-direction detection (Google Docs-like behavior)  
@@ -888,7 +889,7 @@ Handle the tricky edge cases at script boundaries.
 
 ## Phase 9: RTL Particle Adaptation (NEW)
 **Goal**: Make non-text particles direction-aware for RTL languages
-**Status**: Phase A (Popup RTL) — Complete. Bug fixes done.
+**Status**: Phases A-D complete. Lists/LineBreak done. Table RTL done.
 **Priority**: Step 5 (after BiDi foundations and mixed layout)
 
 ### Audit Summary
@@ -957,25 +958,30 @@ Full control/popup audit found 7 HIGH priority items, 4 MEDIUM.
   - Auto-detected RTL from Arabic first cell content
   - File: `src/mock.ts`
 
-### Phase C — Rendering Pipeline Fixes (HIGH)
+### Phase C — Rendering Pipeline Fixes (HIGH) ✅ COMPLETE
 
-- [ ] **9.C.1** - PageBreakParticle shaping gateway
-  - Route label text through `TextParticle.renderText()` instead of `ctx.fillText()`
-  - Affects Arabic UI localization
+- [x] **9.C.1** - PageBreakParticle shaping gateway — Session 014
+  - Added `renderString()` method to TextParticle for plain strings
+  - PageBreakParticle now routes display name through shaping gateway
+  - Supports Arabic/complex-script i18n display names via HarfBuzz
   - File: `src/editor/core/draw/particle/PageBreakParticle.ts`
 
-- [ ] **9.C.2** - Control border RTL
-  - Border rect uses visual positions for RTL controls
-  - File: `src/editor/core/draw/control/richtext/Border.ts`
+- [x] **9.C.2** - Control border RTL — Session 013 (Phase B)
+  - Border.ts: min/max extent tracking instead of additive width
+  - Draw.ts: deferred border drawing to end of control in BiDi rows
+  - Files: `Border.ts`, `Draw.ts`
 
-### Phase D — Minor Fixes (MEDIUM)
+### Phase D — Minor Fixes (MEDIUM) ✅ COMPLETE
 
-- [ ] **9.D.1** - Checkbox/Radio vertical alignment
-  - Alignment reference picks visual-next element in RTL rows
+- [x] **9.D.1** - Checkbox/Radio vertical alignment — Analyzed, no change needed
+  - Logical-forward walk finds semantically associated text regardless of visual order
+  - Checkbox/radio always precede their label text logically, even in RTL
   - Files: `CheckboxParticle.ts`, `RadioParticle.ts`
 
-- [ ] **9.D.2** - LabelParticle padding direction
-  - Use padding-start instead of hardcoded padding-left for RTL
+- [x] **9.D.2** - LabelParticle padding direction — Session 014
+  - Direction-aware padding: `detectDirection()` swaps padding-left/right for RTL
+  - Also fixed background height bug: `padding[0]+padding[2]` (top+bottom)
+    instead of incorrect `padding[0]+padding[3]` (top+left)
   - File: `src/editor/core/draw/particle/LabelParticle.ts`
 
 ### 9.1 — ListParticle RTL (High Priority)
@@ -1027,11 +1033,11 @@ Full control/popup audit found 7 HIGH priority items, 4 MEDIUM.
   - Verify text within RTL table cells renders correctly
   - Test: Arabic text in table cells
 
-### 9.4 — PageBreakParticle RTL (Low Priority)
-- [ ] **9.4.1** - Route label text through `renderText()` gateway
-  - Current: `ctx.fillText()` at PageBreakParticle.ts line 47
-  - Change to `this.draw.getTextParticle().renderText()`
-  - Only affects Arabic UI localization (label is "Page Break" display name)
+### 9.4 — PageBreakParticle RTL (Low Priority) ✅ COMPLETE
+- [x] **9.4.1** - Route label text through `renderString()` gateway — Session 014
+  - Added `renderString()` method to TextParticle for plain string shaping
+  - PageBreakParticle now uses `renderString()` instead of `ctx.fillText()`
+  - Supports Arabic UI localization via HarfBuzz shaping
   - Centered position is already direction-agnostic
 
 ### 9.5 — Verification & Testing
