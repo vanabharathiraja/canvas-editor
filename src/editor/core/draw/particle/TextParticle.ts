@@ -574,6 +574,40 @@ export class TextParticle {
     }
   }
 
+  /**
+   * Render a plain string through the shaping gateway.
+   * Unlike renderText() which takes an IRowElement, this method
+   * accepts a raw string — useful for UI labels (e.g. page break
+   * display name) that aren't part of the document element model.
+   *
+   * Font resolution uses the defaultFont / complexScriptFallback path.
+   * Callers must set ctx.font before calling this method.
+   */
+  public renderString(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    fontSize: number,
+    x: number,
+    y: number,
+    color?: string
+  ): void {
+    const fontId = this._resolveShapingFontId(undefined, text)
+    const fillColor = color || this.options.defaultColor
+
+    if (
+      this._isShapingReady(fontId) &&
+      this._shouldUseShaping(text)
+    ) {
+      const engine = ShapeEngine.getInstance()
+      const direction = detectDirection(text)
+      const result = engine.shapeText(text, fontId, fontSize, { direction })
+      engine.renderGlyphs(ctx, result, fontId, fontSize, x, y, fillColor)
+    } else {
+      ctx.fillStyle = fillColor
+      ctx.fillText(text, x, y)
+    }
+  }
+
   public complete() {
     this._render()
     this.text = ''

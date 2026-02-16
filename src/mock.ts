@@ -997,6 +997,50 @@ elementList.push({
 
 // ─── End Arabic Controls Test Scenarios ──────────────────────────────
 
+// ─── Phase C+D: Label RTL padding + PageBreak shaping gateway ────────
+
+// 24. Arabic label (tests direction-aware padding in LabelParticle)
+elementList.push({ value: '\n' })
+const labelIntro = 'التشخيص: '
+for (const ch of labelIntro.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+elementList.push({
+  type: ElementType.LABEL,
+  value: 'ارتفاع ضغط الدم',
+  labelId: 'rtl-label-bp',
+  size: 14,
+  label: {
+    color: '#ffffff',
+    backgroundColor: '#e74c3c',
+    borderRadius: 4,
+    padding: [2, 8, 2, 8]
+  }
+})
+// English label on same line for comparison
+elementList.push({ value: ' ' })
+elementList.push({
+  type: ElementType.LABEL,
+  value: 'Hypertension',
+  labelId: 'ltr-label-bp',
+  size: 14,
+  label: {
+    color: '#ffffff',
+    backgroundColor: '#3498db',
+    borderRadius: 4,
+    padding: [2, 8, 2, 8]
+  }
+})
+
+// 25. Page break (tests renderString shaping gateway in PageBreakParticle)
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.PAGE_BREAK,
+  value: '\n'
+})
+
+// ─── End Phase C+D Test Scenarios ────────────────────────────────────
+
 // ─── Bilingual Contract Table (English / Arabic) ─────────────────────
 
 elementList.push({ value: '\n' }, { value: '\n' })

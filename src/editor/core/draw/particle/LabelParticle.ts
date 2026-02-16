@@ -1,6 +1,7 @@
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
 import { IRowElement } from '../../../interface/Row'
+import { detectDirection } from '../../../utils/unicode'
 import { Draw } from '../Draw'
 
 export class LabelParticle {
@@ -35,6 +36,10 @@ export class LabelParticle {
     const borderRadius = element.label?.borderRadius || defaultBorderRadius
     const padding = element.label?.padding || defaultPadding
 
+    // Direction-aware padding: swap left/right for RTL content
+    const isRTL = detectDirection(element.value) === 'rtl'
+    const paddingStart = isRTL ? padding[1] : padding[3]
+
     // 设置字体大小
     ctx.save()
     ctx.font = element.style
@@ -47,14 +52,14 @@ export class LabelParticle {
       x,
       y - boundingBoxAscent,
       width,
-      height + (padding[0] + padding[3]) * scale,
+      height + (padding[0] + padding[2]) * scale,
       borderRadius * scale
     )
     ctx.fill()
 
     // 绘制文本 via rendering gateway (ShapeEngine for complex scripts)
     this.draw.getTextParticle().renderText(
-      ctx, element, x + padding[3] * scale, y, color
+      ctx, element, x + paddingStart * scale, y, color
     )
     ctx.restore()
   }

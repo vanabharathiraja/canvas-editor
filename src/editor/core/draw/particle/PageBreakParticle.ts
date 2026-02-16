@@ -43,9 +43,11 @@ export class PageBreakParticle {
     ctx.moveTo(x + halfX + textMeasure.width, y)
     ctx.lineTo(x + elementWidth, y)
     ctx.stroke()
-    // 文字
-    ctx.fillText(
+    // 文字 — route through shaping gateway for complex scripts
+    this.draw.getTextParticle().renderString(
+      ctx,
       displayName,
+      size,
       x + halfX,
       y + textMeasure.actualBoundingBoxAscent - size / 2
     )
