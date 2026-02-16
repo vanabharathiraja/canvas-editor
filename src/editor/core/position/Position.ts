@@ -141,7 +141,15 @@ export class Position {
         }
       }
       // 当前行X/Y轴偏移量
-      x += curRow.offsetX || 0
+      // For RTL list rows, offsetX reserves space on the RIGHT side.
+      // The right-alignment formula already subtracts offsetX (via curRowWidth);
+      // skipping the re-addition here leaves that space for the marker on the right.
+      // Note: we do NOT check isBidiMixed here — list rows always contain
+      // a ZWSP first-element which makes the BiDi algorithm report "mixed",
+      // but the list marker should still go on the right for RTL text.
+      if (!(curRow.isRTL && curRow.isList)) {
+        x += curRow.offsetX || 0
+      }
       y += curRow.offsetY || 0
       // 当前td所在位置
       const tablePreX = x

@@ -559,6 +559,239 @@ for (const ch of bidiChars2) {
   elementList.push({ value: ch, size: 16 })
 }
 
+// ─── Arabic / BiDi extended test scenarios ───────────────────────────
+
+// 1. Arabic ordered list (tests RTL marker format: .1 .2 .3)
+elementList.push({ value: '\n' })
+elementList.push({
+  value: '',
+  type: ElementType.LIST,
+  listType: ListType.OL,
+  valueList: [
+    {
+      value: 'فحص الدم الكامل\nتحليل البول\nأشعة سينية للصدر\nتخطيط القلب الكهربائي\nفحص وظائف الكبد'
+    }
+  ]
+})
+
+// 2. Arabic unordered list (tests bullet positioning in RTL)
+elementList.push({ value: '\n' })
+elementList.push({
+  value: '',
+  type: ElementType.LIST,
+  listType: ListType.UL,
+  valueList: [
+    {
+      value: 'صداع مستمر\nدوخة متكررة\nألم في المفاصل\nضيق في التنفس'
+    }
+  ]
+})
+
+// 3. Mixed Arabic + English ordered list (tests BiDi inside list items)
+elementList.push({ value: '\n' })
+elementList.push({
+  value: '',
+  type: ElementType.LIST,
+  listType: ListType.OL,
+  valueList: [
+    {
+      value: 'Paracetamol باراسيتامول 500mg\nAmoxicillin أموكسيسيلين 250mg\nIbuprofen إيبوبروفين 400mg'
+    }
+  ]
+})
+
+// 4. Arabic paragraph with embedded numbers and punctuation
+const arabicWithNumbers = 'رقم الملف الطبي: 2024-03-1578، عمر المريض: 45 سنة، رقم الهاتف: +966-50-123-4567. تاريخ الزيارة: 15/02/2026.'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of arabicWithNumbers.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// 5. Arabic bold/italic paragraph (tests styled RTL text)
+const arabicStyled = 'التشخيص النهائي'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of arabicStyled.split('')) {
+  elementList.push({ value: ch, size: 18, bold: true })
+}
+const arabicStyledBody = ' — التهاب اللوزتين الحاد مع '
+for (const ch of arabicStyledBody.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+const arabicItalic = 'حمى روماتيزمية'
+for (const ch of arabicItalic.split('')) {
+  elementList.push({ value: ch, size: 16, italic: true })
+}
+
+// 6. BiDi: Arabic paragraph with multiple English terms (heavy switching)
+const bidiHeavy = 'يجب إجراء فحص CBC و ESR و CRP بالإضافة إلى X-Ray للصدر وفحص PCR خلال 24 ساعة.'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of bidiHeavy.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// 7. BiDi: English paragraph with multiple Arabic names
+const bidiNames = 'Patients محمد علي, فاطمة الزهراء, and عبدالله الرشيد were admitted on the same day.'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of bidiNames.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// 8. Pure Arabic multi-line paragraph (tests line wrapping in RTL)
+const arabicLong = 'أجرى الطبيب المعالج فحصاً شاملاً للمريض وتبين وجود التهاب حاد في الجهاز التنفسي العلوي مصحوباً بارتفاع في درجة الحرارة وآلام في الجسم. تم وصف المضادات الحيوية المناسبة مع خافض للحرارة ومسكن للألم. يُنصح المريض بالراحة التامة وشرب السوائل بكثرة والمتابعة بعد أسبوع.'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of arabicLong.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// 9. Arabic with highlighted and colored text
+const arabicHighlight = 'نتائج التحليل: '
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of arabicHighlight.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+const arabicAbnormal = 'غير طبيعي'
+for (const ch of arabicAbnormal.split('')) {
+  elementList.push({ value: ch, size: 16, color: '#FF0000', bold: true })
+}
+const arabicNormal = ' — مستوى السكر: '
+for (const ch of arabicNormal.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+const arabicValue = 'طبيعي'
+for (const ch of arabicValue.split('')) {
+  elementList.push({ value: ch, size: 16, highlight: '#90EE90' })
+}
+
+// 10. Arabic hyperlink (tests clickable RTL text)
+elementList.push(
+  { value: '\n' },
+  { value: '\n' },
+  {
+    type: ElementType.HYPERLINK,
+    value: '',
+    valueList: 'رابط التقرير الطبي'.split('').map(ch => ({
+      value: ch,
+      size: 16
+    })),
+    url: 'http://localhost:3000/canvas-editor'
+  }
+)
+
+// 11. BiDi: Parentheses and brackets (tests mirroring)
+const bidiParens = 'المرجع (انظر الملحق A) والجدول [رقم 3] لمزيد من التفاصيل.'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of bidiParens.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// 12. Arabic table (tests RTL content inside table cells)
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 139 },
+    { width: 139 },
+    { width: 138 },
+    { width: 138 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'اسم المريض'.split('').map(ch => ({ value: ch, size: 14, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'التشخيص'.split('').map(ch => ({ value: ch, size: 14, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'الحالة'.split('').map(ch => ({ value: ch, size: 14, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'الملاحظات'.split('').map(ch => ({ value: ch, size: 14, bold: true }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'أحمد محمد'.split('').map(ch => ({ value: ch, size: 14 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'التهاب رئوي'.split('').map(ch => ({ value: ch, size: 14 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'مستقر'.split('').map(ch => ({ value: ch, size: 14 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'متابعة بعد أسبوع'.split('').map(ch => ({ value: ch, size: 14 }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'فاطمة علي'.split('').map(ch => ({ value: ch, size: 14 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Diabetes Type 2'.split('').map(ch => ({ value: ch, size: 14 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'حرج'.split('').map(ch => ({ value: ch, size: 14, color: '#FF0000' }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'تحويل ICU'.split('').map(ch => ({ value: ch, size: 14 }))
+        }
+      ]
+    }
+  ]
+})
+
+// 13. Arabic LaTeX formula context
+elementList.push(
+  { value: '\n' },
+  { value: '\n' },
+  ...('المعادلة الطبية: '.split('').map(ch => ({ value: ch, size: 16 }))),
+  {
+    value: 'BMI = \\frac{m}{h^2}',
+    type: ElementType.LATEX
+  }
+)
+
+// 14. BiDi: Numbered list mixing Arabic digits with Hindi numerals context
+const arabicDigits = 'الجرعة: ١٢٥ ملغ (125mg) ثلاث مرات يومياً لمدة ٧ أيام.'
+elementList.push({ value: '\n' }, { value: '\n' })
+for (const ch of arabicDigits.split('')) {
+  elementList.push({ value: ch, size: 16 })
+}
+
+// 15. Short RTL lines (tests alignment of single-word RTL rows)
+const shortRTL = ['مقدمة', 'الخلاصة', 'التوصيات']
+elementList.push({ value: '\n' })
+for (const word of shortRTL) {
+  elementList.push({ value: '\n' })
+  for (const ch of word.split('')) {
+    elementList.push({ value: ch, size: 16, bold: true, underline: true })
+  }
+}
+
+// ─── End Arabic / BiDi extended test scenarios ───────────────────────
+
 // EOF marker
 elementList.push(
   ...[

@@ -239,7 +239,12 @@ export class ListParticle {
     // 计算列表层级缩进量（基础缩进 + 层级缩进）
     const baseIndent = LIST_BASE_INDENT * scale
     const levelIndent = (listLevel || 0) * LIST_LEVEL_INDENT * scale
-    const x = startX - offsetX! + tabWidth + baseIndent + levelIndent
+    // For list rows, use row.isRTL without checking isBidiMixed because
+    // the ZWSP first-element always produces a false-positive "mixed" result.
+    const isRTL = !!row.isRTL
+    // LTR: marker at content-left + indent
+    // RTL: marker at text-right-edge + mirror indent (space reserved by Position.ts)
+    const ltrX = startX - offsetX! + tabWidth + baseIndent + levelIndent
     const y = startY + ascent
     // 复选框样式特殊处理
     if (startElement.listStyle === ListStyle.CHECKBOX) {
@@ -255,9 +260,15 @@ export class ListParticle {
           height: height * scale
         }
       }
+      // For RTL, position checkbox on the right side of text
+      const cbX = isRTL
+        ? startX + row.width + offsetX!
+          - baseIndent - levelIndent - tabWidth
+          - (width + gap * 2) * scale
+        : ltrX - gap * scale
       this.draw.getCheckboxParticle().render({
         ctx,
-        x: x - gap * scale,
+        x: cbX,
         y,
         index: 0,
         row: {
@@ -277,12 +288,26 @@ export class ListParticle {
         // 层级式编号（1. → 1.1 → 1.1.1）
         const hierarchy = row.listHierarchy || [listIndex || 0]
         const marker = getOlMarkerText(hierarchy)
-        text = `${marker}.`
+        // RTL: dot before number (.1) — LTR: dot after number (1.)
+        text = isRTL ? `.${marker}` : `${marker}.`
       }
       if (!text) return
       ctx.save()
       ctx.font = `${elementSize * scale}px ${elementFont}`
-      ctx.fillText(text, x, y)
+      if (isRTL) {
+        // RTL: place marker to the right of the text block.
+        // Position.ts skipped adding offsetX so text content is shifted
+        // left by offsetX from the right edge. The marker goes in the
+        // reserved space between text-end and the right margin.
+        // rightEdge = startX + row.width + offsetX = right margin.
+        // Marker right-edge placed at: rightEdge - baseIndent - levelIndent.
+        const rightEdge = startX + row.width + offsetX!
+        const markerX = rightEdge - baseIndent - levelIndent - tabWidth
+        ctx.textAlign = 'right'
+        ctx.fillText(text, markerX, y)
+      } else {
+        ctx.fillText(text, ltrX, y)
+      }
       ctx.restore()
     }
   }

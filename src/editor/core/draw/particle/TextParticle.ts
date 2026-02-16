@@ -194,8 +194,14 @@ export class TextParticle {
 
     for (let i = 0; i <= elementList.length; i++) {
       const el = elementList[i]
-      // Only group plain TEXT elements with complex script content
-      const isTextType = el && (!el.type || el.type === ElementType.TEXT)
+      // Group plain TEXT and HYPERLINK elements with complex script content.
+      // HYPERLINK elements are flattened to individual characters and need
+      // contextual shaping for Arabic/complex scripts just like TEXT.
+      const isTextType = el && (
+        !el.type ||
+        el.type === ElementType.TEXT ||
+        el.type === ElementType.HYPERLINK
+      )
       const isComplex = isTextType
         && !el.width // skip elements with custom width
         && needsComplexShaping(el.value)

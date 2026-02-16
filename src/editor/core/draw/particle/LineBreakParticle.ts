@@ -17,7 +17,8 @@ export class LineBreakParticle {
     ctx: CanvasRenderingContext2D,
     element: IRowElement,
     x: number,
-    y: number
+    y: number,
+    isRTL?: boolean
   ) {
     const {
       scale,
@@ -27,7 +28,9 @@ export class LineBreakParticle {
     ctx.beginPath()
     // 换行符尺寸设置为9像素
     const top = y - (LineBreakParticle.HEIGHT * scale) / 2
-    const left = x + element.metrics.width
+    const left = isRTL
+      ? x - LineBreakParticle.WIDTH * scale - LineBreakParticle.GAP * scale
+      : x + element.metrics.width
     // 移动位置并设置缩放
     ctx.translate(left, top)
     ctx.scale(scale, scale)
@@ -37,17 +40,32 @@ export class LineBreakParticle {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
-    // 回车折线
-    ctx.moveTo(8, 0)
-    ctx.lineTo(12, 0)
-    ctx.lineTo(12, 6)
-    ctx.lineTo(3, 6)
-    // 箭头向上
-    ctx.moveTo(3, 6)
-    ctx.lineTo(6, 3)
-    // 箭头向下
-    ctx.moveTo(3, 6)
-    ctx.lineTo(6, 9)
+    if (isRTL) {
+      // RTL: arrow points rightward (→) — mirror of LTR arrow
+      ctx.moveTo(4, 0)
+      ctx.lineTo(0, 0)
+      ctx.lineTo(0, 6)
+      ctx.lineTo(9, 6)
+      // 箭头向上
+      ctx.moveTo(9, 6)
+      ctx.lineTo(6, 3)
+      // 箭头向下
+      ctx.moveTo(9, 6)
+      ctx.lineTo(6, 9)
+    } else {
+      // LTR: arrow points leftward (←)
+      // 回车折线
+      ctx.moveTo(8, 0)
+      ctx.lineTo(12, 0)
+      ctx.lineTo(12, 6)
+      ctx.lineTo(3, 6)
+      // 箭头向上
+      ctx.moveTo(3, 6)
+      ctx.lineTo(6, 3)
+      // 箭头向下
+      ctx.moveTo(3, 6)
+      ctx.lineTo(6, 9)
+    }
     ctx.stroke()
     ctx.closePath()
     ctx.restore()

@@ -2229,6 +2229,16 @@ export class Draw {
             }
           }
         }
+        // RTL inheritance for list rows: when curRow is RTL and a wrap
+        // just created a new list row, inherit RTL so the empty row
+        // (containing only ZWSP) doesn't start on the left side.
+        if (isWrap && curRow.isRTL && curRow.isList) {
+          const nextRow = rowList[rowList.length - 1]
+          if (nextRow !== curRow && nextRow.isList && !nextRow.rowFlex) {
+            nextRow.rowFlex = RowFlex.RIGHT
+            nextRow.isRTL = true
+          }
+        }
         // 两端对齐、分散对齐
         if (
           !curRow.isSurround &&
@@ -2470,7 +2480,28 @@ export class Draw {
           this.tableParticle.render(ctx, element, x, y)
         } else if (element.type === ElementType.HYPERLINK) {
           this.textParticle.complete()
-          this.hyperlinkParticle.render(ctx, element, x, y + offsetY)
+          // Apply hyperlink styling defaults
+          if (!element.color) {
+            element.color = this.options.defaultHyperlinkColor
+          }
+          if (element.underline === undefined) {
+            element.underline = true
+          }
+          const hasCtxInfo =
+            this.textParticle.hasContextualRenderInfo(element)
+          if (curRow.isBidiMixed && hasCtxInfo) {
+            // BiDi mixed row with contextual shaping: render at visual x
+            this.textParticle.renderContextualElement(
+              ctx, element, x, y + offsetY, scale, element.color
+            )
+          } else if (hasCtxInfo) {
+            // Pure RTL or LTR row with contextual shaping
+            this.textParticle.renderContextualElement(
+              ctx, element, x, y + offsetY, scale, element.color
+            )
+          } else {
+            this.hyperlinkParticle.render(ctx, element, x, y + offsetY)
+          }
         } else if (element.type === ElementType.LABEL) {
           this.textParticle.complete()
           this.labelParticle.render(ctx, element, x, y + offsetY)
@@ -2585,7 +2616,9 @@ export class Draw {
           !curRow.isWidthNotEnough &&
           j === curRow.elementList.length - 1
         ) {
-          this.lineBreakParticle.render(ctx, element, x, y + curRow.height / 2)
+          this.lineBreakParticle.render(
+            ctx, element, x, y + curRow.height / 2, curRow.isRTL
+          )
         }
         // 空白符绘制
         if (isDrawWhiteSpace && WHITE_SPACE_REG.test(element.value)) {
