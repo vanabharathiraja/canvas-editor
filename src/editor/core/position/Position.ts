@@ -707,6 +707,33 @@ export class Position {
             // 点击在内容左侧=视觉结尾=逻辑结尾
             curPositionIndex = index
           }
+        } else if (lastLetterList[j].isRTL && lastLetterList[j].isBidiMixed) {
+          // Visual-order RTL row: positions are in visual coordinates.
+          // Find actual visual boundaries of the row.
+          let rowVisualRight = -Infinity
+          for (let k = headIndex; k < positionList.length; k++) {
+            const pk = positionList[k]
+            if (pk.pageNo !== positionNo || pk.rowNo !== rowNo) continue
+            if (pk.coordinate.rightTop[0] > rowVisualRight) {
+              rowVisualRight = pk.coordinate.rightTop[0]
+            }
+          }
+          if (x > rowVisualRight) {
+            // Click RIGHT of content = visual start = logical start
+            if (~headIndex) {
+              if (headPosition.value === ZERO) {
+                curPositionIndex = headIndex
+              } else {
+                curPositionIndex = headIndex - 1
+                hitLineStartIndex = headIndex
+              }
+            } else {
+              curPositionIndex = index
+            }
+          } else {
+            // Click LEFT of content = visual end = logical end
+            curPositionIndex = index
+          }
         } else if (x < headStartX) {
           // 头部元素为空元素时无需选中
           if (~headIndex) {

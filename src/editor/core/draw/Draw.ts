@@ -2229,6 +2229,21 @@ export class Draw {
             }
           }
         }
+        // Pure RTL rows: synthesize visual order so positions use visual
+        // coordinates (like BiDi mixed rows). This eliminates the need
+        // for mirror formulas in hit testing, cursor, and selection,
+        // fixing the bug where dragging to select Arabic text selects
+        // the wrong (mirrored) range.
+        if (
+          curRow.isRTL &&
+          !curRow.isBidiMixed &&
+          curRow.elementList.length > 1
+        ) {
+          const n = curRow.elementList.length
+          curRow.visualOrder = Array.from({ length: n }, (_, i) => n - 1 - i)
+          curRow.bidiLevels = new Array(n).fill(1)
+          curRow.isBidiMixed = true
+        }
         // RTL inheritance for list rows: when curRow is RTL and a wrap
         // just created a new list row, inherit RTL so the empty row
         // (containing only ZWSP) doesn't start on the left side.
@@ -2393,6 +2408,11 @@ export class Draw {
             curRow.height - 2 * marginHeight + 2 * highlightMarginHeight,
             highlight
           )
+          // BiDi mixed rows: render each highlight segment individually
+          // because visual positions don't follow logical order.
+          if (curRow.isBidiMixed) {
+            this.highlight.render(ctx)
+          }
         } else if (preElement?.highlight) {
           // 之前是高亮元素，当前不是需立即绘制
           this.highlight.render(ctx)
@@ -2650,6 +2670,10 @@ export class Draw {
             element.metrics.width,
             curRow.height - 2 * rowMargin
           )
+          // BiDi mixed rows: render each border segment individually
+          if (curRow.isBidiMixed) {
+            this.control.drawBorder(ctx)
+          }
         } else if (preElement?.control?.border) {
           this.control.drawBorder(ctx)
         }
@@ -2684,6 +2708,11 @@ export class Draw {
             color,
             element.textDecoration?.style
           )
+          // BiDi mixed rows: render each underline segment individually
+          // because visual positions don't follow logical order.
+          if (curRow.isBidiMixed) {
+            this.underline.render(ctx)
+          }
         } else if (preElement?.underline || preElement?.control?.underline) {
           this.underline.render(ctx)
         }
@@ -2721,6 +2750,10 @@ export class Draw {
               adjustY += this.superscriptParticle.getOffsetY(element)
             }
             this.strikeout.recordFillInfo(ctx, x, adjustY, metrics.width)
+            // BiDi mixed rows: render each strikeout segment individually
+            if (curRow.isBidiMixed) {
+              this.strikeout.render(ctx)
+            }
           }
         } else if (preElement?.strikeout) {
           this.strikeout.render(ctx)
@@ -2797,6 +2830,10 @@ export class Draw {
         // 组信息记录
         if (!group.disabled && element.groupIds) {
           this.group.recordFillInfo(element, x, y, metrics.width, curRow.height)
+          // BiDi mixed rows: render group per-element
+          if (curRow.isBidiMixed) {
+            this.group.render(ctx)
+          }
         }
         index++
         // 绘制表格内元素
@@ -2822,10 +2859,18 @@ export class Draw {
       }
       // 绘制列表样式
       if (curRow.isList) {
+        let listPosition = positionList[curRow.startIndex]
+        // For visual-order RTL rows, the startIndex position (ZWSP) is
+        // at the rightmost visual position. The list marker code needs
+        // the leftmost visual position for correct right-edge computation.
+        if (curRow.isBidiMixed && curRow.visualOrder && curRow.isRTL) {
+          const leftmostLogicalIdx = curRow.visualOrder[0]
+          listPosition = positionList[curRow.startIndex + leftmostLogicalIdx]
+        }
         this.listParticle.drawListStyle(
           ctx,
           curRow,
-          positionList[curRow.startIndex]
+          listPosition
         )
       }
       // 绘制文字、边框、下划线、删除线
