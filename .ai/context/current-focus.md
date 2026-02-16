@@ -13,8 +13,55 @@ Step 5 (RTL Particle Adaptation) mostly complete (commit `a260acb`):
 - Mock data: 15 Arabic/BiDi test scenarios
 
 **CURRENT BUG**: RTL selection/formatting broken in pure Arabic text.
-Selecting text and applying formatting applies to wrong position.
-Copy/cut/delete also affected. BiDi mixed rows work correctly.
+Selecting leftmost (visual) text selects rightmost (logical) text.
+The mirror formula maps visual click → logical index correctly, BUT
+the resulting logical indices are used directly for `elementList.slice()`,
+which means the *visual* selection highlight (mirrored back) appears at
+the wrong position. Copy/cut/delete/formatting all affected.
+BiDi mixed rows work correctly because they use `bidiVisualX` positions.
+
+### Root Cause Analysis (Session 012)
+
+The core issue is the **logical↔visual order confusion** in pure RTL rows:
+
+1. **Position storage**: Positions are stored in **logical** (LTR) order.
+   Element 0 = first character in memory (rightmost visually in RTL).
+
+2. **Hit testing** (`getPositionByXY`): Uses mirror formula
+   `mirrorX = rowStart + rowEnd - clickX` to map visual click to logical
+   position. Returns a **positionList index** (= logical index).
+
+3. **Range**: `setRange(startIndex, endIndex)` stores logical indices.
+
+4. **Selection rendering** (`drawRow`): Accumulates `rangeRecord.x` from
+   logical positions, then mirrors the rect. But the accumulation walks
+   elements in logical order (L→R), so `rangeRecord.x` starts at the
+   first *logical* selected element's x — which is on the RIGHT visually.
+
+5. **Formatting** (`getSelection`): Returns `elementList.slice(start+1, end+1)`.
+   These are the correct logical elements. But the user *thinks* they
+   selected the visual-left text, while they actually got logical-left text
+   (= visual-right in RTL).
+
+**The fundamental problem**: The mirror formula in hit testing maps
+click position to the *wrong* logical index. When clicking on the LEFT
+side of an RTL row (which is the END of the text visually), the mirror
+formula maps it to a HIGH logical index (end of logical array). But
+visually, the user sees the END of the paragraph on the left. So the
+mapping is actually correct for "which character did I click on", but
+the selection *range* (startIndex→endIndex) then highlights and operates
+on the wrong visual region because the mirrored selection rect doesn't
+match what the user dragged over.
+
+### Key Insight
+
+The mirror approach works for **single-point** operations (cursor placement,
+single click) but breaks for **range** operations (drag selection) because:
+- mousedown returns logical index A (mirror of visual start)
+- mousemove returns logical index B (mirror of visual end)  
+- if A > B, they get swapped: `[start, end] = [B, A]`
+- But this swap is based on logical ordering, not visual ordering
+- The resulting range may not correspond to what the user visually selected
 
 ## Roadmap: Steps 3-5
 
@@ -65,10 +112,80 @@ Copy/cut/delete also affected. BiDi mixed rows work correctly.
 - ~~Selection getIsPointInRange fails on RTL text~~ — **FIXED** (session 010)
 - ~~Mousemove drag-check fails on RTL text~~ — **FIXED** (session 010)
 - ~~BiDi mixed selection draws single rect for non-contiguous~~ — **FIXED** (session 010)
-- **RTL selection/formatting in pure Arabic text** — **OPEN** (session 011)
-  - Formatting applies to wrong position in pure RTL rows
-  - Copy/cut/delete also affected
-  - BiDi mixed rows work correctly
+- **RTL selection/formatting in pure Arabic text** — **OPEN** (session 011-012)
+  - Selecting leftmost (visual) text selects rightmost (logical) text
+  - Mirror formula correct for cursor, wrong for range selection
+  - Copy/cut/delete/formatting all affected
+  - BiDi mixed rows work correctly (use bidiVisualX positions)
+  - Batch rendering isolation fix committed (`076899d`) but doesn't solve root cause
+
+## Next Steps — RTL Selection Fix Plan
+
+### Approach: Treat Pure RTL Rows Like BiDi Mixed Rows
+
+The BiDi mixed row architecture already solves this problem correctly:
+- Positions have visual-order x coordinates (via `bidiVisualX`)
+- Hit testing returns correct logical index without mirror formula
+- Selection rects are collected per-element (not accumulated)
+- No mirror formula needed anywhere
+
+**Plan**: For pure RTL rows, compute `bidiVisualX` in reverse order
+(last logical element first) so positions have visual-order coordinates.
+This eliminates the need for the mirror formula entirely.
+
+### Step-by-Step Implementation
+
+1. **`computePageRowPosition()` in Position.ts**:
+   - For pure RTL rows (isRTL && !isBidiMixed), compute x positions
+     in reverse logical order: start from right edge, walk elements
+     right-to-left, assign visual x coordinates
+   - OR: synthesize a `visualOrder` array = `[n-1, n-2, ..., 1, 0]`
+     and set `isBidiMixed = true` so existing bidiVisualX code handles it
+
+2. **Remove mirror formula from all locations**:
+   - `getPositionByXY()` — remove `isRTL && !isBidiMixed` mirror block
+   - `drawCursor()` in Cursor.ts — remove cursor mirror
+   - `drawRow()` selection rect — remove RTL mirror
+   - `getIsPointInRange()` — remove RTL mirror cache
+   - The row-boundary handling (click left/right of content) may still
+     need adjustment
+
+3. **Verify rendering still works**:
+   - `drawRow()` reads x,y from positionList for rendering
+   - If positions now have visual x, rendering should still work because
+     HarfBuzz `renderGlyphs()` draws glyphs left-to-right from the
+     provided x position, and each element's x is now its visual position
+   - BUT: batch rendering (`record()`+`complete()`) uses the FIRST
+     recorded element's x as the batch start position. For RTL, this
+     would be the rightmost element visually — exactly where HarfBuzz
+     should start rendering. Need to verify this.
+
+4. **Alternative simpler approach** — Keep positions logical, fix the
+   range computation:
+   - In `mousemove.ts`, when computing selection range for RTL rows,
+     DON'T swap start/end based on numeric comparison
+   - Instead, keep the indices in the order the user dragged (visual order)
+   - This is simpler but requires changes in many places that assume
+     startIndex < endIndex
+
+### Recommended Approach
+
+Option 1 (synthesize visualOrder for pure RTL) is cleanest because:
+- Reuses existing BiDi mixed infrastructure
+- Eliminates ALL mirror formula code (simpler codebase)
+- Selection, formatting, copy/cut/delete all work automatically
+- No special-casing in mousedown/mousemove
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `Position.ts` | Synthesize `visualOrder` for pure RTL rows in `computePageRowPosition` |
+| `Position.ts` | Remove mirror formula from `getPositionByXY` |
+| `Cursor.ts` | Remove mirror formula from `drawCursor` |
+| `Draw.ts` | Remove mirror from selection rect rendering |
+| `RangeManager.ts` | Remove mirror from `getIsPointInRange` |
+| `Draw.ts` | May need per-element rendering for pure RTL (like BiDi mixed) |
 
 ## Critical Architecture Constraints
 

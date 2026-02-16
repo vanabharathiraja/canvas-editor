@@ -100,13 +100,25 @@ Added 15 Arabic/BiDi test scenarios to `mock.ts`:
 ## Known Issues
 
 ### RTL Selection/Formatting in Pure Arabic Text (NEW)
-**Status**: Open — not yet investigated
-**Symptom**: In pure RTL Arabic text (non-BiDi), selecting text and applying
-formatting (bold, color, etc.) applies the style to the wrong position ("bit far
-from selected text"). Copy/cut/delete also affected. Works correctly in BiDi
-mixed rows.
+**Status**: Open — investigated, root cause identified, fix plan documented
+**Commits**: `a260acb` (Phase B), `076899d` (batch isolation — partial fix)
+**Symptom**: In pure RTL Arabic text (non-BiDi), selecting leftmost (visual)
+text actually selects rightmost (logical) text. Formatting, copy/cut/delete
+all apply to the wrong text. BiDi mixed rows work correctly.
 
-**Likely Areas**:
-- Position-to-index mapping in pure RTL rows
-- The mirror formula interaction with selection range computation
-- `isRTL && !isBidiMixed` conditions vs ZWSP false-positive
+**Root Cause**: The mirror formula `mirrorX = rowStart + rowEnd - x` in
+`getPositionByXY()` maps a visual click to a logical position index. For
+single-point ops (cursor), this works. But for range selection (drag):
+- mousedown returns logical index A (mirror of visual click start)
+- mousemove returns logical index B (mirror of visual click end)
+- In `mousemove.ts`, if A > B they get swapped (assumes startIndex < endIndex)
+- The swapped range doesn't correspond to what the user visually selected
+- Selection rect is mirrored back, but the range was wrong from the start
+
+**Fix Plan**: Treat pure RTL rows like BiDi mixed rows:
+1. Synthesize `visualOrder = [n-1, n-2, ..., 1, 0]` for pure RTL rows
+2. Let the existing `bidiVisualX` code compute visual positions
+3. Remove all mirror formula code from Position.ts, Cursor.ts, Draw.ts, RangeManager.ts
+4. Pure RTL rows use per-element rendering (like BiDi mixed)
+
+See `.ai/context/current-focus.md` for detailed step-by-step plan.

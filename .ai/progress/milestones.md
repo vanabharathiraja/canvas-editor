@@ -412,7 +412,10 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
    - Mitigation: Graceful fallback, feature detection
 
 ### Open Issues
-- None currently
+- **RTL selection in pure Arabic text**: Logical/visual order confusion.
+  Mirror formula works for cursor but breaks range selection (drag).
+  Plan: Synthesize `visualOrder` for pure RTL rows to reuse BiDi mixed
+  infrastructure. See `.ai/context/current-focus.md` for full plan.
 
 ---
 
