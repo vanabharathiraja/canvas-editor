@@ -40,24 +40,23 @@ window.onload = function () {
       header: [
         {
           value: 'First People\'s Hospital',
-          size: 32,
+          size: 28,
+          color: '#FFFFFF',
           rowFlex: RowFlex.CENTER
         },
         {
           value: '\nOutpatient Medical Record',
-          size: 18,
+          size: 14,
+          color: '#FFFFFF',
           rowFlex: RowFlex.CENTER
-        },
-        {
-          value: '\n',
-          type: ElementType.SEPARATOR
         }
       ],
       main: <IElement[]>data,
       footer: [
         {
-          value: 'canvas-editor',
-          size: 12
+          value: 'Taqniat intelligent solutions Ltd.',
+          size: 12,
+          rowFlex: RowFlex.CENTER
         }
       ]
     },
