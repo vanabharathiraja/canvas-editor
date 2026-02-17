@@ -393,6 +393,10 @@ and ZWSP joined Arabic batch causing different HarfBuzz shaping.
 
 **Remaining**: Phase 10 completion (RTL selection fix), Phase 11 (Polish & Release)
 
+**Upstream Gap**: 17 commits behind `upstream/main` (570b9c1..6fe3e70)
+- 2 critical bug fixes to reimplement (titleId, control postfix cursor)
+- See `.ai/UPSTREAM-TRACKING.md` for full analysis
+
 ---
 
 ## Velocity Tracking
