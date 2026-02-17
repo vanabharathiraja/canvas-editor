@@ -18,6 +18,15 @@ All 7 phases completed in a single commit. Key changes:
 - Lazy render observes wrapper divs
 - Events verified working via content canvas data-index
 
+### Bug Fixes (commit 7f68829)
+- **RTL/BiDi highlight gaps**: Per-element fillRect calls caused subpixel gaps in
+  BiDi rows. Fixed by collecting rects, sorting by X, merging adjacent same-color
+  rects before rendering as single solid rectangles.
+- **RTL table column selection mirrored**: TableTool column items were in logical
+  order not visual order for RTL. Fixed by reversing column order + mapping visual
+  to logical index. TableParticle getRangeRowCol/drawRange used x-swap that
+  inverted col indices for RTL. Fixed with Math.min/Math.max normalization.
+
 ---
 
 ## Problem Statement
