@@ -1,7 +1,7 @@
 # ADR-0002: Table Auto-Fit and Multi-Page Improvements
 
 **Date**: 2026-02-17
-**Status**: Proposed
+**Status**: Accepted (Phase T1 implemented)
 **Deciders**: vanabharathiraja
 **Context**: Table system falls behind Google Docs quality — pasted wide tables overflow, multi-page splitting fails on merged cells
 

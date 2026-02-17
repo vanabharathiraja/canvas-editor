@@ -120,8 +120,8 @@ Canvas API fast path for Latin). It's likely fine for typical documents.
 
 ---
 
-## Next Steps (Immediate)
+## Next Steps
 
-1. **Begin Phase T1.1**: Implement `normalizeTableColWidths()` in TableOperate.ts
-2. **Begin Phase T1.2**: Add normalization call in paste path (element.ts)
-3. **Test**: Copy table from Google Docs → paste into editor → verify it fits
+1. ~~**Phase T1**~~: **COMPLETE** — implemented in Session 015
+2. **Phase T2a**: Multi-page table split — improve split-point selection
+3. **Beautification**: Checkboxes, radio, color modernization

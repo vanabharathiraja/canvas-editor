@@ -4,6 +4,33 @@ Chronological log of all AI-assisted development sessions on this project.
 
 ---
 
+## Session #015 - 2026-02-17
+
+**Machine**: Windows - vraja
+**Goal**: Implement Phase T1 — table auto-fit normalization
+**AI Agent**: GitHub Copilot (Claude Opus 4.6)
+
+### Summary
+Implemented `normalizeTableColWidths()` and wired it into all 4 data entry paths
+(constructor, paste, setValue, insertElementList). Added `_normalizeTableElements`
+private method in Draw.ts for recursive normalization including nested tables.
+6 test tables added to mock.ts, all verified visually fitting within panel.
+
+Identified that footer overlap on tall pasted tables is a separate issue
+(Phase T2 — multi-page table split), not a T1 regression.
+
+### Commits
+- `68a00005` — feat: table auto-fit normalization (Phase T1)
+- `61face7a` — docs: add ADR-0002, TABLE-IMPROVEMENT plan, Session 014 summary
+
+### Files Modified
+- `src/editor/utils/element.ts` — normalizeTableColWidths() + paste-path wiring
+- `src/editor/index.ts` — constructor normalization + public export
+- `src/editor/core/draw/Draw.ts` — _normalizeTableElements, setValue, insertElementList
+- `src/mock.ts` — 6 test tables (T1-1 through T1-6)
+
+---
+
 ## Session #014 - 2026-02-17
 
 **Machine**: Windows - vraja
