@@ -50,6 +50,7 @@ import { IControlSelect } from '../interface/Control'
 import { IEditorOption } from '../interface/Editor'
 import { IElement } from '../interface/Element'
 import { IRowElement } from '../interface/Row'
+import { IColgroup } from '../interface/table/Colgroup'
 import { ITd } from '../interface/table/Td'
 import { ITr } from '../interface/table/Tr'
 import { mergeOption } from './option'
@@ -1460,6 +1461,51 @@ export function convertTextNodeToElement(
   return element
 }
 
+// Minimum column width floor for auto-fit normalization
+const AUTO_FIT_COL_MIN_WIDTH = 40
+
+/**
+ * Normalize table colgroup widths to fit within available innerWidth.
+ * When total colgroup width exceeds innerWidth, proportionally scales
+ * all columns down while enforcing a minimum width floor.
+ * This ensures pasted tables (e.g. from Google Docs) never overflow
+ * the editor's rendering panel.
+ */
+export function normalizeTableColWidths(
+  colgroup: IColgroup[],
+  innerWidth: number
+): void {
+  if (!colgroup.length || innerWidth <= 0) return
+  const totalWidth = colgroup.reduce((sum, col) => sum + col.width, 0)
+  if (totalWidth <= innerWidth) return
+  // Proportionally scale all columns
+  const scale = innerWidth / totalWidth
+  for (const col of colgroup) {
+    col.width = col.width * scale
+  }
+  // Enforce minimum width floor — collect deficit and redistribute
+  let deficit = 0
+  let flexibleWidth = 0
+  for (const col of colgroup) {
+    if (col.width < AUTO_FIT_COL_MIN_WIDTH) {
+      deficit += AUTO_FIT_COL_MIN_WIDTH - col.width
+      col.width = AUTO_FIT_COL_MIN_WIDTH
+    } else {
+      flexibleWidth += col.width
+    }
+  }
+  // Shrink flexible columns to absorb deficit
+  if (deficit > 0 && flexibleWidth > 0) {
+    const shrinkRatio = deficit / flexibleWidth
+    for (const col of colgroup) {
+      if (col.width > AUTO_FIT_COL_MIN_WIDTH) {
+        const shrink = col.width * shrinkRatio
+        col.width = Math.max(AUTO_FIT_COL_MIN_WIDTH, col.width - shrink)
+      }
+    }
+  }
+}
+
 export interface IGetElementListByHTMLOption {
   innerWidth: number
 }
@@ -1642,13 +1688,15 @@ export function getElementListByHTML(
               (pre, cur) => pre + cur.colspan,
               0
             )
-            const width = Math.ceil(options.innerWidth / tdCount)
+            const defaultWidth = Math.ceil(options.innerWidth / tdCount)
             for (let i = 0; i < tdCount; i++) {
               const colElement = colElements[i]?.getAttribute('width')
               element.colgroup!.push({
-                width: colElement ? parseFloat(colElement) : width
+                width: colElement ? parseFloat(colElement) : defaultWidth
               })
             }
+            // Auto-fit: normalize colgroup widths to fit within innerWidth
+            normalizeTableColWidths(element.colgroup!, options.innerWidth)
             elementList.push(element)
           }
         } else if (

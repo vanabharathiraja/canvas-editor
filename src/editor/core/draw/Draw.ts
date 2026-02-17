@@ -84,7 +84,10 @@ import {
   ControlComponent,
   ControlIndentation
 } from '../../dataset/enum/Control'
-import { formatElementList } from '../../utils/element'
+import {
+  formatElementList,
+  normalizeTableColWidths
+} from '../../utils/element'
 import { WorkerManager } from '../worker/WorkerManager'
 import { Previewer } from './particle/previewer/Previewer'
 import { DateParticle } from './particle/date/DateParticle'
@@ -831,6 +834,9 @@ export class Draw {
       isHandleFirstElement: false,
       editorOptions: this.options
     })
+    // Auto-fit: normalize table colgroup widths to fit available width
+    const innerWidth = this.getOriginalInnerWidth()
+    this._normalizeTableElements(payload, innerWidth)
     let curIndex = -1
     // 判断是否在控件内
     let activeControl = this.control.getActiveControl()
@@ -1355,10 +1361,39 @@ export class Draw {
     }
   }
 
+  private _normalizeTableElements(
+    elementList: IElement[],
+    innerWidth: number
+  ) {
+    const tdPadding = this.options.table.tdPadding
+    const tdPaddingWidth = tdPadding
+      ? tdPadding[1] + tdPadding[3]
+      : 0
+    for (const el of elementList) {
+      if (el.type === ElementType.TABLE && el.colgroup?.length) {
+        normalizeTableColWidths(el.colgroup, innerWidth)
+        // Recursively normalize nested tables inside cells
+        if (el.trList) {
+          for (const tr of el.trList) {
+            for (const td of tr.tdList) {
+              if (td.value?.length) {
+                const cellWidth = td.width
+                  ? td.width - tdPaddingWidth
+                  : innerWidth
+                this._normalizeTableElements(td.value, cellWidth)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   public setValue(payload: Partial<IEditorData>, options?: ISetValueOption) {
     const { header, main, footer } = deepClone(payload)
     if (!header && !main && !footer) return
     const { isSetCursor = false } = options || {}
+    const innerWidth = this.getOriginalInnerWidth()
     const pageComponentData = [header, main, footer]
     pageComponentData.forEach(data => {
       if (!data) return
@@ -1366,6 +1401,8 @@ export class Draw {
         editorOptions: this.options,
         isForceCompensation: true
       })
+      // Auto-fit: normalize table colgroup widths to fit available width
+      this._normalizeTableElements(data, innerWidth)
     })
     this.setEditorData({
       header,

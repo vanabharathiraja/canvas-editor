@@ -63,6 +63,7 @@ import {
   createDomFromElementList,
   getElementListByHTML,
   getTextFromElementList,
+  normalizeTableColWidths,
   type IGetElementListByHTMLOption
 } from './utils/element'
 import { BackgroundRepeat, BackgroundSize } from './dataset/enum/Background'
@@ -112,11 +113,23 @@ export default class Editor {
       mainElementList,
       footerElementList
     ]
+    // Compute available inner width for table auto-fit
+    const { width: pageWidth, margins } = editorOptions
+    const innerWidth = pageWidth - margins[1] - margins[3]
     pageComponentData.forEach(elementList => {
       formatElementList(elementList, {
         editorOptions,
         isForceCompensation: true
       })
+      // Auto-fit: normalize table colgroup widths to fit available width
+      for (const el of elementList) {
+        if (
+          el.type === ElementType.TABLE &&
+          el.colgroup?.length
+        ) {
+          normalizeTableColWidths(el.colgroup, innerWidth)
+        }
+      }
     })
     // 版本
     this.version = version
@@ -170,7 +183,8 @@ export {
   splitText,
   createDomFromElementList,
   getElementListByHTML,
-  getTextFromElementList
+  getTextFromElementList,
+  normalizeTableColWidths
 }
 
 // 对外常量

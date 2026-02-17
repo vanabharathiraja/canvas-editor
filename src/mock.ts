@@ -1576,6 +1576,548 @@ elementList.push(
     }
   ]
 )
+
+// ============================================================
+// Table Auto-Fit Test Cases (Phase T1)
+// These tables simulate wide Google Docs paste scenarios.
+// With margins [100,120,100,120] and page width 794,
+// innerWidth = 554px. Tables wider than 554px should auto-fit.
+// ============================================================
+
+// T1 Test Title
+const t1TestTitle: IElement = {
+  value: '',
+  type: ElementType.TITLE,
+  level: TitleLevel.FIRST,
+  valueList: [
+    {
+      value: 'Table Auto-Fit Tests:',
+      size: 18
+    }
+  ]
+}
+elementList.push(t1TestTitle)
+
+// T1-Test1: Wide 4-column table (total 1200px > 554px innerWidth)
+// Simulates a Google Docs table pasted with explicit col widths
+// Expected: columns scale proportionally to fit ~554px total
+const t1Test1Label = 'T1-1: Wide table (1200px > 554px) — should auto-fit:'
+for (const ch of t1Test1Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 400 },
+    { width: 300 },
+    { width: 300 },
+    { width: 200 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Patient Name'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Diagnosis'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Treatment Plan'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Status'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Ahmed Al-Rashid'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Type 2 Diabetes'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Metformin 500mg twice daily'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Active'.split('').map(ch => ({
+            value: ch, size: 12, color: '#008800'
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Sara Johnson'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Hypertension'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Lisinopril 10mg daily'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1,
+          rowspan: 1,
+          value: 'Review'.split('').map(ch => ({
+            value: ch, size: 12, color: '#CC8800'
+          }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
+
+// T1-Test2: Extremely wide 6-column table (total 2400px)
+// Tests proportional scaling with many columns
+// Expected: all columns scale down, none below 40px min width
+const t1Test2Label = 'T1-2: Very wide 6-col table (2400px) — extreme auto-fit:'
+for (const ch of t1Test2Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 500 },
+    { width: 400 },
+    { width: 400 },
+    { width: 400 },
+    { width: 400 },
+    { width: 300 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Col A'.split('').map(ch => ({ value: ch, size: 11, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Col B'.split('').map(ch => ({ value: ch, size: 11, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Col C'.split('').map(ch => ({ value: ch, size: 11, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Col D'.split('').map(ch => ({ value: ch, size: 11, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Col E'.split('').map(ch => ({ value: ch, size: 11, bold: true }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Col F'.split('').map(ch => ({ value: ch, size: 11, bold: true }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Data 1'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Data 2'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Data 3'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Data 4'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Data 5'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Data 6'.split('').map(ch => ({ value: ch, size: 11 }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
+
+// T1-Test3: Wide RTL Arabic table (total 900px)
+// Tests that auto-fit works correctly with RTL column ordering
+// Expected: scales to 554px AND columns render right-to-left
+const t1Test3Label = 'T1-3: Wide RTL Arabic table (900px) — auto-fit + RTL:'
+for (const ch of t1Test3Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  direction: 'rtl' as const,
+  colgroup: [
+    { width: 300 },
+    { width: 300 },
+    { width: 300 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'الحالة'.split('').map(ch => ({
+            value: ch, size: 13, bold: true
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'التشخيص'.split('').map(ch => ({
+            value: ch, size: 13, bold: true
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'اسم المريض'.split('').map(ch => ({
+            value: ch, size: 13, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'نشط'.split('').map(ch => ({
+            value: ch, size: 12, color: '#008800'
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'سكري النوع الثاني'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'أحمد الراشد'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'مراجعة'.split('').map(ch => ({
+            value: ch, size: 12, color: '#CC8800'
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'ارتفاع ضغط الدم'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'سارة محمد'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
+
+// T1-Test4: Wide BiDi mixed table (total 1000px)
+// Tests auto-fit with mixed Arabic + English content in cells
+// Expected: scales to 554px, Arabic text renders RTL within cells
+const t1Test4Label = 'T1-4: Wide BiDi mixed table (1000px) — auto-fit + mixed content:'
+for (const ch of t1Test4Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 250 },
+    { width: 250 },
+    { width: 250 },
+    { width: 250 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Patient / المريض'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Test / الفحص'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Result / النتيجة'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Notes / ملاحظات'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'أحمد Ahmed'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'CBC فحص'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'طبيعي Normal'.split('').map(ch => ({
+            value: ch, size: 12, color: '#008800'
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'متابعة بعد 3 أشهر'.split('').map(ch => ({
+            value: ch, size: 12
+          }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
+
+// T1-Test5: Table with merged cells (colspan) wide (total 800px)
+// Tests that auto-fit handles colspan correctly
+// Expected: scales to 554px, merged cells span proportionally
+const t1Test5Label = 'T1-5: Wide table with colspan (800px) — auto-fit + merge:'
+for (const ch of t1Test5Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 200 },
+    { width: 200 },
+    { width: 200 },
+    { width: 200 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 4,
+          rowspan: 1,
+          value: 'Medical Report — التقرير الطبي'.split('').map(ch => ({
+            value: ch, size: 14, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 2,
+          rowspan: 1,
+          value: 'Patient Info / بيانات المريض'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 2,
+          rowspan: 1,
+          value: 'Clinical Data / البيانات السريرية'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Name'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'أحمد سعيد'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'BP'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: '120/80'.split('').map(ch => ({ value: ch, size: 11 }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Age'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: '35'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Temp'.split('').map(ch => ({ value: ch, size: 11 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: '37.2°C'.split('').map(ch => ({ value: ch, size: 11 }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
+
+// T1-Test6: Table that already fits (total 400px < 554px)
+// Tests that auto-fit does NOT shrink tables that already fit
+// Expected: widths preserved exactly as specified
+const t1Test6Label = 'T1-6: Table within bounds (400px < 554px) — no change:'
+for (const ch of t1Test6Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [
+    { width: 200 },
+    { width: 200 }
+  ],
+  trList: [
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Key'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Value'.split('').map(ch => ({
+            value: ch, size: 12, bold: true
+          }))
+        }
+      ]
+    },
+    {
+      height: 36,
+      tdList: [
+        {
+          colspan: 1, rowspan: 1,
+          value: 'Status'.split('').map(ch => ({ value: ch, size: 12 }))
+        },
+        {
+          colspan: 1, rowspan: 1,
+          value: 'OK'.split('').map(ch => ({
+            value: ch, size: 12, color: '#008800'
+          }))
+        }
+      ]
+    }
+  ]
+})
+elementList.push({ value: '\n' })
 export const data: IElement[] = elementList
 
 interface IComment {
