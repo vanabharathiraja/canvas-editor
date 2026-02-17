@@ -54,7 +54,7 @@ What other options were evaluated?
 - [ADR-0001](adr-0001-shape-engine-integration.md) - Shape Engine Integration for Complex Scripts (2026-02-04)
 
 ### Core Editor
-- (none yet)
+- [ADR-0002](adr-0002-table-auto-fit-and-multipage.md) - Table Auto-Fit and Multi-Page Improvements (2026-02-17)
 
 ### Performance
 - (none yet)
