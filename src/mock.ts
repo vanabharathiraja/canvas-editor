@@ -1406,6 +1406,122 @@ elementList.push({ value: '\n' })
 
 // ─── End Bilingual Contract Table ────────────────────────────────────
 
+
+// ============================================================
+// Layer System Test Cases
+// These elements verify the two-canvas layer architecture:
+// - Selection canvas (bottom): background, watermark, selection rects, search highlights
+// - Content canvas (top): text, controls, underlines, strikeouts, float images
+// ============================================================
+
+// Test Case 1: Dense colored text for selection-behind-text verification
+// Select this text and verify selection highlight appears behind the characters
+const layerTestTitle: IElement = {
+  value: '',
+  type: ElementType.TITLE,
+  level: TitleLevel.FIRST,
+  valueList: [
+    {
+      value: 'Layer System Tests:',
+      size: 18
+    }
+  ]
+}
+elementList.push(layerTestTitle)
+
+// Test Case 2: Mixed colored text — selection should appear behind all colors
+const colorTestLabel = 'Color test: '
+for (const ch of colorTestLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const colorSamples = [
+  { text: 'RED', color: '#FF0000' },
+  { text: ' GREEN', color: '#00AA00' },
+  { text: ' BLUE', color: '#0000FF' },
+  { text: ' ORANGE', color: '#FF8800' }
+]
+for (const sample of colorSamples) {
+  for (const ch of sample.text) {
+    elementList.push({ value: ch, size: 16, color: sample.color, bold: true })
+  }
+}
+elementList.push({ value: '\n', size: 16 })
+
+// Test Case 3: Highlighted + colored text — verify highlight on content canvas,
+// selection on selection canvas, both visible without overlap artifacts
+const highlightTestLabel = 'Highlight over selection: '
+for (const ch of highlightTestLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const highlightSamples = 'HIGHLIGHTED TEXT'
+for (const ch of highlightSamples) {
+  elementList.push({
+    value: ch,
+    size: 16,
+    highlight: '#FFFF00',
+    bold: true
+  })
+}
+elementList.push({ value: '\n', size: 16 })
+
+// Test Case 4: Underline + strikeout — verify decorations stay on content canvas
+// above selection layer
+const decoTestLabel = 'Decorations: '
+for (const ch of decoTestLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const underlineText = 'underlined'
+for (const ch of underlineText) {
+  elementList.push({ value: ch, size: 16, underline: true })
+}
+elementList.push({ value: ' ', size: 16 })
+const strikeText = 'strikeout'
+for (const ch of strikeText) {
+  elementList.push({ value: ch, size: 16, strikeout: true })
+}
+elementList.push({ value: ' ', size: 16 })
+const bothText = 'both'
+for (const ch of bothText) {
+  elementList.push({
+    value: ch,
+    size: 16,
+    underline: true,
+    strikeout: true,
+    color: '#9900CC'
+  })
+}
+elementList.push({ value: '\n', size: 16 })
+
+// Test Case 5: Large bold text — easier to visually verify selection behind text
+const largeBoldLabel = 'Large text: '
+for (const ch of largeBoldLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const largeBoldText = 'SELECT ME'
+for (const ch of largeBoldText) {
+  elementList.push({ value: ch, size: 28, bold: true, color: '#333333' })
+}
+elementList.push({ value: '\n', size: 16 })
+
+// Test Case 6: Search highlight test — search for "SEARCHABLE" to verify
+// search highlights render on selection canvas behind text
+const searchTestLabel = 'Search test: '
+for (const ch of searchTestLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const searchableWord = 'SEARCHABLE'
+for (const ch of searchableWord) {
+  elementList.push({ value: ch, size: 16, bold: true, color: '#006600' })
+}
+const searchNote = ' (search this word)'
+for (const ch of searchNote) {
+  elementList.push({ value: ch, size: 14, color: '#999999' })
+}
+elementList.push({ value: '\n', size: 16 })
+
+
+
+
 // EOF marker
 elementList.push(
   ...[
@@ -1430,7 +1546,6 @@ elementList.push(
     }
   ]
 )
-
 export const data: IElement[] = elementList
 
 interface IComment {

@@ -141,8 +141,14 @@ const BIDI_BRACKET_MIRROR: Record<string, string> = {
 export class Draw {
   private container: HTMLDivElement
   private pageContainer: HTMLDivElement
+  // Content canvas (top layer, transparent bg) – text, controls, tables, etc.
   private pageList: HTMLCanvasElement[]
   private ctxList: CanvasRenderingContext2D[]
+  // Selection canvas (bottom layer, white bg) – background, watermark, selection, search
+  private selectionPageList: HTMLCanvasElement[]
+  private selectionCtxList: CanvasRenderingContext2D[]
+  // Wrapper div per page – contains both canvases
+  private pageWrapperList: HTMLDivElement[]
   private pageNo: number
   private pagePixelRatio: number | null
   private mode: EditorMode
@@ -232,6 +238,9 @@ export class Draw {
     this.container = this._wrapContainer(rootContainer)
     this.pageList = []
     this.ctxList = []
+    this.selectionPageList = []
+    this.selectionCtxList = []
+    this.pageWrapperList = []
     this.pageNo = 0
     this.renderCount = 0
     this.perfRenderCount = 0
@@ -1079,7 +1088,16 @@ export class Draw {
       isSubmitHistory: false
     })
     await this.imageObserver.allSettled()
-    const dataUrlList = this.pageList.map(c => c.toDataURL())
+    const dataUrlList = this.pageList.map((contentCanvas, i) => {
+      const selCanvas = this.selectionPageList[i]
+      const tmpCanvas = document.createElement('canvas')
+      tmpCanvas.width = contentCanvas.width
+      tmpCanvas.height = contentCanvas.height
+      const tmpCtx = tmpCanvas.getContext('2d')!
+      tmpCtx.drawImage(selCanvas, 0, 0)
+      tmpCtx.drawImage(contentCanvas, 0, 0)
+      return tmpCanvas.toDataURL()
+    })
     // 还原
     if (pixelRatio) {
       this.setPagePixelRatio(null)
@@ -1136,6 +1154,18 @@ export class Draw {
       canvas.height = height * dpr
       // canvas尺寸发生变化，上下文被重置
       this._initPageContext(this.ctxList[0])
+      // Reset selection canvas too
+      const selCanvas = this.selectionPageList[0]
+      if (selCanvas) {
+        selCanvas.style.height = `${height}px`
+        selCanvas.height = height * dpr
+        this._initPageContext(this.selectionCtxList[0])
+      }
+      // Reset wrapper height
+      const wrapper = this.pageWrapperList[0]
+      if (wrapper) {
+        wrapper.style.height = `${height}px`
+      }
     } else {
       // 连页模式：移除懒加载监听&清空页眉页脚计算数据
       this._disconnectLazyRender()
@@ -1178,9 +1208,10 @@ export class Draw {
       p.height = height * dpr
       p.style.width = `${width}px`
       p.style.height = `${height}px`
-      p.style.marginBottom = `${this.getPageGap()}px`
       this._initPageContext(this.ctxList[i])
     })
+    // Resize selection canvases + wrappers
+    this._resizeSelectionLayer(width, height, dpr)
     const cursorPosition = this.position.getCursorPosition()
     this.render({
       isSubmitHistory: false,
@@ -1219,6 +1250,8 @@ export class Draw {
       p.height = height * dpr
       this._initPageContext(this.ctxList[i])
     })
+    // Resize selection canvases + wrappers
+    this._resizeSelectionLayer(width, height, dpr)
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
@@ -1239,6 +1272,8 @@ export class Draw {
       p.style.height = `${realHeight}px`
       this._initPageContext(this.ctxList[i])
     })
+    // Resize selection canvases + wrappers
+    this._resizeSelectionLayer(realWidth, realHeight, dpr)
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
@@ -1258,6 +1293,8 @@ export class Draw {
       p.style.height = `${height}px`
       this._initPageContext(this.ctxList[i])
     })
+    // Resize selection canvases + wrappers
+    this._resizeSelectionLayer(width, height, dpr)
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
@@ -1388,23 +1425,54 @@ export class Draw {
   private _createPage(pageNo: number) {
     const width = this.getWidth()
     const height = this.getHeight()
+    const dpr = this.getPagePixelRatio()
+
+    // Wrapper div per page (position context for stacked canvases)
+    const wrapper = document.createElement('div')
+    wrapper.style.position = 'relative'
+    wrapper.style.width = `${width}px`
+    wrapper.style.height = `${height}px`
+    wrapper.style.marginBottom = `${this.getPageGap()}px`
+    wrapper.setAttribute('data-index', String(pageNo))
+
+    // Selection canvas (bottom layer): white bg, watermark, selection, search
+    const selCanvas = document.createElement('canvas')
+    selCanvas.style.width = `${width}px`
+    selCanvas.style.height = `${height}px`
+    selCanvas.style.position = 'absolute'
+    selCanvas.style.top = '0'
+    selCanvas.style.left = '0'
+    selCanvas.style.backgroundColor = '#ffffff'
+    selCanvas.style.pointerEvents = 'none'
+    selCanvas.width = width * dpr
+    selCanvas.height = height * dpr
+    const selCtx = selCanvas.getContext('2d')!
+    this._initPageContext(selCtx)
+
+    // Content canvas (top layer): text, controls, tables, etc.
     const canvas = document.createElement('canvas')
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
+    canvas.style.position = 'absolute'
+    canvas.style.top = '0'
+    canvas.style.left = '0'
     canvas.style.display = 'block'
-    canvas.style.backgroundColor = '#ffffff'
-    canvas.style.marginBottom = `${this.getPageGap()}px`
+    canvas.style.cursor = 'text'
     canvas.setAttribute('data-index', String(pageNo))
-    this.pageContainer.append(canvas)
-    // 调整分辨率
-    const dpr = this.getPagePixelRatio()
     canvas.width = width * dpr
     canvas.height = height * dpr
-    canvas.style.cursor = 'text'
     const ctx = canvas.getContext('2d')!
-    // 初始化上下文配置
     this._initPageContext(ctx)
-    // 缓存上下文
+
+    // Assemble: selection (bottom) then content (top)
+    wrapper.append(selCanvas)
+    wrapper.append(canvas)
+    this.pageContainer.append(wrapper)
+
+    // Cache references
+    this.pageWrapperList.push(wrapper)
+    this.selectionPageList.push(selCanvas)
+    this.selectionCtxList.push(selCtx)
     this.pageList.push(canvas)
     this.ctxList.push(ctx)
   }
@@ -1416,6 +1484,33 @@ export class Draw {
     ctx.letterSpacing = '0px'
     ctx.wordSpacing = '0px'
     ctx.direction = 'ltr'
+  }
+
+  /**
+   * Resize all selection canvases and wrapper divs to match content canvases.
+   * Called by setPageScale, setPageDevicePixel, setPaperSize, setPaperDirection.
+   */
+  private _resizeSelectionLayer(
+    width: number,
+    height: number,
+    dpr: number
+  ) {
+    this.pageWrapperList.forEach(w => {
+      w.style.width = `${width}px`
+      w.style.height = `${height}px`
+      w.style.marginBottom = `${this.getPageGap()}px`
+    })
+    this.selectionPageList.forEach((s, i) => {
+      s.width = width * dpr
+      s.height = height * dpr
+      s.style.width = `${width}px`
+      s.style.height = `${height}px`
+      this._initPageContext(this.selectionCtxList[i])
+    })
+  }
+
+  public getSelectionCtx(pageNo = -1): CanvasRenderingContext2D {
+    return this.selectionCtxList[~pageNo ? pageNo : this.pageNo]
   }
 
   public getElementFont(el: IElement, scale = 1): string {
@@ -2346,16 +2441,25 @@ export class Draw {
       )
       const dpr = this.getPagePixelRatio()
       const pageDom = this.pageList[0]
+      const selDom = this.selectionPageList[0]
+      const wrapperDom = this.pageWrapperList[0]
       const pageDomHeight = Number(pageDom.style.height.replace('px', ''))
       if (pageHeight > pageDomHeight) {
         pageDom.style.height = `${pageHeight}px`
         pageDom.height = pageHeight * dpr
+        selDom.style.height = `${pageHeight}px`
+        selDom.height = pageHeight * dpr
+        wrapperDom.style.height = `${pageHeight}px`
       } else {
         const reduceHeight = pageHeight < height ? height : pageHeight
         pageDom.style.height = `${reduceHeight}px`
         pageDom.height = reduceHeight * dpr
+        selDom.style.height = `${reduceHeight}px`
+        selDom.height = reduceHeight * dpr
+        wrapperDom.style.height = `${reduceHeight}px`
       }
       this._initPageContext(this.ctxList[0])
+      this._initPageContext(this.selectionCtxList[0])
     } else {
       for (let i = 0; i < this.rowList.length; i++) {
         const row = this.rowList[i]
@@ -2438,6 +2542,8 @@ export class Draw {
   public drawRow(ctx: CanvasRenderingContext2D, payload: IDrawRowPayload) {
     // 优先绘制高亮元素
     this._drawHighlight(ctx, payload)
+    // Selection layer context for range/search rendering
+    const selCtx = this.selectionCtxList[payload.pageNo] || ctx
     // 绘制元素、下划线、删除线、选区
     const {
       scale,
@@ -2939,7 +3045,7 @@ export class Draw {
             }
           }
           for (const rect of merged) {
-            this.range.render(ctx, rect.x, rect.y, rect.width, rect.height)
+            this.range.render(selCtx, rect.x, rect.y, rect.width, rect.height)
           }
         }
         if (rangeRecord.width && rangeRecord.height) {
@@ -2960,7 +3066,7 @@ export class Draw {
               rangeX = rowStart + rowEnd - (rangeRecord.x + rangeW)
             }
           }
-          this.range.render(ctx, rangeX, rangeY, rangeW, rangeH)
+          this.range.render(selCtx, rangeX, rangeY, rangeW, rangeH)
         }
         if (
           isCrossRowCol &&
@@ -2972,7 +3078,7 @@ export class Draw {
               leftTop: [x, y]
             }
           } = positionList[curRow.startIndex]
-          this.tableParticle.drawRange(ctx, tableRangeElement, x, y)
+          this.tableParticle.drawRange(selCtx, tableRangeElement, x, y)
         }
       }
     }
@@ -3010,12 +3116,14 @@ export class Draw {
   private _clearPage(pageNo: number) {
     const ctx = this.ctxList[pageNo]
     const pageDom = this.pageList[pageNo]
-    ctx.clearRect(
-      0,
-      0,
-      Math.max(pageDom.width, this.getWidth()),
-      Math.max(pageDom.height, this.getHeight())
-    )
+    const maxW = Math.max(pageDom.width, this.getWidth())
+    const maxH = Math.max(pageDom.height, this.getHeight())
+    ctx.clearRect(0, 0, maxW, maxH)
+    // Clear selection layer too
+    const selCtx = this.selectionCtxList[pageNo]
+    if (selCtx) {
+      selCtx.clearRect(0, 0, maxW, maxH)
+    }
     this.blockParticle.clear()
   }
 
@@ -3033,23 +3141,27 @@ export class Draw {
     const isPrintMode = this.mode === EditorMode.PRINT
     const innerWidth = this.getInnerWidth()
     const ctx = this.ctxList[pageNo]
+    const selCtx = this.selectionCtxList[pageNo]
     // 判断当前激活区域-非正文区域时元素透明度降低
     ctx.globalAlpha = !this.zone.isMainActive() ? inactiveAlpha : 1
+    if (selCtx) {
+      selCtx.globalAlpha = !this.zone.isMainActive() ? inactiveAlpha : 1
+    }
     this._clearPage(pageNo)
-    // 绘制背景
+    // 绘制背景 → selection layer
     if (
       !isPrintMode ||
       !this.options.modeRule[EditorMode.PRINT]?.backgroundDisabled
     ) {
-      this.background.render(ctx, pageNo)
+      this.background.render(selCtx || ctx, pageNo)
     }
     // 绘制区域
     if (!isPrintMode) {
       this.area.render(ctx, pageNo)
     }
-    // 绘制水印
+    // 绘制水印 → selection layer
     if (pageMode !== PageMode.CONTINUITY && this.options.watermark.data) {
-      this.waterMark.render(ctx, pageNo)
+      this.waterMark.render(selCtx || ctx, pageNo)
     }
     // 绘制页边距
     if (!isPrintMode) {
@@ -3102,9 +3214,9 @@ export class Draw {
       pageNo,
       imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND]
     })
-    // 搜索匹配绘制
+    // 搜索匹配绘制 → selection layer
     if (!isPrintMode && this.search.getSearchKeyword()) {
-      this.search.render(ctx, pageNo)
+      this.search.render(selCtx || ctx, pageNo)
     }
     // 绘制空白占位符
     if (this.elementList.length <= 1 && !this.elementList[0]?.listId) {
@@ -3137,7 +3249,7 @@ export class Draw {
     this.lazyRenderIntersectionObserver = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
-          const index = Number((<HTMLCanvasElement>entry.target).dataset.index)
+          const index = Number((<HTMLDivElement>entry.target).dataset.index)
           this._drawPage({
             elementList,
             positionList,
@@ -3147,7 +3259,7 @@ export class Draw {
         }
       })
     })
-    this.pageList.forEach(el => {
+    this.pageWrapperList.forEach(el => {
       this.lazyRenderIntersectionObserver!.observe(el)
     })
   }
@@ -3257,9 +3369,13 @@ export class Draw {
     if (prePageCount > curPageCount) {
       const deleteCount = prePageCount - curPageCount
       this.ctxList.splice(curPageCount, deleteCount)
-      this.pageList
+      this.selectionCtxList.splice(curPageCount, deleteCount)
+      this.selectionPageList.splice(curPageCount, deleteCount)
+      this.pageList.splice(curPageCount, deleteCount)
+      // Remove wrapper divs (removes both canvases inside)
+      this.pageWrapperList
         .splice(curPageCount, deleteCount)
-        .forEach(page => page.remove())
+        .forEach(wrapper => wrapper.remove())
     }
     // 绘制元素
     // 连续页因为有高度的变化会导致canvas渲染空白，需立即渲染，否则会出现闪动

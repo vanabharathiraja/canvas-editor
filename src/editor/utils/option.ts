@@ -239,7 +239,7 @@ export function mergeOption(
     pageGap: 20,
     underlineColor: '#000000',
     strikeoutColor: '#FF0000',
-    rangeAlpha: 0.35,
+    rangeAlpha: 0.6,
     rangeColor: '#AECBFA',
     rangeMinWidth: 5,
     searchMatchAlpha: 0.6,
