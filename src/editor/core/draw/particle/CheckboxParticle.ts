@@ -81,28 +81,30 @@ export class CheckboxParticle {
     ctx.save()
     ctx.beginPath()
     ctx.translate(0.5, 0.5)
+    const radius = 3 * scale
     // 绘制勾选状态
     if (checkbox?.value) {
-      // 边框
+      // 背景色 + 圆角边框
       ctx.lineWidth = lineWidth
       ctx.strokeStyle = fillStyle
-      ctx.rect(left, top, width, height)
-      ctx.stroke()
-      // 背景色
-      ctx.beginPath()
       ctx.fillStyle = fillStyle
-      ctx.fillRect(left, top, width, height)
+      ctx.roundRect(left, top, width, height, radius)
+      ctx.fill()
+      ctx.stroke()
       // 勾选对号
       ctx.beginPath()
       ctx.strokeStyle = strokeStyle
       ctx.lineWidth = lineWidth * 2 * scale
-      ctx.moveTo(left + 2 * scale, top + height / 2)
-      ctx.lineTo(left + width / 2, top + height - 3 * scale)
-      ctx.lineTo(left + width - 2 * scale, top + 3 * scale)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.moveTo(left + 2.5 * scale, top + height / 2)
+      ctx.lineTo(left + width / 2 - 0.5 * scale, top + height - 3 * scale)
+      ctx.lineTo(left + width - 2.5 * scale, top + 3 * scale)
       ctx.stroke()
     } else {
       ctx.lineWidth = lineWidth
-      ctx.rect(left, top, width, height)
+      ctx.strokeStyle = '#d0d5dd'
+      ctx.roundRect(left, top, width, height, radius)
       ctx.stroke()
     }
     ctx.closePath()
