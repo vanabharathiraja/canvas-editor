@@ -2911,7 +2911,14 @@ export class Draw {
           listPosition
         )
       }
-      // 绘制选区（在文字下方，使文字保持清晰可读）
+      // 绘制文字、边框、下划线、删除线
+      this.textParticle.complete()
+      this.control.drawBorder(ctx)
+      this.underline.render(ctx)
+      this.strikeout.render(ctx)
+      // 绘制批注样式
+      this.group.render(ctx)
+      // 绘制选区
       if (!isPrintMode && !isGraffitiMode) {
         // BiDi mixed rows: merge visually adjacent rects and render
         if (bidiRangeRects.length) {
@@ -2968,13 +2975,6 @@ export class Draw {
           this.tableParticle.drawRange(ctx, tableRangeElement, x, y)
         }
       }
-      // 绘制文字、边框、下划线、删除线（在选区上方）
-      this.textParticle.complete()
-      this.control.drawBorder(ctx)
-      this.underline.render(ctx)
-      this.strikeout.render(ctx)
-      // 绘制批注样式
-      this.group.render(ctx)
     }
   }
 
