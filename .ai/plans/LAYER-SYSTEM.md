@@ -1,5 +1,25 @@
 # Canvas Editor — Multi-Canvas Layer System
 
+## Status: ✅ IMPLEMENTED (commit d698fea on branch `canvas-layers`)
+
+### Implementation Summary
+All 7 phases completed in a single commit. Key changes:
+- **Draw.ts**: 262 insertions, 31 deletions — core two-canvas architecture
+- **option.ts**: `rangeAlpha` 0.35 → 0.6 (safe with selection behind text)
+- **mock.ts**: 6 test cases for visual verification
+
+### What Was Built
+- Wrapper div per page containing two stacked canvases
+- Selection canvas (bottom): white bg, pointer-events: none — background, watermark, selection rects, search highlights
+- Content canvas (top): transparent bg — text, controls, tables, underlines, strikeouts, float images
+- `_resizeSelectionLayer()` helper for coordinated resize
+- `getSelectionCtx()` public accessor
+- `getDataURL()` composites both canvases for export
+- Lazy render observes wrapper divs
+- Events verified working via content canvas data-index
+
+---
+
 ## Problem Statement
 
 The editor renders everything onto a **single canvas per page**. Selection highlighting

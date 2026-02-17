@@ -66,17 +66,18 @@ export class TableParticle {
     if (!isCrossRowCol) {
       return [[curTrList[trIndex!].tdList[tdIndex!]]]
     }
-    let startTd = curTrList[startTrIndex!].tdList[startTdIndex!]
-    let endTd = curTrList[endTrIndex!].tdList[endTdIndex!]
-    // 交换起始位置
-    if (startTd.x! > endTd.x! || startTd.y! > endTd.y!) {
-      // prettier-ignore
-      [startTd, endTd] = [endTd, startTd]
-    }
-    const startColIndex = startTd.colIndex!
-    const endColIndex = endTd.colIndex! + (endTd.colspan - 1)
-    const startRowIndex = startTd.rowIndex!
-    const endRowIndex = endTd.rowIndex! + (endTd.rowspan - 1)
+    const startTd = curTrList[startTrIndex!].tdList[startTdIndex!]
+    const endTd = curTrList[endTrIndex!].tdList[endTdIndex!]
+    // Normalize col/row ranges with min/max (handles RTL where x-swap
+    // inverts col index order)
+    const col1 = startTd.colIndex!
+    const col2 = endTd.colIndex! + (endTd.colspan - 1)
+    const startColIndex = Math.min(col1, col2)
+    const endColIndex = Math.max(col1, col2)
+    const row1 = startTd.rowIndex!
+    const row2 = endTd.rowIndex! + (endTd.rowspan - 1)
+    const startRowIndex = Math.min(row1, row2)
+    const endRowIndex = Math.max(row1, row2)
     // 选区行列
     const rowCol: ITd[][] = []
     for (let t = 0; t < curTrList.length; t++) {
@@ -543,17 +544,18 @@ export class TableParticle {
     } = this.range.getRange()
     // 存在跨行/列
     if (!isCrossRowCol) return
-    let startTd = trList[startTrIndex!].tdList[startTdIndex!]
-    let endTd = trList[endTrIndex!].tdList[endTdIndex!]
-    // 交换起始位置
-    if (startTd.x! > endTd.x! || startTd.y! > endTd.y!) {
-      // prettier-ignore
-      [startTd, endTd] = [endTd, startTd]
-    }
-    const startColIndex = startTd.colIndex!
-    const endColIndex = endTd.colIndex! + (endTd.colspan - 1)
-    const startRowIndex = startTd.rowIndex!
-    const endRowIndex = endTd.rowIndex! + (endTd.rowspan - 1)
+    const startTd = trList[startTrIndex!].tdList[startTdIndex!]
+    const endTd = trList[endTrIndex!].tdList[endTdIndex!]
+    // Normalize col/row ranges with min/max (handles RTL where x-swap
+    // inverts col index order)
+    const col1 = startTd.colIndex!
+    const col2 = endTd.colIndex! + (endTd.colspan - 1)
+    const startColIndex = Math.min(col1, col2)
+    const endColIndex = Math.max(col1, col2)
+    const row1 = startTd.rowIndex!
+    const row2 = endTd.rowIndex! + (endTd.rowspan - 1)
+    const startRowIndex = Math.min(row1, row2)
+    const endRowIndex = Math.max(row1, row2)
     ctx.save()
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]

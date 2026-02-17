@@ -230,23 +230,29 @@ export class TableTool {
     this.toolRowAddBtn = rowAddBtn
     // 渲染列工具
     const colWidthList = colgroup!.map(col => col.width)
+    // RTL tables: reverse visual order so column items match visual layout
+    const visualColOrder = isRTL
+      ? [...colWidthList].reverse()
+      : colWidthList
     const colContainer = document.createElement('div')
     colContainer.classList.add(`${EDITOR_PREFIX}-table-tool__col`)
     colContainer.style.transform = `translateY(-${
       this.ROW_COL_OFFSET * scale
     }px)`
-    for (let c = 0; c < colWidthList.length; c++) {
-      const colWidth = colWidthList[c] * scale
+    for (let c = 0; c < visualColOrder.length; c++) {
+      const colWidth = visualColOrder[c] * scale
+      // Map visual index back to logical column index
+      const logicalCol = isRTL ? colWidthList.length - 1 - c : c
       const colItem = document.createElement('div')
       colItem.classList.add(`${EDITOR_PREFIX}-table-tool__col__item`)
-      if (c === colIndex) {
+      if (logicalCol === colIndex) {
         colItem.classList.add('active')
       }
       // 快捷列选择
       colItem.onclick = () => {
         const tdList = this.draw
           .getTableParticle()
-          .getTdListByColIndex(trList!, c)
+          .getTdListByColIndex(trList!, logicalCol)
         const firstTd = tdList[0]
         const lastTd = tdList[tdList.length - 1]
         this.position.setPositionContext({
@@ -279,7 +285,7 @@ export class TableTool {
         this._mousedown({
           evt,
           element,
-          index: c,
+          index: logicalCol,
           order: TableOrder.COL
         })
       }

@@ -1519,7 +1519,37 @@ for (const ch of searchNote) {
 }
 elementList.push({ value: '\n', size: 16 })
 
+// Test Case 7: RTL/BiDi highlighted text — verify no vertical gaps
+// between characters when background color is applied
+const rtlHighlightLabel = 'RTL highlight: '
+for (const ch of rtlHighlightLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const rtlHighlightText = 'التشخيص النهائي والعلاج'
+for (const ch of rtlHighlightText) {
+  elementList.push({
+    value: ch,
+    size: 16,
+    highlight: '#FFB6C1'
+  })
+}
+elementList.push({ value: '\n', size: 16 })
 
+// Test Case 8: BiDi mixed highlighted text — verify solid background
+const bidiHighlightLabel = 'BiDi highlight: '
+for (const ch of bidiHighlightLabel) {
+  elementList.push({ value: ch, size: 16 })
+}
+const bidiHighlightText = 'فحص CBC و ESR و CRP'
+for (const ch of bidiHighlightText) {
+  elementList.push({
+    value: ch,
+    size: 16,
+    highlight: '#B0E0E6',
+    bold: true
+  })
+}
+elementList.push({ value: '\n', size: 16 })
 
 
 // EOF marker

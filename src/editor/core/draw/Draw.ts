@@ -2491,8 +2491,75 @@ export class Draw {
     const { rowList, positionList, elementList } = payload
     const marginHeight = this.getDefaultBasicRowMarginHeight()
     const highlightMarginHeight = this.getHighlightMarginHeight()
+    const { highlightAlpha } = this.options
     for (let i = 0; i < rowList.length; i++) {
       const curRow = rowList[i]
+      // BiDi/RTL rows: collect rects per color, sort & merge to avoid
+      // subpixel gaps from per-element fillRect calls
+      if (curRow.isBidiMixed) {
+        const colorRects = new Map<
+          string,
+          { x: number; y: number; w: number; h: number }[]
+        >()
+        for (let j = 0; j < curRow.elementList.length; j++) {
+          const element = curRow.elementList[j]
+          const highlight =
+            element.highlight ||
+            this.control.getControlHighlight(
+              elementList,
+              curRow.startIndex + j
+            )
+          if (!highlight) continue
+          const {
+            coordinate: {
+              leftTop: [x, y]
+            }
+          } = positionList[curRow.startIndex + j]
+          const offsetX = element.left || 0
+          const rectX = x - offsetX
+          const rectY = y + marginHeight - highlightMarginHeight
+          const rectW = element.metrics.width + offsetX
+          const rectH =
+            curRow.height - 2 * marginHeight + 2 * highlightMarginHeight
+          if (!colorRects.has(highlight)) {
+            colorRects.set(highlight, [])
+          }
+          colorRects.get(highlight)!.push({
+            x: rectX,
+            y: rectY,
+            w: rectW,
+            h: rectH
+          })
+        }
+        // Sort by x, merge adjacent rects, render per color
+        for (const [color, rects] of colorRects) {
+          rects.sort((a, b) => a.x - b.x)
+          const merged: { x: number; y: number; w: number; h: number }[] = [
+            { ...rects[0] }
+          ]
+          for (let r = 1; r < rects.length; r++) {
+            const prev = merged[merged.length - 1]
+            const cur = rects[r]
+            const prevRight = prev.x + prev.w
+            // Merge if adjacent (tolerance 1px for rounding)
+            if (Math.abs(cur.x - prevRight) <= 1) {
+              prev.w = cur.x + cur.w - prev.x
+              prev.h = Math.max(prev.h, cur.h)
+            } else {
+              merged.push({ ...cur })
+            }
+          }
+          ctx.save()
+          ctx.globalAlpha = highlightAlpha
+          ctx.fillStyle = color
+          for (const rect of merged) {
+            ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+          }
+          ctx.restore()
+        }
+        continue
+      }
+      // LTR rows: use accumulator-based rendering (no gaps)
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
         const preElement = curRow.elementList[j - 1]
@@ -2520,16 +2587,11 @@ export class Draw {
           this.highlight.recordFillInfo(
             ctx,
             x - offsetX,
-            y + marginHeight - highlightMarginHeight, // 先减去行margin，再加上高亮margin
+            y + marginHeight - highlightMarginHeight,
             element.metrics.width + offsetX,
             curRow.height - 2 * marginHeight + 2 * highlightMarginHeight,
             highlight
           )
-          // BiDi mixed rows: render each highlight segment individually
-          // because visual positions don't follow logical order.
-          if (curRow.isBidiMixed) {
-            this.highlight.render(ctx)
-          }
         } else if (preElement?.highlight) {
           // 之前是高亮元素，当前不是需立即绘制
           this.highlight.render(ctx)
