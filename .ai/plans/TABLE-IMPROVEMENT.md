@@ -2,7 +2,7 @@
 
 **Created**: 2026-02-17
 **Branch**: `shape-engine`
-**Status**: In Progress (T1 & T2 complete, T3 next)
+**Status**: In Progress (T1-T4 complete, T5 next)
 **ADR**: [adr-0002-table-auto-fit-and-multipage.md](../decisions/adr-0002-table-auto-fit-and-multipage.md)
 
 ---
@@ -131,52 +131,78 @@ widths. Missing commands and context menu entries for existing features.
 
 ---
 
-## Phase T4: Per-Cell Border Styling (Medium) — NEXT 🔜
+## Phase T4: Per-Cell Border Styling (Medium) — COMPLETE ✅
 
 **Problem**: Border color, width, and style are table-level only. Google Docs allows
 per-cell border customization (color, width, style for each side).
 
-### T4.1 — Interface & Enum Changes
-- [ ] Add to `ITd` interface in `Td.ts`:
+**Completed**: 2026-02-18 (Session 020)
+**Commit**: `53871231`
+
+### Implementation Summary
+
+- [x] **T4.1** — `TdBorderStyle` enum (SOLID, DASHED, DOTTED, DOUBLE) added
+- [x] **T4.1** — `borderColor`, `borderWidth`, `borderStyle` added to `ITd` interface
+- [x] **T4.2** — `_drawBorder()` updated for per-cell overrides on all 4 sides
+- [x] **T4.3** — Commands: `tableTdBorderColor`, `tableTdBorderWidth`, `tableTdBorderStyle`
+- [x] **T4.4** — Context menus: Cell border width, Cell border style, Cell border color
+- [x] **T4.5** — Paste preservation: parse per-cell border CSS from pasted HTML
+- [x] **T4.5** — Export: per-cell borders exported in `createDomFromElementList`
+- [x] **T4.6** — i18n keys for EN, ZH-CN, AR locales
+
+### Key Code Locations
+- `Table.ts` — `TdBorderStyle` enum
+- `Td.ts` — `ITd` interface with per-cell border properties
+- `TableParticle.ts` — `_drawBorder()` with per-cell override logic
+- `TableOperate.ts` — border styling commands
+- `tableMenus.ts` — Cell border width/style/color menus
+- `element.ts` — paste preservation and export
+
+---
+
+### T4.1 — Interface & Enum Changes (Archive)
+- [x] Add to `ITd` interface in `Td.ts`:
   ```
   borderColor?: string           // per-cell border color (overrides table-level)
   borderWidth?: number           // per-cell border width
   borderStyle?: TdBorderStyle    // per-cell border style
   ```
-- [ ] Add new enum `TdBorderStyle` in `src/editor/dataset/enum/table/Table.ts`:
+- [x] Add new enum `TdBorderStyle` in `src/editor/dataset/enum/table/Table.ts`:
   ```
   enum TdBorderStyle { SOLID, DASHED, DOTTED, DOUBLE }
   ```
 
-### T4.2 — Drawing Changes
-- [ ] Update `_drawBorder()` in `TableParticle.ts` to read per-cell overrides:
+### T4.2 — Drawing Changes (Archive)
+- [x] Update `_drawBorder()` in `TableParticle.ts` to read per-cell overrides:
   - When drawing cell borders, check `td.borderColor`, `td.borderWidth`, `td.borderStyle`
   - Fall back to table-level values if not set
   - Apply `ctx.setLineDash()` based on style enum
-- [ ] Handle `DOUBLE` style (draw two parallel lines with gap)
+- [x] Handle `DOUBLE` style (draw two parallel lines with gap)
 
-### T4.3 — New Commands
-- [ ] `executeTableTdBorderColor(color: string)` — set border color for selected cells
-- [ ] `executeTableTdBorderWidth(width: number)` — set border width for selected cells
-- [ ] `executeTableTdBorderStyle(style: TdBorderStyle)` — set border style for selected cells
-- [ ] Implementation in `TableOperate.ts` → iterate selected cells, set properties
+### T4.3 — New Commands (Archive)
+- [x] `executeTableTdBorderColor(color: string)` — set border color for selected cells
+- [x] `executeTableTdBorderWidth(width: number)` — set border width for selected cells
+- [x] `executeTableTdBorderStyle(style: TdBorderStyle)` — set border style for selected cells
+- [x] Implementation in `TableOperate.ts` → iterate selected cells, set properties
 
-### T4.4 — Context Menu Updates
-- [ ] Add **Cell border style** submenu under existing border menu:
+### T4.4 — Context Menu Updates (Archive)
+- [x] Add **Cell border style** submenu under existing border menu:
   - "Border color" → color picker → `executeTableTdBorderColor(color)`
   - "Border width" submenu: "Thin (1px)" / "Medium (2px)" / "Thick (3px)"
   - "Border style" submenu: "Solid" / "Dashed" / "Dotted" / "Double"
 
-### T4.5 — Paste Preservation
-- [ ] Update `getElementListByHTML()` in `element.ts` to parse inline CSS border
+### T4.5 — Paste Preservation (Archive)
+- [x] Update `getElementListByHTML()` in `element.ts` to parse inline CSS border
   properties (`border-color`, `border-width`, `border-style`) from pasted HTML
   and map to new ITd properties
 
 ---
 
-## Phase T5: Table Operations & Properties (Medium) — 1-2 Sessions
+## Phase T5: Table Operations & Properties (Medium) — NEXT 🔜
 
 **Problem**: Missing convenience operations that Google Docs provides.
+
+**Estimated effort**: 2-3 sessions
 
 ### T5.1 — Move Row Up/Down
 - [ ] Add `executeTableMoveRowUp()` command — swap current row with row above
@@ -229,12 +255,12 @@ Future improvements, not currently planned for implementation.
 ## Implementation Order
 
 ```
-T1 (DONE) ──→ T2 (DONE) ──→ T3 (NEXT) ──→ T4 ──→ T5 ──→ T6 (Backlog)
-  Paste fit     Multi-page     Auto-fit &    Cell border   Table ops    Advanced
-                splitting      sizing cmds   styling       & dialogs
+T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 (NEXT) ──→ T6 (Backlog)
+  Paste fit   Multi-page   Auto-fit &   Cell border   Table ops    Advanced
+              splitting    sizing cmds  styling        & dialogs
 ```
 
-**Estimated remaining**: 5-7 sessions for T3-T5. T6 is backlog.
+**Estimated remaining**: 2-3 sessions for T5. T6 is backlog.
 
 ---
 
@@ -250,7 +276,7 @@ T1 (DONE) ──→ T2 (DONE) ──→ T3 (NEXT) ──→ T4 ──→ T5 ─�
 
 1. **T1** ✅: Pasting any Google Docs table results in a table that fits within the editor
 2. **T2** ✅: Tables with rowspan split correctly across pages with continuation cells
-3. **T3**: User can auto-fit table, set exact row/col sizes, distribute evenly via context menu
-4. **T4**: User can set per-cell border color, width, style via context menu
+3. **T3** ✅: User can auto-fit table, set exact row/col sizes, distribute evenly via context menu
+4. **T4** ✅: User can set per-cell border color, width, style via context menu
 5. **T5**: User can move rows, set cell padding, access table/cell properties dialog
 6. **T6**: Advanced features (sort, themes, percentage widths) available

@@ -21,6 +21,15 @@
 - i18n keys for EN, ZH-CN, AR locales
 - Commit: `2501396c`
 
+### T4: Per-Cell Border Styling ✅
+- `TdBorderStyle` enum (SOLID, DASHED, DOTTED, DOUBLE)
+- Commands: `tableTdBorderColor`, `tableTdBorderWidth`, `tableTdBorderStyle`
+- Updated `_drawBorder()` for per-cell overrides on all 4 sides
+- Context menus: Cell border width, style, color pickers
+- Paste preservation and export for per-cell border styles
+- i18n keys for EN, ZH-CN, AR locales
+- Commit: `53871231`
+
 ### Bug Fixes ✅
 - Fixed broken footer events (null checks for DOM input bindings in main.ts)
 - Added null checks in `rangeStyleChange` for all DOM elements
@@ -28,10 +37,9 @@
 - Removed unused `highlightSpanDom` variable
 
 ## In Progress
-- **T4: Per-Cell Border Styling** — border color/width/style per cell
+- **T5: Table Operations & Properties** — move row, cell padding, table properties dialog
 
 ## Upcoming
-- **T5: Table Operations & Properties** — move row, cell padding, table properties dialog
 - **T6: Advanced Table Features** — sort, themes, percentage widths (backlog)
 
 ---
