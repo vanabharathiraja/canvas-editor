@@ -77,6 +77,7 @@ export const INTERNAL_CONTEXT_MENU_KEY = {
     SPLIT_HORIZONTAL: 'tableSplitHorizontal',
     BORDER_TD_COLOR: 'tableBorderTdColor',
     BORDER_TD_WIDTH: 'tableBorderTdWidth',
+    BORDER_TD_WIDTH_NONE: 'tableBorderTdWidthNone',
     BORDER_TD_WIDTH_THIN: 'tableBorderTdWidthThin',
     BORDER_TD_WIDTH_MEDIUM: 'tableBorderTdWidthMedium',
     BORDER_TD_WIDTH_THICK: 'tableBorderTdWidthThick',
@@ -90,6 +91,7 @@ export const INTERNAL_CONTEXT_MENU_KEY = {
     TD_PADDING: 'tableTdPadding',
     TD_PADDING_SMALL: 'tableTdPaddingSmall',
     TD_PADDING_MEDIUM: 'tableTdPaddingMedium',
-    TD_PADDING_LARGE: 'tableTdPaddingLarge'
+    TD_PADDING_LARGE: 'tableTdPaddingLarge',
+    TABLE_PROPERTIES: 'tableProperties'
   }
 }

@@ -3049,7 +3049,7 @@ export class Draw {
             rangeRecord.y = y
             tableRangeElement = element
           }
-          this.tableParticle.render(ctx, element, x, y)
+          this.tableParticle.render(ctx, element, x, y, selCtx)
         } else if (element.type === ElementType.HYPERLINK) {
           this.textParticle.complete()
           // Apply hyperlink styling defaults

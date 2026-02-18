@@ -10,6 +10,7 @@ import {
 } from '../../../dataset/enum/table/Table'
 import { IRegisterContextMenu } from '../../../interface/contextmenu/ContextMenu'
 import { Command } from '../../command/Command'
+import { TablePropertiesDialog } from '../../../../components/tablePropertiesDialog/TablePropertiesDialog'
 const {
   TABLE: {
     BORDER,
@@ -49,6 +50,7 @@ const {
     SPLIT_VERTICAL,
     SPLIT_HORIZONTAL,
     BORDER_TD_WIDTH,
+    BORDER_TD_WIDTH_NONE,
     BORDER_TD_WIDTH_THIN,
     BORDER_TD_WIDTH_MEDIUM,
     BORDER_TD_WIDTH_THICK,
@@ -62,7 +64,8 @@ const {
     TD_PADDING,
     TD_PADDING_SMALL,
     TD_PADDING_MEDIUM,
-    TD_PADDING_LARGE
+    TD_PADDING_LARGE,
+    TABLE_PROPERTIES
   }
 } = INTERNAL_CONTEXT_MENU_KEY
 
@@ -454,6 +457,14 @@ export const tableMenus: IRegisterContextMenu[] = [
     },
     childMenus: [
       {
+        key: BORDER_TD_WIDTH_NONE,
+        i18nPath: 'contextmenu.table.borderTdWidthNone',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderWidth(0)
+        }
+      },
+      {
         key: BORDER_TD_WIDTH_THIN,
         i18nPath: 'contextmenu.table.borderTdWidthThin',
         when: () => true,
@@ -592,5 +603,32 @@ export const tableMenus: IRegisterContextMenu[] = [
         }
       }
     ]
+  },
+  {
+    isDivider: true
+  },
+  {
+    key: TABLE_PROPERTIES,
+    i18nPath: 'contextmenu.table.tableProperties',
+    icon: 'table-properties',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    callback: (command: Command, context) => {
+      new TablePropertiesDialog({
+        tableElement: context.tableElement
+          ? {
+              borderColor: context.tableElement.borderColor,
+              borderWidth: context.tableElement.borderWidth,
+              borderType: context.tableElement.borderType
+            }
+          : null,
+        command
+      })
+    }
   }
 ]

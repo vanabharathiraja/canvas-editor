@@ -66,6 +66,7 @@
       "splitHorizontal": "水平拆分",
       "borderTdColor": "单元格边框颜色",
       "borderTdWidth": "单元格边框宽度",
+      "borderTdWidthNone": "无 (0px)",
       "borderTdWidthThin": "细 (1px)",
       "borderTdWidthMedium": "中 (2px)",
       "borderTdWidthThick": "粗 (3px)",
@@ -79,7 +80,8 @@
       "tdPadding": "单元格内边距",
       "tdPaddingSmall": "小 (2px)",
       "tdPaddingMedium": "中 (5px)",
-      "tdPaddingLarge": "大 (10px)"
+      "tdPaddingLarge": "大 (10px)",
+      "tableProperties": "表格属性..."
     },
     "header": {
       "fullWidth": "全宽背景",

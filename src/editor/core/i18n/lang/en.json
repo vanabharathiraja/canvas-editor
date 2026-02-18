@@ -66,6 +66,7 @@
       "splitHorizontal": "Split horizontally",
       "borderTdColor": "Cell border color",
       "borderTdWidth": "Cell border width",
+      "borderTdWidthNone": "None (0px)",
       "borderTdWidthThin": "Thin (1px)",
       "borderTdWidthMedium": "Medium (2px)",
       "borderTdWidthThick": "Thick (3px)",
@@ -79,7 +80,8 @@
       "tdPadding": "Cell padding",
       "tdPaddingSmall": "Small (2px)",
       "tdPaddingMedium": "Medium (5px)",
-      "tdPaddingLarge": "Large (10px)"
+      "tdPaddingLarge": "Large (10px)",
+      "tableProperties": "Table Properties..."
     },
     "header": {
       "fullWidth": "Full width background",

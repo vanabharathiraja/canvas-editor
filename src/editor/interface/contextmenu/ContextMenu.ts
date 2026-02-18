@@ -79,6 +79,7 @@ export interface IContextmenuLang {
     splitHorizontal: string
     borderTdColor: string
     borderTdWidth: string
+    borderTdWidthNone: string
     borderTdWidthThin: string
     borderTdWidthMedium: string
     borderTdWidthThick: string
@@ -93,6 +94,7 @@ export interface IContextmenuLang {
     tdPaddingSmall: string
     tdPaddingMedium: string
     tdPaddingLarge: string
+    tableProperties: string
   }
   header: {
     fullWidth: string

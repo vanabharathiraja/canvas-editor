@@ -224,14 +224,16 @@ export class TableParticle {
     const isExternalBorderType = borderType === TableBorder.EXTERNAL
     // 内边框
     const isInternalBorderType = borderType === TableBorder.INTERNAL
+
     ctx.save()
-    // 虚线
+    // Table-level dash
     if (borderType === TableBorder.DASH) {
       ctx.setLineDash([3, 3])
     }
     ctx.lineWidth = borderWidth * scale
     ctx.strokeStyle = borderColor || defaultBorderColor
-    // 渲染边框
+
+    // Outer border
     if (!isEmptyBorderType && !isInternalBorderType) {
       this._drawOuterBorder({
         ctx,
@@ -243,22 +245,36 @@ export class TableParticle {
         isDrawFullBorder: isExternalBorderType
       })
     }
-    // 渲染单元格
+
+    // Helper: draw a single line segment with its own beginPath/stroke
+    const drawLine = (
+      x1: number, y1: number,
+      x2: number, y2: number
+    ) => {
+      ctx.beginPath()
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(x2, y2)
+      ctx.stroke()
+    }
+
+    // Per-cell border drawing
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
+
         // 单元格内斜线
         if (td.slashTypes?.length) {
           this._drawSlash(ctx, td, startX, startY)
         }
-        // Per-cell border style overrides
+
         const hasCellOverride = !!(
-          td.borderColor ||
-          td.borderWidth ||
-          td.borderStyle
+          td.borderColor !== undefined ||
+          td.borderWidth !== undefined ||
+          td.borderStyle !== undefined
         )
-        // 没有设置单元格边框 && 没有设置表格边框则忽略
+
+        // Skip cells with no visible borders
         if (
           !td.borderTypes?.length &&
           !hasCellOverride &&
@@ -266,111 +282,96 @@ export class TableParticle {
         ) {
           continue
         }
+
         const width = td.width! * scale
         const height = td.height! * scale
-        const x = Math.round(td.x! * scale + startX + width)
+        const x = Math.round(td.x! * scale + startX)
         const y = Math.round(td.y! * scale + startY)
+
         ctx.translate(0.5, 0.5)
-        // Apply per-cell overrides (save/restore around cell)
-        if (hasCellOverride) {
-          ctx.save()
-          if (td.borderColor) {
-            ctx.strokeStyle = td.borderColor
-          }
-          if (td.borderWidth) {
-            ctx.lineWidth = td.borderWidth * scale
-          }
-          if (td.borderStyle) {
-            this._applyLineDash(ctx, td.borderStyle, scale)
-          }
+
+        // ── Individual cell border toggles (TdBorder.TOP/RIGHT/etc.) ──
+        if (td.borderTypes?.length) {
+          if (td.borderTypes.includes(TdBorder.TOP))
+            drawLine(x, y, x + width, y)
+          if (td.borderTypes.includes(TdBorder.RIGHT))
+            drawLine(x + width, y, x + width, y + height)
+          if (td.borderTypes.includes(TdBorder.BOTTOM))
+            drawLine(x + width, y + height, x, y + height)
+          if (td.borderTypes.includes(TdBorder.LEFT))
+            drawLine(x, y, x, y + height)
         }
-        // 绘制线条
-        ctx.beginPath()
-        // 单元格边框
-        if (td.borderTypes?.includes(TdBorder.TOP)) {
-          ctx.moveTo(x - width, y)
-          ctx.lineTo(x, y)
-          ctx.stroke()
-        }
-        if (td.borderTypes?.includes(TdBorder.RIGHT)) {
-          ctx.moveTo(x, y)
-          ctx.lineTo(x, y + height)
-          ctx.stroke()
-        }
-        if (td.borderTypes?.includes(TdBorder.BOTTOM)) {
-          ctx.moveTo(x, y + height)
-          ctx.lineTo(x - width, y + height)
-          ctx.stroke()
-        }
-        if (td.borderTypes?.includes(TdBorder.LEFT)) {
-          ctx.moveTo(x - width, y)
-          ctx.lineTo(x - width, y + height)
-          ctx.stroke()
-        }
-        // 表格线
+
+        // ── Table-grid or per-cell override drawing ──
         if (!isEmptyBorderType && !isExternalBorderType) {
-          // When cell has per-cell overrides, draw all 4 sides explicitly
-          // so top & left also get the custom color/width/style
           if (hasCellOverride) {
-            ctx.moveTo(x - width, y)
-            ctx.lineTo(x, y)
-            ctx.moveTo(x - width, y)
-            ctx.lineTo(x - width, y + height)
-          }
-          // 右边框
-          if (
-            !isInternalBorderType ||
-            td.colIndex! + td.colspan < colgroup.length
-          ) {
-            ctx.moveTo(x, y)
-            ctx.lineTo(x, y + height)
-            // 外部边框宽度设置时 => 最右边框宽度单独设置
+            // Per-cell override: draw all 4 sides explicitly with override style
+            // so top & left also get the custom color/width/style (overpainting
+            // whatever the adjacent cell drew for those shared edges).
+            ctx.save()
+            // Only override the values that are actually set (undefined = inherit)
+            if (td.borderColor !== undefined) ctx.strokeStyle = td.borderColor
+            if (td.borderWidth !== undefined) {
+              ctx.lineWidth = td.borderWidth === 0
+                ? 0
+                : td.borderWidth * scale
+            }
+            if (td.borderStyle !== undefined) {
+              this._applyLineDash(ctx, td.borderStyle, scale)
+            }
+            if ((td.borderWidth ?? 1) > 0) {
+              // top
+              drawLine(x, y, x + width, y)
+              // right
+              if (!isInternalBorderType || td.colIndex! + td.colspan < colgroup.length) {
+                drawLine(x + width, y, x + width, y + height)
+              }
+              // bottom
+              if (!isInternalBorderType || td.rowIndex! + td.rowspan < trList.length) {
+                drawLine(x + width, y + height, x, y + height)
+              }
+              // left
+              drawLine(x, y, x, y + height)
+            }
+            ctx.restore()
+          } else {
+            // Standard table-grid: draw right + bottom only.
+            // Top comes from the row above's bottom; left from the col before's right.
+            // right
             if (
-              borderExternalWidth &&
-              borderExternalWidth !== borderWidth &&
-              td.colIndex! + td.colspan === colgroup.length
+              !isInternalBorderType ||
+              td.colIndex! + td.colspan < colgroup.length
             ) {
               const lineWidth = ctx.lineWidth
-              ctx.lineWidth = borderExternalWidth * scale
-              ctx.stroke()
-              // 清空path
-              ctx.beginPath()
+              if (
+                borderExternalWidth &&
+                borderExternalWidth !== borderWidth &&
+                td.colIndex! + td.colspan === colgroup.length
+              ) {
+                ctx.lineWidth = borderExternalWidth * scale
+              }
+              drawLine(x + width, y, x + width, y + height)
               ctx.lineWidth = lineWidth
             }
-          }
-          // 下边框
-          if (
-            !isInternalBorderType ||
-            td.rowIndex! + td.rowspan < trList.length
-          ) {
-            // 外部边框宽度设置时 => 立即绘制竖线
-            const isSetExternalBottomBorder =
-              borderExternalWidth &&
-              borderExternalWidth !== borderWidth &&
-              td.rowIndex! + td.rowspan === trList.length
-            if (isSetExternalBottomBorder) {
-              ctx.stroke()
-              // 清空path
-              ctx.beginPath()
-            }
-            ctx.moveTo(x, y + height)
-            ctx.lineTo(x - width, y + height)
-            // 外部边框宽度设置时 => 最下边框宽度单独设置
-            if (isSetExternalBottomBorder) {
+            // bottom
+            if (
+              !isInternalBorderType ||
+              td.rowIndex! + td.rowspan < trList.length
+            ) {
               const lineWidth = ctx.lineWidth
-              ctx.lineWidth = borderExternalWidth * scale
-              ctx.stroke()
-              // 清空path
-              ctx.beginPath()
+              if (
+                borderExternalWidth &&
+                borderExternalWidth !== borderWidth &&
+                td.rowIndex! + td.rowspan === trList.length
+              ) {
+                ctx.lineWidth = borderExternalWidth * scale
+              }
+              drawLine(x + width, y + height, x, y + height)
               ctx.lineWidth = lineWidth
             }
           }
-          ctx.stroke()
         }
-        // Restore per-cell overrides
-        if (hasCellOverride) {
-          ctx.restore()
-        }
+
         ctx.translate(-0.5, -0.5)
       }
     }
@@ -651,9 +652,12 @@ export class TableParticle {
     ctx: CanvasRenderingContext2D,
     element: IElement,
     startX: number,
-    startY: number
+    startY: number,
+    bgCtx?: CanvasRenderingContext2D
   ) {
-    this._drawBackgroundColor(ctx, element, startX, startY)
+    // Draw cell backgrounds on the background (selection) layer so
+    // the selection highlight remains visible above the fill color.
+    this._drawBackgroundColor(bgCtx || ctx, element, startX, startY)
     this._drawBorder(ctx, element, startX, startY)
   }
 }

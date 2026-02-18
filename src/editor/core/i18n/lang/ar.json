@@ -66,6 +66,7 @@
       "splitHorizontal": "تقسيم أفقي",
       "borderTdColor": "لون حدود الخلية",
       "borderTdWidth": "عرض حدود الخلية",
+      "borderTdWidthNone": "بدون (0px)",
       "borderTdWidthThin": "رفيع (1px)",
       "borderTdWidthMedium": "متوسط (2px)",
       "borderTdWidthThick": "سميك (3px)",
@@ -79,7 +80,8 @@
       "tdPadding": "هامش الخلية",
       "tdPaddingSmall": "صغير (2px)",
       "tdPaddingMedium": "متوسط (5px)",
-      "tdPaddingLarge": "كبير (10px)"
+      "tdPaddingLarge": "كبير (10px)",
+      "tableProperties": "خصائص الجدول..."
     },
     "header": {
       "fullWidth": "خلفية بعرض كامل",
