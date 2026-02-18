@@ -48,6 +48,7 @@ import {
   TableAutoFit,
   TableBorder,
   TdBorder,
+  TdBorderStyle,
   TdSlash
 } from './dataset/enum/table/Table'
 import { MaxHeightRatio, NumberType } from './dataset/enum/Common'
@@ -221,6 +222,7 @@ export {
   TableAutoFit,
   TableBorder,
   TdBorder,
+  TdBorderStyle,
   TdSlash,
   MaxHeightRatio,
   NumberType,

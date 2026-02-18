@@ -5,6 +5,7 @@ import {
   TableAutoFit,
   TableBorder,
   TdBorder,
+  TdBorderStyle,
   TdSlash
 } from '../../../dataset/enum/table/Table'
 import { IRegisterContextMenu } from '../../../interface/contextmenu/ContextMenu'
@@ -46,7 +47,16 @@ const {
     DISTRIBUTE_ROWS,
     SPLIT_CELL,
     SPLIT_VERTICAL,
-    SPLIT_HORIZONTAL
+    SPLIT_HORIZONTAL,
+    BORDER_TD_WIDTH,
+    BORDER_TD_WIDTH_THIN,
+    BORDER_TD_WIDTH_MEDIUM,
+    BORDER_TD_WIDTH_THICK,
+    BORDER_TD_STYLE,
+    BORDER_TD_STYLE_SOLID,
+    BORDER_TD_STYLE_DASHED,
+    BORDER_TD_STYLE_DOTTED,
+    BORDER_TD_STYLE_DOUBLE
   }
 } = INTERNAL_CONTEXT_MENU_KEY
 
@@ -421,6 +431,90 @@ export const tableMenus: IRegisterContextMenu[] = [
         when: () => true,
         callback: (command: Command) => {
           command.executeSplitHorizontalTableCell()
+        }
+      }
+    ]
+  },
+  {
+    key: BORDER_TD_WIDTH,
+    i18nPath: 'contextmenu.table.borderTdWidth',
+    icon: 'border-width',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    childMenus: [
+      {
+        key: BORDER_TD_WIDTH_THIN,
+        i18nPath: 'contextmenu.table.borderTdWidthThin',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderWidth(1)
+        }
+      },
+      {
+        key: BORDER_TD_WIDTH_MEDIUM,
+        i18nPath: 'contextmenu.table.borderTdWidthMedium',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderWidth(2)
+        }
+      },
+      {
+        key: BORDER_TD_WIDTH_THICK,
+        i18nPath: 'contextmenu.table.borderTdWidthThick',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderWidth(3)
+        }
+      }
+    ]
+  },
+  {
+    key: BORDER_TD_STYLE,
+    i18nPath: 'contextmenu.table.borderTdStyle',
+    icon: 'border-style',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    childMenus: [
+      {
+        key: BORDER_TD_STYLE_SOLID,
+        i18nPath: 'contextmenu.table.borderTdStyleSolid',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderStyle(TdBorderStyle.SOLID)
+        }
+      },
+      {
+        key: BORDER_TD_STYLE_DASHED,
+        i18nPath: 'contextmenu.table.borderTdStyleDashed',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderStyle(TdBorderStyle.DASHED)
+        }
+      },
+      {
+        key: BORDER_TD_STYLE_DOTTED,
+        i18nPath: 'contextmenu.table.borderTdStyleDotted',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderStyle(TdBorderStyle.DOTTED)
+        }
+      },
+      {
+        key: BORDER_TD_STYLE_DOUBLE,
+        i18nPath: 'contextmenu.table.borderTdStyleDouble',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdBorderStyle(TdBorderStyle.DOUBLE)
         }
       }
     ]

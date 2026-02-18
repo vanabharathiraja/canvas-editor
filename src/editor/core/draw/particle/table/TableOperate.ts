@@ -7,7 +7,11 @@ import {
 } from '../../../..'
 import { ZERO } from '../../../../dataset/constant/Common'
 import { TABLE_CONTEXT_ATTR } from '../../../../dataset/constant/Element'
-import { TdBorder, TdSlash } from '../../../../dataset/enum/table/Table'
+import {
+  TdBorder,
+  TdBorderStyle,
+  TdSlash
+} from '../../../../dataset/enum/table/Table'
 import { DeepRequired } from '../../../../interface/Common'
 import { IEditorOption } from '../../../../interface/Editor'
 import { IColgroup } from '../../../../interface/table/Colgroup'
@@ -1188,5 +1192,49 @@ export class TableOperate {
     }
     const { endIndex } = this.range.getRange()
     this.draw.render({ curIndex: endIndex })
+  }
+
+  // --- T4: Per-cell border styling commands ---
+
+  public tableTdBorderColor(payload: string) {
+    const rowCol = this.tableParticle.getRangeRowCol()
+    if (!rowCol) return
+    for (let r = 0; r < rowCol.length; r++) {
+      const row = rowCol[r]
+      for (let c = 0; c < row.length; c++) {
+        row[c].borderColor = payload
+      }
+    }
+    const { endIndex } = this.range.getRange()
+    this.range.setRange(endIndex, endIndex)
+    this.draw.render({ isCompute: false })
+  }
+
+  public tableTdBorderWidth(payload: number) {
+    const rowCol = this.tableParticle.getRangeRowCol()
+    if (!rowCol) return
+    for (let r = 0; r < rowCol.length; r++) {
+      const row = rowCol[r]
+      for (let c = 0; c < row.length; c++) {
+        row[c].borderWidth = Math.max(payload, 0)
+      }
+    }
+    const { endIndex } = this.range.getRange()
+    this.range.setRange(endIndex, endIndex)
+    this.draw.render({ isCompute: false })
+  }
+
+  public tableTdBorderStyle(payload: TdBorderStyle) {
+    const rowCol = this.tableParticle.getRangeRowCol()
+    if (!rowCol) return
+    for (let r = 0; r < rowCol.length; r++) {
+      const row = rowCol[r]
+      for (let c = 0; c < row.length; c++) {
+        row[c].borderStyle = payload
+      }
+    }
+    const { endIndex } = this.range.getRange()
+    this.range.setRange(endIndex, endIndex)
+    this.draw.render({ isCompute: false })
   }
 }

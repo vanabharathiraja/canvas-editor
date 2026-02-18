@@ -1,26 +1,38 @@
 # Canvas Editor AI Progress
 
-## Recent Completion
-- Fixed broken footer event handlers (null checks for all input bindings)
-- Added null checks for DOM elements in rangeStyleChange
-- Patched emitSearch and color menu handlers for TypeScript null errors
-- Patched TableParticle.getRangeRowCol to prevent undefined tdList access
-- All critical errors resolved; editor and table features stable
+## Completed Phases
 
-## Remaining Table-Related Work
-- Review and optimize table split logic (T2a/T2b/T2c)
-- Edge case handling for pasted tables (Google Docs, Excel, etc.)
-- Improve intra-row split for oversized single rows
-- Validate minHeight and virtual row logic
-- Refactor and document table recombination utilities
-- Add more Cypress tests for table paste, split, and rendering
-- Plan performance improvements for table rendering and event handling
+### T1: Paste Auto-Fit ✅
+- `normalizeTableColWidths()` scales colgroup widths to fit page
+- Wired into all data entry paths (paste, setValue, insertElementList)
+- Commit: `68a00005`
 
-## Next Steps
-- Complete table edge case handling and tests
-- Refactor table utilities for maintainability
-- Begin performance profiling and optimization
-- Update documentation for table features
+### T2: Multi-Page Table Splitting ✅
+- Rowspan-aware split-point selection with `rowspanTracker[]`
+- Rowspan carryover with `isPageBreakContinuation` marker
+- Intra-row split for oversized single rows
+- Null checks in `TableParticle.getRangeRowCol()` and `main.ts`
+- Commits: `673f36f7`, `1a98a924`
+
+### T3: Auto-Fit & Table Sizing Commands ✅
+- `TableAutoFit` enum (PAGE, CONTENT, EQUAL)
+- 4 new commands: `tableAutoFit`, `tableColWidth`, `tableRowHeight`, `distributeTableRows`
+- Context menus: Auto-fit submenu, Distribute rows, Split cell submenu
+- i18n keys for EN, ZH-CN, AR locales
+- Commit: `2501396c`
+
+### Bug Fixes ✅
+- Fixed broken footer events (null checks for DOM input bindings in main.ts)
+- Added null checks in `rangeStyleChange` for all DOM elements
+- Patched `emitSearch` and color menu handlers for TypeScript null safety
+- Removed unused `highlightSpanDom` variable
+
+## In Progress
+- **T4: Per-Cell Border Styling** — border color/width/style per cell
+
+## Upcoming
+- **T5: Table Operations & Properties** — move row, cell padding, table properties dialog
+- **T6: Advanced Table Features** — sort, themes, percentage widths (backlog)
 
 ---
 _Last updated: 2026-02-18_

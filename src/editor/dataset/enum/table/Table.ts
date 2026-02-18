@@ -23,3 +23,10 @@ export enum TableAutoFit {
   CONTENT = 'content',
   EQUAL = 'equal'
 }
+
+export enum TdBorderStyle {
+  SOLID = 'solid',
+  DASHED = 'dashed',
+  DOTTED = 'dotted',
+  DOUBLE = 'double'
+}

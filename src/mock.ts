@@ -2505,7 +2505,7 @@ export const commentList: IComment[] = [
     id: '1',
     content:
       'Hematocrit (HCT) refers to the ratio of red blood cell volume to total blood volume per unit volume, used to reflect the proportion of red blood cells to plasma.',
-    userName: 'Hufe',
+    userName: 'Vana',
     rangeText: 'Hematocrit',
     createdDate: '2023-08-20 23:10:55'
   }

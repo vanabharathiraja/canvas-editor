@@ -1,5 +1,9 @@
 import { VerticalAlign } from '../../dataset/enum/VerticalAlign'
-import { TdBorder, TdSlash } from '../../dataset/enum/table/Table'
+import {
+  TdBorder,
+  TdBorderStyle,
+  TdSlash
+} from '../../dataset/enum/table/Table'
 import { IElement, IElementPosition } from '../Element'
 import { IRow } from '../Row'
 
@@ -28,6 +32,9 @@ export interface ITd {
   backgroundColor?: string
   borderTypes?: TdBorder[]
   slashTypes?: TdSlash[]
+  borderColor?: string           // per-cell border color (overrides table-level)
+  borderWidth?: number           // per-cell border width (overrides table-level)
+  borderStyle?: TdBorderStyle    // per-cell border style
   mainHeight?: number // 内容 + 内边距高度
   realHeight?: number // 真实高度（包含跨列）
   realMinHeight?: number // 真实最小高度（包含跨列）

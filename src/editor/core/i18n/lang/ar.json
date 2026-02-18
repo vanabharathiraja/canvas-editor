@@ -63,7 +63,17 @@
       "distributeRows": "توزيع الصفوف بالتساوي",
       "splitCell": "تقسيم الخلية",
       "splitVertical": "تقسيم عمودي",
-      "splitHorizontal": "تقسيم أفقي"
+      "splitHorizontal": "تقسيم أفقي",
+      "borderTdColor": "لون حدود الخلية",
+      "borderTdWidth": "عرض حدود الخلية",
+      "borderTdWidthThin": "رفيع (1px)",
+      "borderTdWidthMedium": "متوسط (2px)",
+      "borderTdWidthThick": "سميك (3px)",
+      "borderTdStyle": "نمط حدود الخلية",
+      "borderTdStyleSolid": "متصل",
+      "borderTdStyleDashed": "متقطع",
+      "borderTdStyleDotted": "منقط",
+      "borderTdStyleDouble": "مزدوج"
     },
     "header": {
       "fullWidth": "خلفية بعرض كامل",

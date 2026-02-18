@@ -74,6 +74,16 @@ export const INTERNAL_CONTEXT_MENU_KEY = {
     DISTRIBUTE_ROWS: 'tableDistributeRows',
     SPLIT_CELL: 'tableSplitCell',
     SPLIT_VERTICAL: 'tableSplitVertical',
-    SPLIT_HORIZONTAL: 'tableSplitHorizontal'
+    SPLIT_HORIZONTAL: 'tableSplitHorizontal',
+    BORDER_TD_COLOR: 'tableBorderTdColor',
+    BORDER_TD_WIDTH: 'tableBorderTdWidth',
+    BORDER_TD_WIDTH_THIN: 'tableBorderTdWidthThin',
+    BORDER_TD_WIDTH_MEDIUM: 'tableBorderTdWidthMedium',
+    BORDER_TD_WIDTH_THICK: 'tableBorderTdWidthThick',
+    BORDER_TD_STYLE: 'tableBorderTdStyle',
+    BORDER_TD_STYLE_SOLID: 'tableBorderTdStyleSolid',
+    BORDER_TD_STYLE_DASHED: 'tableBorderTdStyleDashed',
+    BORDER_TD_STYLE_DOTTED: 'tableBorderTdStyleDotted',
+    BORDER_TD_STYLE_DOUBLE: 'tableBorderTdStyleDouble'
   }
 }

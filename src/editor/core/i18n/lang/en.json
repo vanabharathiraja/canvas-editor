@@ -63,7 +63,17 @@
       "distributeRows": "Distribute rows evenly",
       "splitCell": "Split cell",
       "splitVertical": "Split vertically",
-      "splitHorizontal": "Split horizontally"
+      "splitHorizontal": "Split horizontally",
+      "borderTdColor": "Cell border color",
+      "borderTdWidth": "Cell border width",
+      "borderTdWidthThin": "Thin (1px)",
+      "borderTdWidthMedium": "Medium (2px)",
+      "borderTdWidthThick": "Thick (3px)",
+      "borderTdStyle": "Cell border style",
+      "borderTdStyleSolid": "Solid",
+      "borderTdStyleDashed": "Dashed",
+      "borderTdStyleDotted": "Dotted",
+      "borderTdStyleDouble": "Double"
     },
     "header": {
       "fullWidth": "Full width background",

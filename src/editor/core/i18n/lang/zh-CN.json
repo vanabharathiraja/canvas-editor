@@ -63,7 +63,17 @@
       "distributeRows": "平均分布各行",
       "splitCell": "拆分单元格",
       "splitVertical": "垂直拆分",
-      "splitHorizontal": "水平拆分"
+      "splitHorizontal": "水平拆分",
+      "borderTdColor": "单元格边框颜色",
+      "borderTdWidth": "单元格边框宽度",
+      "borderTdWidthThin": "细 (1px)",
+      "borderTdWidthMedium": "中 (2px)",
+      "borderTdWidthThick": "粗 (3px)",
+      "borderTdStyle": "单元格边框样式",
+      "borderTdStyleSolid": "实线",
+      "borderTdStyleDashed": "虚线",
+      "borderTdStyleDotted": "点线",
+      "borderTdStyleDouble": "双线"
     },
     "header": {
       "fullWidth": "全宽背景",

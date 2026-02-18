@@ -44,14 +44,14 @@ Border submenu, cell border submenu, vertical align, insert/delete row/col, merg
 | **Per-cell border style** (solid/dashed/dotted/double) | ❌ Only table-level DASH |
 | **Per-cell padding** | ❌ Only global `tdPadding` |
 | **Distribute rows/columns evenly** | ❌ No command |
-| **Set exact row height** | ⚠️ ITr.height exists, no command |
-| **Set exact column width** | ⚠️ IColgroup.width exists, no command |
-| **Auto-fit table width** | ❌ No command |
+| **Set exact row height** | ✅ T3 `tableRowHeight` command |
+| **Set exact column width** | ✅ T3 `tableColWidth` command |
+| **Auto-fit table width** | ✅ T3 `tableAutoFit` command (page/content/equal) |
 | **Move row up/down** | ❌ No command |
 | **Sort table by column** | ❌ No command |
 | **Table properties dialog** | ❌ No UI |
 | **Border color in context menu** | ⚠️ Command exists, no menu entry |
-| **Split cell in context menu** | ⚠️ Commands exist, no menu entries |
+| **Split cell in context menu** | ✅ T3 context menu added |
 
 ---
 
@@ -103,63 +103,35 @@ The split is abandoned when a row has cross-row cells, leaving blank page space.
 
 ---
 
-## Phase T3: Auto-Fit & Table Sizing Commands (Medium) — NEXT 🔜
+## Phase T3: Auto-Fit & Table Sizing Commands (Medium) — COMPLETE ✅
 
 **Problem**: No way to auto-size columns, set exact row heights, or set exact column
 widths. Missing commands and context menu entries for existing features.
 
-**Estimated**: 1-2 sessions
+**Completed**: 2026-02-18 (Session 019)
+**Commit**: `2501396c`
 
-### T3.1 — Auto-Fit Table Width Command
-- [ ] Add `executeAutoFitTableWidth(mode)` command in `CommandAdapt.ts`
-  - **`'page'`**: Scale all columns proportionally so table width = innerWidth
-  - **`'content'`**: Measure content width per column, set proportionally
-  - **`'equal'`**: Reset to equal widths (innerWidth / colCount)
-- [ ] Wire to `TableOperate.ts` for the actual column recalculation
+### Implementation Summary
 
-### T3.2 — Set Exact Column Width Command
-- [ ] Add `executeTableColWidth(width: number)` command
-  - Sets the current column's width to exact pixel value
-  - Rebalances neighboring columns to maintain total table width
-- [ ] Wire to `TableOperate.ts`
+- [x] **T3.1** — `tableAutoFit(mode)` command: PAGE (proportional scale), CONTENT (measure content), EQUAL (uniform)
+- [x] **T3.2** — `tableColWidth(px)` command: set exact column width, rebalance neighbor
+- [x] **T3.3** — `tableRowHeight(px)` command: set exact row minHeight
+- [x] **T3.4** — `distributeTableRows()` command: equalize all row heights
+- [x] **T3.5** — Context menus: Auto-fit submenu, Distribute rows, Split cell submenu
+- [x] **T3.6** — i18n keys added for EN, ZH-CN, AR locales
+- [ ] **T3.7** — Keyboard shortcut (deferred — optional)
+- [ ] **T3.8** — Border color context menu entry (deferred to T4)
 
-### T3.3 — Set Exact Row Height Command
-- [ ] Add `executeTableRowHeight(height: number)` command
-  - Sets the current row's `minHeight` to exact pixel value
-  - Row will still expand if content exceeds this height
-- [ ] Wire to `TableOperate.ts`
-
-### T3.4 — Distribute Rows/Columns Evenly
-- [ ] Add `executeDistributeTableRows()` command
-  - Sets all row heights to `totalTableHeight / rowCount`
-- [ ] Add `executeDistributeTableCols()` command
-  - Sets all column widths to `innerWidth / colCount`
-
-### T3.5 — Context Menu Updates
-- [ ] Add **Auto-fit** submenu to table context menu:
-  - "Fit to page width" → `executeAutoFitTableWidth('page')`
-  - "Fit to contents" → `executeAutoFitTableWidth('content')`
-  - "Fixed column width" → `executeAutoFitTableWidth('equal')`
-- [ ] Add **Distribute** submenu:
-  - "Distribute rows evenly" → `executeDistributeTableRows()`
-  - "Distribute columns evenly" → `executeDistributeTableCols()`
-- [ ] Add **Split cell** submenu (commands already exist, just not in menu):
-  - "Split vertically" → `executeSplitVerticalTableCell()`
-  - "Split horizontally" → `executeSplitHorizontalTableCell()`
-- [ ] Add **Border color** entry (command exists, not in menu):
-  - Opens color picker → `executeTableBorderColor(color)`
-- [ ] File: `src/editor/core/contextmenu/menus/tableMenus.ts`
-
-### T3.6 — i18n Keys
-- [ ] Add translation keys for all new menu items in all locale files
-- [ ] File: `src/editor/core/i18n/lang/`
-
-### T3.7 — Keyboard Shortcut (optional)
-- [ ] Ctrl+Shift+F when cursor is in table → auto-fit to page
+### Key Code Locations
+- `TableOperate.ts` — `tableAutoFit()`, `tableColWidth()`, `tableRowHeight()`, `distributeTableRows()`
+- `CommandAdapt.ts` / `Command.ts` — command wrappers and bindings
+- `tableMenus.ts` — new Auto-fit, Distribute rows, Split cell menus
+- `Table.ts` — `TableAutoFit` enum (PAGE, CONTENT, EQUAL)
+- `ContextMenu.ts` constants — new menu key constants
 
 ---
 
-## Phase T4: Per-Cell Border Styling (Medium) — 2 Sessions
+## Phase T4: Per-Cell Border Styling (Medium) — NEXT 🔜
 
 **Problem**: Border color, width, and style are table-level only. Google Docs allows
 per-cell border customization (color, width, style for each side).

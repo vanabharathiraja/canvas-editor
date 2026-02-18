@@ -43,7 +43,7 @@ import { EditorMode } from '../dataset/enum/Editor'
 import { ElementType } from '../dataset/enum/Element'
 import { ListStyle, ListType, UlStyle } from '../dataset/enum/List'
 import { RowFlex } from '../dataset/enum/Row'
-import { TableBorder, TdBorder } from '../dataset/enum/table/Table'
+import { TableBorder, TdBorder, TdBorderStyle } from '../dataset/enum/table/Table'
 import { VerticalAlign } from '../dataset/enum/VerticalAlign'
 import { DeepRequired } from '../interface/Common'
 import { IControlSelect } from '../interface/Control'
@@ -1289,6 +1289,16 @@ export function createDomFromElementList(
             if (td.backgroundColor) {
               tdDom.style.backgroundColor = td.backgroundColor
             }
+            // Per-cell border styling
+            if (td.borderColor) {
+              tdDom.style.borderColor = td.borderColor
+            }
+            if (td.borderWidth) {
+              tdDom.style.borderWidth = `${td.borderWidth}px`
+            }
+            if (td.borderStyle) {
+              tdDom.style.borderStyle = td.borderStyle
+            }
             trDom.append(tdDom)
           }
           tableDom.append(trDom)
@@ -1724,6 +1734,30 @@ export function getElementListByHTML(
               }
               if (tableCell.style.backgroundColor) {
                 td.backgroundColor = tableCell.style.backgroundColor
+              }
+              // Per-cell border styling from pasted HTML
+              const cellStyle = window.getComputedStyle(tableCell)
+              const parsedBorderColor = cellStyle.borderColor
+              if (
+                parsedBorderColor &&
+                parsedBorderColor !== 'rgb(0, 0, 0)' &&
+                parsedBorderColor !== 'rgba(0, 0, 0, 0)'
+              ) {
+                td.borderColor = parsedBorderColor
+              }
+              const parsedBorderWidth = parseFloat(cellStyle.borderWidth)
+              if (parsedBorderWidth && parsedBorderWidth !== 1) {
+                td.borderWidth = parsedBorderWidth
+              }
+              const parsedBorderStyle = cellStyle.borderStyle
+              if (parsedBorderStyle && parsedBorderStyle !== 'solid') {
+                if (parsedBorderStyle === 'dashed') {
+                  td.borderStyle = TdBorderStyle.DASHED
+                } else if (parsedBorderStyle === 'dotted') {
+                  td.borderStyle = TdBorderStyle.DOTTED
+                } else if (parsedBorderStyle === 'double') {
+                  td.borderStyle = TdBorderStyle.DOUBLE
+                }
               }
               tr.tdList.push(td)
             })

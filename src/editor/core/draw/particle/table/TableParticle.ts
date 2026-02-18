@@ -1,5 +1,9 @@
 import { ElementType, IElement, TableBorder } from '../../../..'
-import { TdBorder, TdSlash } from '../../../../dataset/enum/table/Table'
+import {
+  TdBorder,
+  TdBorderStyle,
+  TdSlash
+} from '../../../../dataset/enum/table/Table'
 import { DeepRequired } from '../../../../interface/Common'
 import { IEditorOption } from '../../../../interface/Editor'
 import { ITd } from '../../../../interface/table/Td'
@@ -110,6 +114,26 @@ export class TableParticle {
       }
     }
     return rowCol.length ? rowCol : null
+  }
+
+  private _applyLineDash(
+    ctx: CanvasRenderingContext2D,
+    style: TdBorderStyle,
+    scale: number
+  ) {
+    switch (style) {
+      case TdBorderStyle.DASHED:
+        ctx.setLineDash([3 * scale, 3 * scale])
+        break
+      case TdBorderStyle.DOTTED:
+        ctx.setLineDash([1 * scale, 2 * scale])
+        break
+      case TdBorderStyle.DOUBLE:
+      case TdBorderStyle.SOLID:
+      default:
+        ctx.setLineDash([])
+        break
+    }
   }
 
   private _drawOuterBorder(payload: IDrawTableBorderOption) {
@@ -228,9 +252,16 @@ export class TableParticle {
         if (td.slashTypes?.length) {
           this._drawSlash(ctx, td, startX, startY)
         }
+        // Per-cell border style overrides
+        const hasCellOverride = !!(
+          td.borderColor ||
+          td.borderWidth ||
+          td.borderStyle
+        )
         // 没有设置单元格边框 && 没有设置表格边框则忽略
         if (
           !td.borderTypes?.length &&
+          !hasCellOverride &&
           (isEmptyBorderType || isExternalBorderType)
         ) {
           continue
@@ -240,6 +271,19 @@ export class TableParticle {
         const x = Math.round(td.x! * scale + startX + width)
         const y = Math.round(td.y! * scale + startY)
         ctx.translate(0.5, 0.5)
+        // Apply per-cell overrides (save/restore around cell)
+        if (hasCellOverride) {
+          ctx.save()
+          if (td.borderColor) {
+            ctx.strokeStyle = td.borderColor
+          }
+          if (td.borderWidth) {
+            ctx.lineWidth = td.borderWidth * scale
+          }
+          if (td.borderStyle) {
+            this._applyLineDash(ctx, td.borderStyle, scale)
+          }
+        }
         // 绘制线条
         ctx.beginPath()
         // 单元格边框
@@ -265,6 +309,14 @@ export class TableParticle {
         }
         // 表格线
         if (!isEmptyBorderType && !isExternalBorderType) {
+          // When cell has per-cell overrides, draw all 4 sides explicitly
+          // so top & left also get the custom color/width/style
+          if (hasCellOverride) {
+            ctx.moveTo(x - width, y)
+            ctx.lineTo(x, y)
+            ctx.moveTo(x - width, y)
+            ctx.lineTo(x - width, y + height)
+          }
           // 右边框
           if (
             !isInternalBorderType ||
@@ -314,6 +366,10 @@ export class TableParticle {
             }
           }
           ctx.stroke()
+        }
+        // Restore per-cell overrides
+        if (hasCellOverride) {
+          ctx.restore()
         }
         ctx.translate(-0.5, -0.5)
       }

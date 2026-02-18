@@ -28,6 +28,7 @@ import {
   TableAutoFit,
   TableBorder,
   TdBorder,
+  TdBorderStyle,
   TdSlash
 } from '../../dataset/enum/table/Table'
 import { TitleLevel } from '../../dataset/enum/Title'
@@ -1102,6 +1103,24 @@ export class CommandAdapt {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     this.tableOperate.distributeTableRows()
+  }
+
+  public tableTdBorderColor(payload: string) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableTdBorderColor(payload)
+  }
+
+  public tableTdBorderWidth(payload: number) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableTdBorderWidth(payload)
+  }
+
+  public tableTdBorderStyle(payload: TdBorderStyle) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableTdBorderStyle(payload)
   }
 
   public hyperlink(

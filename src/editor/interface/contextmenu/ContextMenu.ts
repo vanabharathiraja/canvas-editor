@@ -77,6 +77,16 @@ export interface IContextmenuLang {
     splitCell: string
     splitVertical: string
     splitHorizontal: string
+    borderTdColor: string
+    borderTdWidth: string
+    borderTdWidthThin: string
+    borderTdWidthMedium: string
+    borderTdWidthThick: string
+    borderTdStyle: string
+    borderTdStyleSolid: string
+    borderTdStyleDashed: string
+    borderTdStyleDotted: string
+    borderTdStyleDouble: string
   }
   header: {
     fullWidth: string
