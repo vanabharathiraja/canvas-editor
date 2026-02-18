@@ -249,30 +249,144 @@ per-cell border customization (color, width, style for each side).
 
 ---
 
-## Phase T6: Advanced Table Features (Low) — Backlog
+## Phase T5-fix: Border Rendering Precedence Fix — COMPLETE ✅
 
-Future improvements, not currently planned for implementation.
+**Problem**: Two bugs in per-cell border rendering:
+1. Setting `borderWidth=0` on an edge cell still showed the table's outer border
+2. Dashed border style showed double borders on left/top (solid underneath + dashed on top)
 
-- [ ] **T6.1** — Minimum column width enforcement throughout system
-- [ ] **T6.2** — Table width percentage mode (columns as % of available width)
-- [ ] **T6.3** — Nested table support (recursive parsing)
-- [ ] **T6.4** — Baseline vertical alignment for cells in same row
-- [ ] **T6.5** — Table styles / themes (predefined color schemes, alternating rows)
-- [ ] **T6.6** — Sort table by column (ascending/descending)
-- [ ] **T6.7** — Table header row repeat control from context menu
-  - `pagingRepeat` exists on ITr but no command/menu to toggle it
+**Root Cause**: Single-pass rendering with painter's model — no shared-edge
+coordination. Adjacent cells paint over each other's edges without clearing.
+Outer border drawn unconditionally ignoring per-cell overrides.
+
+**Completed**: 2026-02-18
+**Commit**: `9c094472`
+
+### Implementation Summary
+
+- [x] Rewrote `_drawBorder()` into **two-pass rendering**:
+  - Pass 1: Outer border + standard grid cells (right+bottom per cell)
+  - Pass 2: Per-cell override cells with `clearRect` before redrawing
+- [x] Added `_buildOverrideMap()` — O(1) neighbor lookup by `"rowIndex,colIndex"` key
+- [x] Added `_resolveEdgeStyle()` — industry-standard shared-edge precedence:
+  self override → neighbor override → table-level fallback
+- [x] `clearEdge()` helper erases previously drawn border line before redrawing
+- [x] Outer border segments selectively redrawn only when override doesn't replace them
+- [x] Cell backgrounds repainted in cleared areas to prevent visual gaps
+
+---
+
+## Phase T6: Advanced Table Features — In Progress
+
+### T6.1 — Alternating Row Colors (Banding)
+
+**Problem**: No way to apply alternating background colors to rows (zebra striping).
+This is a standard feature in Word, Docs, and Excel.
+
+**Implementation Plan**:
+- [ ] **T6.1.1** — Add `ITableBanding` interface:
+  ```ts
+  interface ITableBanding {
+    enabled: boolean
+    headerColor?: string    // first row color
+    evenColor?: string      // even rows (0-indexed)
+    oddColor?: string       // odd rows
+  }
+  ```
+- [ ] **T6.1.2** — Add `banding?: ITableBanding` to `IElement` (table element)
+- [ ] **T6.1.3** — Add `executeTableBanding(payload: ITableBanding)` command
+- [ ] **T6.1.4** — Update `_drawBackgroundColor()` to apply banding colors when
+  `td.backgroundColor` is not set but table has banding enabled
+- [ ] **T6.1.5** — Context menu: "Alternating colors" → submenu with presets:
+  - Light gray / white
+  - Light blue / white
+  - Light green / white
+  - Custom... (opens color picker)
+  - None (remove banding)
+
+### T6.2 — Table Style Picker
+
+**Problem**: No predefined table styles. Word/Docs offer style galleries
+with preset border, color, and banding combinations.
+
+**Implementation Plan**:
+- [ ] **T6.2.1** — Define `ITableStyle` interface:
+  ```ts
+  interface ITableStyle {
+    name: string
+    borderType: TableBorder
+    borderColor: string
+    borderWidth: number
+    headerBgColor?: string
+    headerTextColor?: string
+    banding?: ITableBanding
+  }
+  ```
+- [ ] **T6.2.2** — Create preset table styles (8-12 presets):
+  - Plain Table 1-3 (borders only, varying weights)
+  - Grid Table 1-3 (full borders + header highlight)
+  - List Table 1-3 (banding + accent colors)
+  - No Style (remove all styling)
+- [ ] **T6.2.3** — Add `executeTableStyle(payload: ITableStyle)` command that
+  applies all style properties at once
+- [ ] **T6.2.4** — Add "Table Style" visual picker in context menu or toolbar
+  - Shows style name and small preview swatch
+- [ ] **T6.2.5** — i18n for style names
+
+### T6.3 — Row/Column Selection + Apply Styles
+
+**Problem**: No easy way to select an entire row or column and apply styles
+(background color, text formatting) to all cells at once.
+
+**Implementation Plan**:
+- [ ] **T6.3.1** — Add `selectTableRow(rowIndex)` command: sets cross-row-col
+  range to select all cells in the specified row
+- [ ] **T6.3.2** — Add `selectTableCol(colIndex)` command: sets cross-row-col
+  range to select all cells in the specified column
+- [ ] **T6.3.3** — Click on row number area → select row (UI interaction)
+- [ ] **T6.3.4** — Click on column header area → select column (UI interaction)
+- [ ] **T6.3.5** — Context menu: "Select row" / "Select column" entries
+- [ ] **T6.3.6** — Once selected, existing styling commands (background color,
+  text color, borders) apply to all selected cells
+
+### T6.4 — Table Toolbar / Enhanced Property Panel
+
+**Problem**: Currently table styling is only accessible via right-click context
+menu. A floating toolbar or sidebar panel would be more discoverable.
+
+**Implementation Plan**:
+- [ ] **T6.4.1** — Design table toolbar UI (appears when cursor is in table):
+  - Row: [Add row ▲] [Add row ▼] [Delete row] | [Move ▲] [Move ▼]
+  - Col: [Add col ◀] [Add col ▶] [Delete col]
+  - Style: [Border type ▼] [Border color] [Cell bg ▼] [Banding ▼]
+  - Format: [Merge] [Unmerge] [Vertical align ▼] [Padding ▼]
+  - Properties: [Table Properties]
+- [ ] **T6.4.2** — Implement table toolbar component as floating panel
+  positioned relative to the table element
+- [ ] **T6.4.3** — Show/hide logic based on position context (`isTable`)
+- [ ] **T6.4.4** — Integration with existing commands (all buttons call
+  existing `execute*` methods)
+- [ ] **T6.4.5** — Responsive design for narrow editors
+
+### T6.5 — Other Advanced Features (Backlog)
+- [ ] **T6.5.1** — Minimum column width enforcement throughout system
+- [ ] **T6.5.2** — Table width percentage mode (columns as % of available width)
+- [ ] **T6.5.3** — Nested table support (recursive parsing)
+- [ ] **T6.5.4** — Sort table by column (ascending/descending)
+- [ ] **T6.5.5** — Table header row repeat toggle from context menu
+  (`pagingRepeat` exists on ITr but no command/menu)
 
 ---
 
 ## Implementation Order
 
 ```
-T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 ✅ ──→ T6 (Backlog)
-  Paste fit   Multi-page   Auto-fit &   Cell border   Table ops    Advanced
-              splitting    sizing cmds  styling        & dialogs
+T1 ✅ → T2 ✅ → T3 ✅ → T4 ✅ → T5 ✅ → T5-fix ✅ → T6.1 → T6.2 → T6.3 → T6.4
+Paste    Multi   Auto    Cell    Table    Border      Alt.    Style   Row/Col  Toolbar
+fit      page    fit     border  ops      precedence  colors  picker  select
 ```
 
-**All planned phases T1-T5 complete.** T6 is backlog.
+**T1-T5 + T5-fix complete.** T6 subtasks in priority order.
 
 ---
 
@@ -283,6 +397,9 @@ T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 ✅ ─�
 - The `overflow` option infrastructure already exists
 - T4 depends on T3 being complete (context menu patterns established)
 - T5.3/T5.4 dialogs can be built independently
+- T6.1 (banding) is prerequisite for T6.2 (style picker)
+- T6.3 (row/col selection) is independent of T6.1/T6.2
+- T6.4 (toolbar) benefits from all other T6 features being available
 
 ## Success Criteria
 
@@ -291,4 +408,8 @@ T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 ✅ ─�
 3. **T3** ✅: User can auto-fit table, set exact row/col sizes, distribute evenly via context menu
 4. **T4** ✅: User can set per-cell border color, width, style via context menu
 5. **T5** ✅: User can move rows, set cell padding, access table/cell properties dialog
-6. **T6**: Advanced features (sort, themes, percentage widths) available
+6. **T5-fix** ✅: Per-cell border overrides respect shared-edge precedence (no layering)
+7. **T6.1**: Alternating row colors applied via command/context menu
+8. **T6.2**: Predefined table styles applicable with one click
+9. **T6.3**: Entire row/column selectable for bulk styling
+10. **T6.4**: Table toolbar visible when cursor is inside a table
