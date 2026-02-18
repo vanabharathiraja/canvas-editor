@@ -33,4 +33,7 @@ export interface ITd {
   realMinHeight?: number // 真实最小高度（包含跨列）
   disabled?: boolean // 内容不可编辑
   deletable?: boolean // 内容不可删除
+  // Paging rowspan carryover fields
+  isPageBreakContinuation?: boolean // marks a continuation cell from rowspan split
+  originalRowspan?: number // stores the original rowspan before truncation
 }

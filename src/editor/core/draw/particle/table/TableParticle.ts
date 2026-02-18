@@ -61,11 +61,18 @@ export class TableParticle {
     } = this.range.getRange()
     const originalElementList = this.draw.getOriginalElementList()
     const element = originalElementList[index!]
-    const curTrList = element.trList!
+    if (!element || !element.trList) return null
+    const curTrList = element.trList
     // 非跨列直接返回光标所在单元格
     if (!isCrossRowCol) {
+      if (!curTrList[trIndex!] || !curTrList[trIndex!].tdList) return null
+      if (!curTrList[trIndex!].tdList[tdIndex!]) return null
       return [[curTrList[trIndex!].tdList[tdIndex!]]]
     }
+    if (!curTrList[startTrIndex!] || !curTrList[startTrIndex!].tdList) return null
+    if (!curTrList[endTrIndex!] || !curTrList[endTrIndex!].tdList) return null
+    if (!curTrList[startTrIndex!].tdList[startTdIndex!]) return null
+    if (!curTrList[endTrIndex!].tdList[endTdIndex!]) return null
     const startTd = curTrList[startTrIndex!].tdList[startTdIndex!]
     const endTd = curTrList[endTrIndex!].tdList[endTdIndex!]
     // Normalize col/row ranges with min/max (handles RTL where x-swap

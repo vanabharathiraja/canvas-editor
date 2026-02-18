@@ -737,14 +737,61 @@ export function zipElementList(
           const nextElement = elementList[tableIndex]
           if (nextElement.pagingId === element.pagingId) {
             element.height! += nextElement.height!
-            element.trList!.push(...nextElement.trList!)
+            // Filter out pagingRepeat header rows and continuation cells
+            const nexTrList = (nextElement.trList || []).filter(
+              tr => !tr.pagingRepeat
+            )
+            if (nexTrList.length > 0) {
+              nexTrList[0].tdList = nexTrList[0].tdList.filter(
+                td => !td.isPageBreakContinuation
+              )
+            }
+            element.trList!.push(...nexTrList)
             tableIndex++
             combineCount++
           } else {
             break
           }
         }
+        // Restore original rowspans on cells truncated during split
+        if (combineCount) {
+          for (const tr of element.trList!) {
+            for (const td of tr.tdList) {
+              if (td.originalRowspan) {
+                td.rowspan = td.originalRowspan
+                delete td.originalRowspan
+              }
+            }
+          }
+        }
         e += combineCount
+      }
+      // Merge virtual rows back into single rows (intra-row split recombination)
+      if (element.trList) {
+        for (let t = 0; t < element.trList.length; t++) {
+          const tr = element.trList[t]
+          if (!tr.isVirtualRow) continue
+          let endT = t + 1
+          while (
+            endT < element.trList.length &&
+            element.trList[endT].isVirtualRow
+          ) {
+            endT++
+          }
+          const group = element.trList.slice(t, endT)
+          const merged = group[0]
+          for (let v = 1; v < group.length; v++) {
+            const vtr = group[v]
+            for (let d = 0; d < merged.tdList.length; d++) {
+              const srcTd = vtr.tdList[d]
+              if (srcTd && srcTd.value.length) {
+                merged.tdList[d].value.push(...srcTd.value)
+              }
+            }
+          }
+          delete merged.isVirtualRow
+          element.trList.splice(t + 1, endT - t - 1)
+        }
       }
       if (element.trList) {
         for (let t = 0; t < element.trList.length; t++) {

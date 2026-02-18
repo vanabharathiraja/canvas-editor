@@ -243,26 +243,28 @@ window.onload = function () {
     instance.command.executeSubscript()
   }
 
-  const colorControlDom = document.querySelector<HTMLInputElement>('#color')!
-  colorControlDom.oninput = function () {
-    instance.command.executeColor(colorControlDom.value)
+  const colorControlDom = document.querySelector<HTMLInputElement>('#color')
+  if (colorControlDom) {
+    colorControlDom.oninput = function () {
+      instance.command.executeColor(colorControlDom.value)
+    }
   }
   const colorDom = document.querySelector<HTMLDivElement>('.menu-item__color')!
   const colorSpanDom = colorDom.querySelector('span')!
   colorDom.onclick = function () {
     console.log('color')
-    colorControlDom.click()
+    if (colorControlDom) colorControlDom.click()
   }
 
-  const highlightControlDom =
-    document.querySelector<HTMLInputElement>('#highlight')!
-  highlightControlDom.oninput = function () {
-    instance.command.executeHighlight(highlightControlDom.value)
+  const highlightControlDom = document.querySelector<HTMLInputElement>('#highlight')
+  if (highlightControlDom) {
+    highlightControlDom.oninput = function () {
+      instance.command.executeHighlight(highlightControlDom.value)
+    }
   }
   const highlightDom = document.querySelector<HTMLDivElement>(
     '.menu-item__highlight'
   )!
-  const highlightSpanDom = highlightDom.querySelector('span')!
   highlightDom.onclick = function () {
     console.log('highlight')
     highlightControlDom?.click()
@@ -431,29 +433,31 @@ window.onload = function () {
   }
 
   const imageDom = document.querySelector<HTMLDivElement>('.menu-item__image')!
-  const imageFileDom = document.querySelector<HTMLInputElement>('#image')!
-  imageDom.onclick = function () {
-    imageFileDom.click()
-  }
-  imageFileDom.onchange = function () {
-    const file = imageFileDom.files![0]!
-    const fileReader = new FileReader()
-    fileReader.readAsDataURL(file)
-    fileReader.onload = function () {
-      // Calculate dimensions
-      const image = new Image()
-      const value = fileReader.result as string
-      image.src = value
-      image.onload = function () {
-        instance.command.executeImage({
-          value,
-          width: image.width,
-          height: image.height
-        })
-        imageFileDom.value = ''
-      }
-    }
-  }
+        const imageFileDom = document.querySelector<HTMLInputElement>('#image')
+        imageDom.onclick = function () {
+          if (imageFileDom) imageFileDom.click()
+        }
+        if (imageFileDom) {
+          imageFileDom.onchange = function () {
+            const file = imageFileDom.files![0]!
+            const fileReader = new FileReader()
+            fileReader.readAsDataURL(file)
+            fileReader.onload = function () {
+              // Calculate dimensions
+              const image = new Image()
+              const value = fileReader.result as string
+              image.src = value
+              image.onload = function () {
+                instance.command.executeImage({
+                  value,
+                  width: image.width,
+                  height: image.height
+                })
+                imageFileDom.value = ''
+              }
+            }
+          }
+        }
 
   const hyperlinkDom = document.querySelector<HTMLDivElement>(
     '.menu-item__hyperlink'
@@ -1169,12 +1173,9 @@ window.onload = function () {
   const replaceInputDom = document.querySelector<HTMLInputElement>(
     '.menu-item__search__collapse__replace input'
   )!
-  const searchRegInputDom =
-    document.querySelector<HTMLInputElement>('#option-reg')!
-  const searchCaseInputDom =
-    document.querySelector<HTMLInputElement>('#option-case')!
-  const searchSelectionInputDom =
-    document.querySelector<HTMLInputElement>('#option-selection')!
+  const searchRegInputDom = document.querySelector<HTMLInputElement>('#option-reg')
+  const searchCaseInputDom = document.querySelector<HTMLInputElement>('#option-case')
+  const searchSelectionInputDom = document.querySelector<HTMLInputElement>('#option-selection')
   const searchDom =
     document.querySelector<HTMLDivElement>('.menu-item__search')!
   searchDom.title = `Search & Replace (${isApple ? '⌘' : 'Ctrl'}+F)`
@@ -1214,17 +1215,17 @@ window.onload = function () {
 
   function emitSearch() {
     instance.command.executeSearch(searchInputDom.value || null, {
-      isRegEnable: searchRegInputDom.checked,
-      isIgnoreCase: searchCaseInputDom.checked,
-      isLimitSelection: searchSelectionInputDom.checked
+      isRegEnable: searchRegInputDom ? searchRegInputDom.checked : false,
+      isIgnoreCase: searchCaseInputDom ? searchCaseInputDom.checked : false,
+      isLimitSelection: searchSelectionInputDom ? searchSelectionInputDom.checked : false
     })
     setSearchResult()
   }
 
   searchInputDom.oninput = emitSearch
-  searchRegInputDom.onchange = emitSearch
-  searchCaseInputDom.onchange = emitSearch
-  searchSelectionInputDom.onchange = emitSearch
+  if (searchRegInputDom) searchRegInputDom.onchange = emitSearch
+  if (searchCaseInputDom) searchCaseInputDom.onchange = emitSearch
+  if (searchSelectionInputDom) searchSelectionInputDom.onchange = emitSearch
   searchInputDom.onkeydown = function (evt) {
     if (evt.key === 'Enter') {
       emitSearch()
@@ -1258,21 +1259,23 @@ window.onload = function () {
 
   // Import DOCX
   const importDocxDom = document.querySelector<HTMLDivElement>('.menu-item__import-docx')!
-  const importDocxFileDom = document.querySelector<HTMLInputElement>('#import-docx')!
+  const importDocxFileDom = document.querySelector<HTMLInputElement>('#import-docx')
   importDocxDom.onclick = function () {
-    importDocxFileDom.click()
+    if (importDocxFileDom) importDocxFileDom.click()
   }
-  importDocxFileDom.onchange = function () {
-    const file = importDocxFileDom.files![0]
-    if (!file) return
-    const fileReader = new FileReader()
-    fileReader.readAsArrayBuffer(file)
-    fileReader.onload = function () {
-      const arrayBuffer = fileReader.result as ArrayBuffer
-      ;(instance.command as any).executeImportDocx({
-        arrayBuffer
-      })
-      importDocxFileDom.value = ''
+  if (importDocxFileDom) {
+    importDocxFileDom.onchange = function () {
+      const file = importDocxFileDom.files![0]
+      if (!file) return
+      const fileReader = new FileReader()
+      fileReader.readAsArrayBuffer(file)
+      fileReader.onload = function () {
+        const arrayBuffer = fileReader.result as ArrayBuffer
+        ;(instance.command as any).executeImportDocx({
+          arrayBuffer
+        })
+        importDocxFileDom.value = ''
+      }
     }
   }
 
@@ -1397,9 +1400,11 @@ window.onload = function () {
 
   // Paper Size
   const paperSizeDom = document.querySelector<HTMLDivElement>('.paper-size')!
+  console.log("Paper Size DOM:", paperSizeDom)
   const paperSizeDomOptionsDom =
     paperSizeDom.querySelector<HTMLDivElement>('.options')!
   paperSizeDom.onclick = function () {
+    console.log('paper-size')
     paperSizeDomOptionsDom.classList.toggle('visible')
   }
   paperSizeDomOptionsDom.onclick = function (evt) {
@@ -1631,110 +1636,144 @@ window.onload = function () {
       ? superscriptDom.classList.add('active')
       : superscriptDom.classList.remove('active')
     payload.type === ElementType.SEPARATOR
-      ? separatorDom.classList.add('active')
-      : separatorDom.classList.remove('active')
-    separatorOptionDom
-      .querySelectorAll('li')
-      .forEach(li => li.classList.remove('active'))
-    if (payload.type === ElementType.SEPARATOR) {
-      const separator = payload.dashArray.join(',') || '0,0'
-      const curSeparatorDom = separatorOptionDom.querySelector<HTMLLIElement>(
-        `[data-separator='${separator}']`
-      )!
-      if (curSeparatorDom) {
-        curSeparatorDom.classList.add('active')
+      if (subscriptDom) {
+        payload.type === ElementType.SUBSCRIPT
+          ? subscriptDom.classList.add('active')
+          : subscriptDom.classList.remove('active')
       }
-    }
+      if (superscriptDom) {
+        payload.type === ElementType.SUPERSCRIPT
+          ? superscriptDom.classList.add('active')
+          : superscriptDom.classList.remove('active')
+      }
+      if (separatorDom) {
+        payload.type === ElementType.SEPARATOR
+          ? separatorDom.classList.add('active')
+          : separatorDom.classList.remove('active')
+      }
+      if (separatorOptionDom) {
+        separatorOptionDom
+          .querySelectorAll('li')
+          .forEach(li => li.classList.remove('active'))
+        if (payload.type === ElementType.SEPARATOR) {
+          const separator = payload.dashArray.join(',') || '0,0'
+          const curSeparatorDom = separatorOptionDom.querySelector<HTMLLIElement>(
+            `[data-separator='${separator}']`
+          )
+          if (curSeparatorDom) {/* Lines 1651-1652 omitted */}
+        }
+      }
 
-    // Rich text
-    fontOptionDom
-      .querySelectorAll<HTMLLIElement>('li')
-      .forEach(li => li.classList.remove('active'))
-    const curFontDom = fontOptionDom.querySelector<HTMLLIElement>(
-      `[data-family='${payload.font}']`
-    )
-    if (curFontDom) {
-      fontSelectDom.innerText = curFontDom.innerText
-      fontSelectDom.style.fontFamily = payload.font
-      curFontDom.classList.add('active')
-    }
-    sizeOptionDom
-      .querySelectorAll<HTMLLIElement>('li')
-      .forEach(li => li.classList.remove('active'))
-    const curSizeDom = sizeOptionDom.querySelector<HTMLLIElement>(
-      `[data-size='${payload.size}']`
-    )
-    if (curSizeDom) {
-      sizeSelectDom.innerText = curSizeDom.innerText
-      curSizeDom.classList.add('active')
-    } else {
-      sizeSelectDom.innerText = `${payload.size}`
-    }
-    payload.bold
-      ? boldDom.classList.add('active')
-      : boldDom.classList.remove('active')
-    payload.italic
-      ? italicDom.classList.add('active')
-      : italicDom.classList.remove('active')
-    payload.underline
-      ? underlineDom.classList.add('active')
-      : underlineDom.classList.remove('active')
-    payload.strikeout
-      ? strikeoutDom.classList.add('active')
-      : strikeoutDom.classList.remove('active')
-    if (payload.color) {
-      colorDom.classList.add('active')
-      colorControlDom.value = payload.color
-      colorSpanDom.style.backgroundColor = payload.color
-    } else {
-      colorDom.classList.remove('active')
-      colorControlDom.value = '#000000'
-      colorSpanDom.style.backgroundColor = '#000000'
-    }
-    if (payload.highlight) {
-      highlightDom.classList.add('active')
-      highlightControlDom.value = payload.highlight
-      highlightSpanDom.style.backgroundColor = payload.highlight
-    } else {
-      highlightDom.classList.remove('active')
-      highlightControlDom.value = '#ffff00'
-      highlightSpanDom.style.backgroundColor = '#ffff00'
-    }
+      // Rich text
+      if (fontOptionDom) {
+        fontOptionDom
+          .querySelectorAll<HTMLLIElement>('li')
+          .forEach(li => li.classList.remove('active'))
+        const curFontDom = fontOptionDom.querySelector<HTMLLIElement>(
+          `[data-family='${payload.font}']`
+        )
+        if (curFontDom && fontSelectDom) {
+          fontSelectDom.innerText = curFontDom.innerText
+          fontSelectDom.style.fontFamily = payload.font
+          curFontDom.classList.add('active')
+        }
+      }
+      if (sizeOptionDom) {
+        sizeOptionDom
+          .querySelectorAll<HTMLLIElement>('li')
+          .forEach(li => li.classList.remove('active'))
+        const curSizeDom = sizeOptionDom.querySelector<HTMLLIElement>(
+          `[data-size='${payload.size}']`
+        )
+        if (curSizeDom && sizeSelectDom) {
+          sizeSelectDom.innerText = curSizeDom.innerText
+          curSizeDom.classList.add('active')
+        } else if (sizeSelectDom) {
+          sizeSelectDom.innerText = `${payload.size}`
+        }
+      }
+      if (boldDom) {
+        payload.bold
+          ? boldDom.classList.add('active')
+          : boldDom.classList.remove('active')
+      }
+      if (italicDom) {
+        payload.italic
+          ? italicDom.classList.add('active')
+          : italicDom.classList.remove('active')
+      }
+      if (underlineDom) {
+        payload.underline
+          ? underlineDom.classList.add('active')
+          : underlineDom.classList.remove('active')
+      }
+      if (strikeoutDom) {
+        payload.strikeout
+          ? strikeoutDom.classList.add('active')
+          : strikeoutDom.classList.remove('active')
+      }
+      if (colorDom && colorControlDom && colorSpanDom) {
+        if (payload.color) {
+          colorDom.classList.add('active')
+          colorControlDom.value = payload.color
+          colorSpanDom.style.backgroundColor = payload.color
+        } else {
+          colorDom.classList.remove('active')
+          colorControlDom.value = '#000000'
+          colorSpanDom.style.backgroundColor = '#000000'
+        }
+      }
+      if (highlightDom) {
+        if (payload.highlight) {
+          highlightDom.classList.add('active')
+          /* Lines 1702-1704 omitted */
+        } else {/* Lines 1705-1708 omitted */}
+      }
 
-    // Row layout
-    leftDom.classList.remove('active')
-    centerDom.classList.remove('active')
-    rightDom.classList.remove('active')
-    alignmentDom.classList.remove('active')
-    justifyDom.classList.remove('active')
-    if (payload.rowFlex && payload.rowFlex === 'right') {
-      rightDom.classList.add('active')
-    } else if (payload.rowFlex && payload.rowFlex === 'center') {
-      centerDom.classList.add('active')
-    } else if (payload.rowFlex && payload.rowFlex === 'alignment') {
-      alignmentDom.classList.add('active')
-    } else if (payload.rowFlex && payload.rowFlex === 'justify') {
-      justifyDom.classList.add('active')
-    } else {
-      leftDom.classList.add('active')
-    }
+      // Row layout
+      if (leftDom) leftDom.classList.remove('active')
+      if (centerDom) centerDom.classList.remove('active')
+      if (rightDom) rightDom.classList.remove('active')
+      if (alignmentDom) alignmentDom.classList.remove('active')
+      if (justifyDom) justifyDom.classList.remove('active')
+      if (payload.rowFlex && payload.rowFlex === 'right') {/* Lines 1717-1718 omitted */} else if (payload.rowFlex && payload.rowFlex === 'center') {/* Lines 1719-1720 omitted */} else if (payload.rowFlex && payload.rowFlex === 'alignment') {/* Lines 1721-1722 omitted */} else if (payload.rowFlex && payload.rowFlex === 'justify') {/* Lines 1723-1724 omitted */} else {/* Lines 1725-1726 omitted */}
 
-    // Row spacing
-    rowOptionDom
-      .querySelectorAll<HTMLLIElement>('li')
-      .forEach(li => li.classList.remove('active'))
-    const curRowMarginDom = rowOptionDom.querySelector<HTMLLIElement>(
-      `[data-rowmargin='${payload.rowMargin}']`
-    )!
-    curRowMarginDom.classList.add('active')
+      // Row spacing
+      if (rowOptionDom) {
+        rowOptionDom
+          .querySelectorAll<HTMLLIElement>('li')
+          .forEach(li => li.classList.remove('active'))
+        const curRowMarginDom = rowOptionDom.querySelector<HTMLLIElement>(
+          `[data-rowmargin='${payload.rowMargin}']`
+        )
+        if (curRowMarginDom) curRowMarginDom.classList.add('active')
+      }
 
-    // Features
-    payload.undo
-      ? undoDom.classList.remove('no-allow')
-      : undoDom.classList.add('no-allow')
-    payload.redo
-      ? redoDom.classList.remove('no-allow')
-      : redoDom.classList.add('no-allow')
+      // Features
+      if (undoDom) {
+        payload.undo
+          ? undoDom.classList.remove('no-allow')
+          : undoDom.classList.add('no-allow')
+      }
+      if (redoDom) {
+        payload.redo
+          ? redoDom.classList.remove('no-allow')
+          : redoDom.classList.add('no-allow')
+      }
+      if (painterDom) {
+        payload.painter
+          ? painterDom.classList.add('active')
+          : painterDom.classList.remove('active')
+      }
+
+      // Title
+      if (titleOptionDom) {
+        titleOptionDom
+          .querySelectorAll<HTMLLIElement>('li')
+          .forEach(li => li.classList.remove('active'))
+        if (payload.level) {/* Lines 1753-1758 omitted */} else {/* Lines 1759-1761 omitted */}
+      }
+      /* Lines 1762-1809 omitted */
     payload.painter
       ? painterDom.classList.add('active')
       : painterDom.classList.remove('active')

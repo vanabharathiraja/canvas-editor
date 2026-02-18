@@ -119,6 +119,7 @@ import { MouseObserver } from '../observer/MouseObserver'
 import { LineNumber } from './frame/LineNumber'
 import { PageBorder } from './frame/PageBorder'
 import { ITd } from '../../interface/table/Td'
+import { ITr } from '../../interface/table/Tr'
 import { Actuator } from '../actuator/Actuator'
 import { TableOperate } from './particle/table/TableOperate'
 import { Area } from './interactive/Area'
@@ -1716,6 +1717,13 @@ export class Draw {
               const nexTrList = nextElement.trList!.filter(
                 tr => !tr.pagingRepeat
               )
+              // T2b recombination: remove continuation cells from
+              // the first content row of continuation fragments
+              if (nexTrList.length > 0) {
+                nexTrList[0].tdList = nexTrList[0].tdList.filter(
+                  td => !td.isPageBreakContinuation
+                )
+              }
               element.trList!.push(...nexTrList)
               element.height! += nextElement.height!
               tableIndex++
@@ -1725,11 +1733,54 @@ export class Draw {
             }
           }
           if (combineCount) {
+            // T2b recombination: restore original rowspans on cells
+            // that were truncated during the previous split
+            for (const tr of element.trList!) {
+              for (const td of tr.tdList) {
+                if (td.originalRowspan) {
+                  td.rowspan = td.originalRowspan
+                  delete td.originalRowspan
+                }
+              }
+            }
             elementList.splice(i + 1, combineCount)
           }
         }
         element.pagingIndex = element.pagingIndex ?? 0
         const trList = element.trList!
+        // Recombine virtual rows: merge consecutive isVirtualRow TRs
+        // back into a single row by concatenating their cell values.
+        // Virtual rows are created by the intra-row split for
+        // oversized rows (see T2c below).
+        for (let t = 0; t < trList.length; t++) {
+          const tr = trList[t]
+          if (!tr.isVirtualRow) continue
+          // Find all consecutive virtual rows in this group
+          let endT = t + 1
+          while (endT < trList.length && trList[endT].isVirtualRow) {
+            endT++
+          }
+          // Merge cells: each virtual row has the same number of
+          // cells (one per column). Concatenate their value arrays.
+          const virtualGroup = trList.slice(t, endT)
+          const mergedTr = virtualGroup[0]
+          for (let v = 1; v < virtualGroup.length; v++) {
+            const vtr = virtualGroup[v]
+            for (let d = 0; d < mergedTr.tdList.length; d++) {
+              const srcTd = vtr.tdList[d]
+              if (srcTd && srcTd.value.length) {
+                // Remove leading zero-width placeholder from continuation
+                const srcValue = srcTd.value[0]?.value === ZERO
+                  ? srcTd.value.slice(1)
+                  : srcTd.value
+                mergedTr.tdList[d].value.push(...srcValue)
+              }
+            }
+          }
+          delete mergedTr.isVirtualRow
+          // Remove the extra virtual rows
+          trList.splice(t + 1, endT - t - 1)
+        }
         // 计算前移除上一次的高度
         for (let t = 0; t < trList.length; t++) {
           const tr = trList[t]
@@ -1812,6 +1863,168 @@ export class Draw {
         }
         // 需要重新计算表格内值
         this.tableParticle.computeRowColInfo(element)
+        // T2c: Split oversized rows that exceed max page content height.
+        // When a single row (e.g., a 1-row resume table) is taller than
+        // the available page area, split its cells into multiple synthetic
+        // rows so the normal row-level split logic can handle pagination.
+        if (isPagingMode) {
+          const pgHeight = this.getHeight()
+          const pgMarginHeight = this.getMainOuterHeight()
+          const pgRowMarginHeight = rowMargin * 2 * scale
+          // Maximum height any single TR can occupy (in unscaled units)
+          const maxTrHeight =
+            (pgHeight - pgMarginHeight - pgRowMarginHeight) / scale
+          let didSplitRows = false
+          for (let t = 0; t < trList.length; t++) {
+            const tr = trList[t]
+            // Skip rows with rowspan > 1 cells — too complex
+            if (tr.tdList.some(td => td.rowspan > 1)) continue
+            if (tr.height <= maxTrHeight || tr.pagingRepeat) continue
+            // This row is too tall for any page — split it
+            // Available cell content height per segment (unscaled)
+            const segHeight = maxTrHeight - tdPaddingHeight
+            if (segHeight <= 0) continue
+            // For each cell, compute segment split points using td.rowList
+            const cellSegments: IElement[][][] = []
+            for (let d = 0; d < tr.tdList.length; d++) {
+              const td = tr.tdList[d]
+              const segments: IElement[][] = [[]]
+              let cumHeight = 0
+              const internalRows = td.rowList || []
+              for (let ir = 0; ir < internalRows.length; ir++) {
+                const irow = internalRows[ir]
+                // irow.height is scaled, convert to unscaled for comparison
+                const irowHeight = irow.height / scale
+                if (
+                  cumHeight + irowHeight > segHeight &&
+                  segments[segments.length - 1].length > 0
+                ) {
+                  // Start a new segment
+                  segments.push([])
+                  cumHeight = 0
+                }
+                // Add elements from this internal row to current segment
+                const elStart = irow.startIndex
+                const elEnd = ir + 1 < internalRows.length
+                  ? internalRows[ir + 1].startIndex
+                  : td.value.length
+                for (let e = elStart; e < elEnd; e++) {
+                  segments[segments.length - 1].push(td.value[e])
+                }
+                cumHeight += irowHeight
+              }
+              // If cell had no rowList, put all value in one segment
+              if (internalRows.length === 0) {
+                segments[0] = [...td.value]
+              }
+              cellSegments.push(segments)
+            }
+            // Determine max segment count across all cells
+            const maxSegs = Math.max(
+              ...cellSegments.map(s => s.length),
+              1
+            )
+            if (maxSegs <= 1) continue
+            // Create synthetic TRs
+            const syntheticTrs: ITr[] = []
+            for (let s = 0; s < maxSegs; s++) {
+              const newTdList: ITd[] = tr.tdList.map((td, ci) => {
+                const segValue = cellSegments[ci][s]
+                const cellValue = segValue && segValue.length > 0
+                  ? segValue
+                  : [{ value: ZERO }]
+                return {
+                  colspan: td.colspan,
+                  rowspan: 1,
+                  value: cellValue,
+                  verticalAlign: td.verticalAlign,
+                  backgroundColor: td.backgroundColor,
+                  borderTypes: td.borderTypes,
+                  slashTypes: td.slashTypes,
+                  disabled: td.disabled,
+                  deletable: td.deletable
+                }
+              })
+              syntheticTrs.push({
+                height: defaultTrMinHeight,
+                minHeight: defaultTrMinHeight,
+                tdList: newTdList,
+                isVirtualRow: true
+              })
+            }
+            // Replace original TR with synthetic TRs
+            trList.splice(t, 1, ...syntheticTrs)
+            didSplitRows = true
+            t += syntheticTrs.length - 1
+          }
+          if (didSplitRows) {
+            // Reset heights and recompute layout for new rows
+            for (let t = 0; t < trList.length; t++) {
+              const tr = trList[t]
+              tr.height = tr.minHeight || defaultTrMinHeight
+              tr.minHeight = tr.height
+            }
+            this.tableParticle.computeRowColInfo(element)
+            for (let t = 0; t < trList.length; t++) {
+              const tr = trList[t]
+              for (let d = 0; d < tr.tdList.length; d++) {
+                const td = tr.tdList[d]
+                const tdRowList = this.computeRowList({
+                  innerWidth: (td.width! - tdPaddingWidth) * scale,
+                  elementList: td.value,
+                  isFromTable: true,
+                  isPagingMode
+                })
+                const tdRowHeight = tdRowList.reduce(
+                  (pre, cur) => pre + cur.height,
+                  0
+                )
+                td.rowList = tdRowList
+                const curTdH = tdRowHeight / scale + tdPaddingHeight
+                if (td.height! < curTdH) {
+                  const extraH = curTdH - td.height!
+                  const changeTr = trList[t + td.rowspan - 1]
+                  changeTr.height += extraH
+                  changeTr.tdList.forEach(chTd => {
+                    chTd.height! += extraH
+                    if (!chTd.realHeight) {
+                      chTd.realHeight = chTd.height!
+                    } else {
+                      chTd.realHeight! += extraH
+                    }
+                  })
+                }
+                td.mainHeight = curTdH
+                td.realMinHeight = tr.minHeight!
+                td.realHeight = tr.height
+              }
+            }
+            // Re-reduce and recompute
+            const reduceList =
+              this.tableParticle.getTrListGroupByCol(trList)
+            for (let rt = 0; rt < reduceList.length; rt++) {
+              const rtr = reduceList[rt]
+              let rh = -1
+              for (let rd = 0; rd < rtr.tdList.length; rd++) {
+                const rtd = rtr.tdList[rd]
+                const rrh = rtd.realHeight!
+                const rmh = rtd.mainHeight!
+                const rmih = rtd.realMinHeight!
+                const cr = rmh < rmih ? rrh - rmih : rrh - rmh
+                if (!~rh || cr < rh) rh = cr
+              }
+              if (rh > 0) {
+                const ctr = trList[rt]
+                ctr.height -= rh
+                ctr.tdList.forEach(ctd => {
+                  ctd.height! -= rh
+                  ctd.realHeight! -= rh
+                })
+              }
+            }
+            this.tableParticle.computeRowColInfo(element)
+          }
+        }
         // 计算出表格高度
         const tableHeight = this.tableParticle.getTableHeight(element)
         const tableWidth = this.tableParticle.getTableWidth(element)
@@ -1859,12 +2072,38 @@ export class Draw {
           // 表格高度超过页面高度开始截断行
           if (curPagePreHeight + rowMarginHeight + elementHeight > height) {
             const trList = element.trList!
+            const colCount = element.colgroup?.length || 0
             // 计算需要移除的行数
             let deleteStart = 0
             let deleteCount = 0
             let preTrHeight = 0
             // 大于一行时再拆分避免循环
             if (trList.length > 1) {
+              // Build rowspan tracker: for each row, track which columns
+              // are occupied by rowspans from previous rows
+              const rowspanState: number[][] = []
+              for (let r = 0; r < trList.length; r++) {
+                // Initialize: carry forward from previous row, decrement
+                const prev = r > 0
+                  ? rowspanState[r - 1].map(v => (v > 0 ? v - 1 : 0))
+                  : new Array(colCount).fill(0)
+                // Mark columns occupied by cells starting in this row
+                const tr = trList[r]
+                for (const td of tr.tdList) {
+                  if (td.rowspan > 1) {
+                    for (
+                      let c = td.colIndex!;
+                      c < td.colIndex! + td.colspan;
+                      c++
+                    ) {
+                      prev[c] = td.rowspan - 1
+                    }
+                  }
+                }
+                rowspanState.push(prev)
+              }
+              // Find the overflow row
+              let overflowRow = -1
               for (let r = 0; r < trList.length; r++) {
                 const tr = trList[r]
                 const trHeight = tr.height * scale
@@ -1872,24 +2111,95 @@ export class Draw {
                   curPagePreHeight + rowMarginHeight + preTrHeight + trHeight >
                   height
                 ) {
-                  // 当前行存在跨行中断-暂时忽略分页
-                  const rowColCount = tr.tdList.reduce(
-                    (pre, cur) => pre + cur.colspan,
-                    0
-                  )
-                  if (element.colgroup?.length !== rowColCount) {
-                    deleteCount = 0
-                  }
+                  overflowRow = r
                   break
                 } else {
-                  deleteStart = r + 1
-                  deleteCount = trList.length - deleteStart
                   preTrHeight += trHeight
                 }
+              }
+              if (overflowRow > 0) {
+                // T2a: Scan backward from overflow row to find a "clean"
+                // row where no rowspan from earlier rows is active
+                let cleanRow = -1
+                for (let r = overflowRow; r > 0; r--) {
+                  // A row is "clean" if no column has a pending rowspan
+                  // from a PREVIOUS row (i.e. the state BEFORE this row
+                  // was processed). We check row r-1's state: if all
+                  // values are 0, row r is a clean start.
+                  const prevState = rowspanState[r - 1]
+                  const isClean = prevState.every(v => v === 0)
+                  if (isClean) {
+                    cleanRow = r
+                    break
+                  }
+                }
+                if (cleanRow >= 0) {
+                  // T2a: Split at the clean row — no rowspan carryover needed
+                  deleteStart = cleanRow
+                  deleteCount = trList.length - deleteStart
+                } else {
+                  // T2b: No clean row found — split at overflowRow with
+                  // rowspan carryover. We need to handle cells from earlier
+                  // rows whose rowspan crosses into overflowRow.
+                  deleteStart = overflowRow
+                  deleteCount = trList.length - deleteStart
+                }
+              } else if (
+                overflowRow === 0 &&
+                trList.length > 1
+              ) {
+                // Edge case: first row itself overflows the page.
+                // Keep row 0 on this page (it gets max available
+                // space), push remaining rows to the next page.
+                deleteStart = 1
+                deleteCount = trList.length - 1
               }
             }
             if (deleteCount) {
               const cloneTrList = trList.splice(deleteStart, deleteCount)
+              // T2b: Handle rowspan carryover — cells from rows before
+              // deleteStart whose rowspan extends into cloneTrList
+              const carryoverTds: ITd[] = []
+              for (let r = 0; r < deleteStart; r++) {
+                for (const td of trList[r].tdList) {
+                  const tdEndRow = td.rowIndex! + td.rowspan - 1
+                  if (tdEndRow >= deleteStart) {
+                    // This cell's rowspan crosses the split boundary
+                    const remainingSpan = tdEndRow - deleteStart + 1
+                    // Store original rowspan before truncation
+                    const origRowspan = td.rowspan
+                    // Truncate the original cell's rowspan to end at
+                    // deleteStart - 1
+                    td.rowspan = deleteStart - td.rowIndex!
+                    td.originalRowspan = origRowspan
+                    // Create a continuation cell for the next page
+                    const continuationTd: ITd = {
+                      id: getUUID(),
+                      colspan: td.colspan,
+                      rowspan: remainingSpan,
+                      value: [{ value: '' }],
+                      colIndex: td.colIndex,
+                      verticalAlign: td.verticalAlign,
+                      backgroundColor: td.backgroundColor,
+                      borderTypes: td.borderTypes,
+                      slashTypes: td.slashTypes,
+                      isPageBreakContinuation: true
+                    }
+                    carryoverTds.push(continuationTd)
+                  }
+                }
+              }
+              // If there are carryover cells, insert them into the first
+              // row of the continuation fragment
+              if (carryoverTds.length > 0 && cloneTrList.length > 0) {
+                const firstCloneRow = cloneTrList[0]
+                // Merge carryover tds into the first row's tdList,
+                // sorted by colIndex so computeRowColInfo works correctly
+                firstCloneRow.tdList.push(...carryoverTds)
+                firstCloneRow.tdList.sort(
+                  (a, b) => (a.colIndex ?? 0) - (b.colIndex ?? 0)
+                )
+              }
               const cloneTrHeight = cloneTrList.reduce(
                 (pre, cur) => pre + cur.height,
                 0

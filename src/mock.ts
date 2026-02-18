@@ -2118,6 +2118,379 @@ elementList.push({
   ]
 })
 elementList.push({ value: '\n' })
+
+// ============================================================
+// Table Multi-Page Split Test Cases (Phase T2)
+// These tables test page-break splitting with rowspan cells.
+// Page height ~1123px, margins+header+footer ~300px, available ~823px.
+// Each row at ~42px, so ~19 rows fill a page.
+// ============================================================
+
+// T2 Test Title
+const t2TestTitle: IElement = {
+  value: '',
+  type: ElementType.TITLE,
+  level: TitleLevel.FIRST,
+  valueList: [
+    {
+      value: 'Table Multi-Page Split Tests:',
+      size: 18
+    }
+  ]
+}
+elementList.push(t2TestTitle)
+
+// Helper: create a simple text cell value
+function makeCell(text: string, opts?: { bold?: boolean; color?: string; size?: number }): IElement[] {
+  return text.split('').map(ch => ({
+    value: ch,
+    size: opts?.size || 11,
+    bold: opts?.bold,
+    color: opts?.color
+  }))
+}
+
+// T2-Test1: Tall simple table (no rowspan) — 25 rows, should split cleanly
+const t2Test1Label = 'T2-1: Tall table (25 rows, no rowspan) — should split across 2 pages:'
+for (const ch of t2Test1Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+const t2Test1Rows: any[] = []
+// Header row
+t2Test1Rows.push({
+  height: 36,
+  tdList: [
+    { colspan: 1, rowspan: 1, value: makeCell('#', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Patient Name', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Diagnosis', { bold: true }) }
+  ]
+})
+for (let r = 1; r <= 24; r++) {
+  t2Test1Rows.push({
+    height: 36,
+    tdList: [
+      { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+      { colspan: 1, rowspan: 1, value: makeCell(`Patient ${r}`) },
+      { colspan: 1, rowspan: 1, value: makeCell(r % 2 === 0 ? 'Diabetes' : 'Hypertension') }
+    ]
+  })
+}
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [{ width: 50 }, { width: 252 }, { width: 252 }],
+  trList: t2Test1Rows
+})
+elementList.push({ value: '\n' })
+
+// T2-Test2: Table with rowspan=3 crossing page boundary
+// Rows 1-15 fit on page, rows 16-22 go to next page.
+// Row 14 has a rowspan=3 cell spanning rows 14-16 — crosses the boundary.
+// T2a should find a clean row before 14, or T2b carries over the rowspan.
+const t2Test2Label = 'T2-2: Table with rowspan=3 crossing page boundary — rowspan carryover:'
+for (const ch of t2Test2Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+const t2Test2Rows: any[] = []
+// Header
+t2Test2Rows.push({
+  height: 36,
+  tdList: [
+    { colspan: 1, rowspan: 1, value: makeCell('Day', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Activity', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Notes', { bold: true }) }
+  ]
+})
+for (let r = 1; r <= 20; r++) {
+  if (r === 13) {
+    // Start rowspan=3 in column 0 — spans rows 13,14,15
+    t2Test2Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 3, value: makeCell('Days 13-15', { bold: true, color: '#CC0000' }) },
+        { colspan: 1, rowspan: 1, value: makeCell('Morning session') },
+        { colspan: 1, rowspan: 1, value: makeCell('Merged cell left') }
+      ]
+    })
+  } else if (r === 14 || r === 15) {
+    // These rows only have 2 cells (column 0 occupied by rowspan)
+    t2Test2Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(r === 14 ? 'Afternoon session' : 'Evening session') },
+        { colspan: 1, rowspan: 1, value: makeCell(r === 14 ? 'Cont...' : 'End of merge') }
+      ]
+    })
+  } else {
+    t2Test2Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`Day ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Activity ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Note ${r}`) }
+      ]
+    })
+  }
+}
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [{ width: 120 }, { width: 217 }, { width: 217 }],
+  trList: t2Test2Rows
+})
+elementList.push({ value: '\n' })
+
+// T2-Test3: Table with rowspan=5 in the middle column
+// This creates a long merged cell that will definitely cross a page boundary.
+// Tests T2b with a large rowspan carryover.
+const t2Test3Label = 'T2-3: Table with rowspan=5 mid-column — large rowspan carryover:'
+for (const ch of t2Test3Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+const t2Test3Rows: any[] = []
+// Header
+t2Test3Rows.push({
+  height: 36,
+  tdList: [
+    { colspan: 1, rowspan: 1, value: makeCell('ID', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Category', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Details', { bold: true }) }
+  ]
+})
+for (let r = 1; r <= 18; r++) {
+  if (r === 12) {
+    // rowspan=5 in column 1 — spans rows 12-16
+    t2Test3Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+        { colspan: 1, rowspan: 5, value: makeCell('Merged 12-16', { bold: true, color: '#0066CC' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Detail ${r}`) }
+      ]
+    })
+  } else if (r >= 13 && r <= 16) {
+    // column 1 occupied by rowspan
+    t2Test3Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Detail ${r}`) }
+      ]
+    })
+  } else {
+    t2Test3Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Cat ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Detail ${r}`) }
+      ]
+    })
+  }
+}
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [{ width: 80 }, { width: 237 }, { width: 237 }],
+  trList: t2Test3Rows
+})
+elementList.push({ value: '\n' })
+
+// T2-Test4: RTL Arabic table with rowspan crossing page boundary
+// Tests that rowspan carryover respects RTL table direction
+const t2Test4Label = 'T2-4: RTL Arabic table with rowspan — carryover + RTL:'
+for (const ch of t2Test4Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+const t2Test4Rows: any[] = []
+// Header
+t2Test4Rows.push({
+  height: 36,
+  tdList: [
+    { colspan: 1, rowspan: 1, value: makeCell('الحالة', { bold: true, size: 13 }) },
+    { colspan: 1, rowspan: 1, value: makeCell('التشخيص', { bold: true, size: 13 }) },
+    { colspan: 1, rowspan: 1, value: makeCell('المريض', { bold: true, size: 13 }) }
+  ]
+})
+for (let r = 1; r <= 20; r++) {
+  const names = ['أحمد', 'سارة', 'محمد', 'فاطمة', 'خالد']
+  const diagnoses = ['سكري', 'ضغط', 'ربو', 'حساسية', 'أنيميا']
+  if (r === 14) {
+    // rowspan=3 in column 2 (المريض) — spans rows 14-16
+    t2Test4Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell('نشط', { color: '#008800' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(diagnoses[r % 5]) },
+        { colspan: 1, rowspan: 3, value: makeCell('أحمد الراشد — متابعة', { bold: true, color: '#CC0000' }) }
+      ]
+    })
+  } else if (r === 15 || r === 16) {
+    t2Test4Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(r === 15 ? 'مراجعة' : 'نشط', { color: r === 15 ? '#CC8800' : '#008800' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(diagnoses[r % 5]) }
+      ]
+    })
+  } else {
+    t2Test4Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(r % 3 === 0 ? 'نشط' : 'مراجعة', { color: r % 3 === 0 ? '#008800' : '#CC8800' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(diagnoses[r % 5]) },
+        { colspan: 1, rowspan: 1, value: makeCell(names[r % 5]) }
+      ]
+    })
+  }
+}
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  direction: 'rtl' as const,
+  colgroup: [{ width: 100 }, { width: 227 }, { width: 227 }],
+  trList: t2Test4Rows
+})
+elementList.push({ value: '\n' })
+
+// T2-Test5: Table with header repeat (pagingRepeat) + rowspan
+// First row is a repeating header. Tests that header appears on each page.
+const t2Test5Label = 'T2-5: Table with pagingRepeat header + rowspan — header repeats on each page:'
+for (const ch of t2Test5Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+const t2Test5Rows: any[] = []
+// Header row with pagingRepeat
+t2Test5Rows.push({
+  height: 40,
+  pagingRepeat: true,
+  tdList: [
+    { colspan: 1, rowspan: 1, value: makeCell('رقم', { bold: true, size: 13 }) },
+    { colspan: 1, rowspan: 1, value: makeCell('الاسم / Name', { bold: true, size: 13 }) },
+    { colspan: 1, rowspan: 1, value: makeCell('البيانات / Data', { bold: true, size: 13 }) }
+  ]
+})
+for (let r = 1; r <= 22; r++) {
+  if (r === 10) {
+    // rowspan=2 in column 1
+    t2Test5Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+        { colspan: 1, rowspan: 2, value: makeCell('Merged Name 10-11', { bold: true, color: '#0066CC' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Data ${r}`) }
+      ]
+    })
+  } else if (r === 11) {
+    t2Test5Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Data ${r}`) }
+      ]
+    })
+  } else {
+    t2Test5Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Name ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`Data ${r}`) }
+      ]
+    })
+  }
+}
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [{ width: 60 }, { width: 247 }, { width: 247 }],
+  trList: t2Test5Rows
+})
+elementList.push({ value: '\n' })
+
+// T2-Test6: Multiple rowspans in different columns crossing boundary
+// Tests T2b with complex multi-column rowspan carryover
+const t2Test6Label = 'T2-6: Multiple rowspans in different columns — complex carryover:'
+for (const ch of t2Test6Label) {
+  elementList.push({ value: ch, size: 12, color: '#666666' })
+}
+elementList.push({ value: '\n' })
+const t2Test6Rows: any[] = []
+// Header
+t2Test6Rows.push({
+  height: 36,
+  tdList: [
+    { colspan: 1, rowspan: 1, value: makeCell('Col A', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Col B', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Col C', { bold: true }) },
+    { colspan: 1, rowspan: 1, value: makeCell('Col D', { bold: true }) }
+  ]
+})
+for (let r = 1; r <= 20; r++) {
+  if (r === 13) {
+    // rowspan=4 in col A, rowspan=3 in col C — both cross boundary
+    t2Test6Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 4, value: makeCell('A 13-16', { bold: true, color: '#CC0000' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(`B ${r}`) },
+        { colspan: 1, rowspan: 3, value: makeCell('C 13-15', { bold: true, color: '#0066CC' }) },
+        { colspan: 1, rowspan: 1, value: makeCell(`D ${r}`) }
+      ]
+    })
+  } else if (r === 14) {
+    // col A occupied (rowspan), col C occupied (rowspan)
+    t2Test6Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`B ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`D ${r}`) }
+      ]
+    })
+  } else if (r === 15) {
+    // col A occupied, col C last row of its rowspan
+    t2Test6Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`B ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`D ${r}`) }
+      ]
+    })
+  } else if (r === 16) {
+    // col A last row of its rowspan, col C free again
+    t2Test6Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`B ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`C ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`D ${r}`) }
+      ]
+    })
+  } else {
+    t2Test6Rows.push({
+      height: 36,
+      tdList: [
+        { colspan: 1, rowspan: 1, value: makeCell(`A ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`B ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`C ${r}`) },
+        { colspan: 1, rowspan: 1, value: makeCell(`D ${r}`) }
+      ]
+    })
+  }
+}
+elementList.push({
+  type: ElementType.TABLE,
+  value: '',
+  colgroup: [{ width: 138 }, { width: 138 }, { width: 139 }, { width: 139 }],
+  trList: t2Test6Rows
+})
+elementList.push({ value: '\n' })
+
 export const data: IElement[] = elementList
 
 interface IComment {
