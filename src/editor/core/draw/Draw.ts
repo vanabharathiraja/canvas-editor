@@ -579,7 +579,10 @@ export class Draw {
       const elementList = this.getOriginalElementList()
       const td = elementList[index!].trList![trIndex!].tdList[tdIndex!]
       const tdPadding = this.getTdPadding()
-      return td!.width! - tdPadding[1] - tdPadding[3]
+      const effPadding = td.padding
+        ? (td.padding.map(p => p * this.options.scale) as [number, number, number, number])
+        : tdPadding
+      return td!.width! - effPadding[1] - effPadding[3]
     }
     return this.getOriginalInnerWidth()
   }
@@ -1706,6 +1709,10 @@ export class Draw {
       } else if (element.type === ElementType.TABLE) {
         const tdPaddingWidth = tdPadding[1] + tdPadding[3]
         const tdPaddingHeight = tdPadding[0] + tdPadding[2]
+        const getEffTdPaddingWidth = (td: { padding?: [number, number, number, number] }) =>
+          td.padding ? td.padding[1] + td.padding[3] : tdPaddingWidth
+        const getEffTdPaddingHeight = (td: { padding?: [number, number, number, number] }) =>
+          td.padding ? td.padding[0] + td.padding[2] : tdPaddingHeight
         // 表格分页处理进度：https://github.com/Hufe921/canvas-editor/issues/41
         // 查看后续表格是否属于同一个源表格-存在即合并
         if (element.pagingId) {
@@ -1794,8 +1801,10 @@ export class Draw {
           const tr = trList[t]
           for (let d = 0; d < tr.tdList.length; d++) {
             const td = tr.tdList[d]
+            const effTdPaddingWidth = getEffTdPaddingWidth(td)
+            const effTdPaddingHeight = getEffTdPaddingHeight(td)
             const rowList = this.computeRowList({
-              innerWidth: (td.width! - tdPaddingWidth) * scale,
+              innerWidth: (td.width! - effTdPaddingWidth) * scale,
               elementList: td.value,
               isFromTable: true,
               isPagingMode
@@ -1803,7 +1812,7 @@ export class Draw {
             const rowHeight = rowList.reduce((pre, cur) => pre + cur.height, 0)
             td.rowList = rowList
             // 移除缩放导致的行高变化-渲染时会进行缩放调整
-            const curTdHeight = rowHeight / scale + tdPaddingHeight
+            const curTdHeight = rowHeight / scale + effTdPaddingHeight
             // 内容高度大于当前单元格高度需增加
             if (td.height! < curTdHeight) {
               const extraHeight = curTdHeight - td.height!
@@ -3396,13 +3405,16 @@ export class Draw {
             const tr = element.trList![t]
             for (let d = 0; d < tr.tdList!.length; d++) {
               const td = tr.tdList[d]
+              const effWidth = td.padding
+                ? td.padding[1] + td.padding[3]
+                : tdPaddingWidth
               this.drawRow(ctx, {
                 elementList: td.value,
                 positionList: td.positionList!,
                 rowList: td.rowList!,
                 pageNo,
                 startIndex: 0,
-                innerWidth: (td.width! - tdPaddingWidth) * scale,
+                innerWidth: (td.width! - effWidth) * scale,
                 zone,
                 isDrawLineBreak
               })

@@ -1123,6 +1123,24 @@ export class CommandAdapt {
     this.tableOperate.tableTdBorderStyle(payload)
   }
 
+  public moveTableRowUp() {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.moveTableRowUp()
+  }
+
+  public moveTableRowDown() {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.moveTableRowDown()
+  }
+
+  public tableTdPadding(payload: [number, number, number, number]) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableTdPadding(payload)
+  }
+
   public hyperlink(
     payload: Pick<IElement, 'valueList' | 'hyperlinkId' | 'url'>
   ) {

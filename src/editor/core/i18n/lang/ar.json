@@ -73,7 +73,13 @@
       "borderTdStyleSolid": "متصل",
       "borderTdStyleDashed": "متقطع",
       "borderTdStyleDotted": "منقط",
-      "borderTdStyleDouble": "مزدوج"
+      "borderTdStyleDouble": "مزدوج",
+      "moveRowUp": "تحريك الصف لأعلى",
+      "moveRowDown": "تحريك الصف لأسفل",
+      "tdPadding": "هامش الخلية",
+      "tdPaddingSmall": "صغير (2px)",
+      "tdPaddingMedium": "متوسط (5px)",
+      "tdPaddingLarge": "كبير (10px)"
     },
     "header": {
       "fullWidth": "خلفية بعرض كامل",

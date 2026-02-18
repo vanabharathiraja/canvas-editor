@@ -996,6 +996,77 @@ export class TableOperate {
     })
   }
 
+  // --- T5.1: Move row up/down ---
+
+  public moveTableRowUp() {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return
+    const { index, trIndex } = positionContext
+    if (trIndex === 0) return // already the first row
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = originalElementList[index!]
+    const trList = element.trList!
+    // Swap the current row with the one above
+    const temp = trList[trIndex!]
+    trList[trIndex!] = trList[trIndex! - 1]
+    trList[trIndex! - 1] = temp
+    // Update position context to follow the moved row
+    this.position.setPositionContext({
+      isTable: true,
+      index,
+      trIndex: trIndex! - 1,
+      tdIndex: 0,
+      tdId: trList[trIndex! - 1].tdList[0].id,
+      trId: trList[trIndex! - 1].id,
+      tableId: positionContext.tableId
+    })
+    this.range.setRange(0, 0)
+    this.draw.render({ curIndex: 0 })
+    this.tableTool.render()
+  }
+
+  public moveTableRowDown() {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return
+    const { index, trIndex } = positionContext
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = originalElementList[index!]
+    const trList = element.trList!
+    if (trIndex! >= trList.length - 1) return // already the last row
+    const temp = trList[trIndex!]
+    trList[trIndex!] = trList[trIndex! + 1]
+    trList[trIndex! + 1] = temp
+    // Update position context to follow the moved row
+    this.position.setPositionContext({
+      isTable: true,
+      index,
+      trIndex: trIndex! + 1,
+      tdIndex: 0,
+      tdId: trList[trIndex! + 1].tdList[0].id,
+      trId: trList[trIndex! + 1].id,
+      tableId: positionContext.tableId
+    })
+    this.range.setRange(0, 0)
+    this.draw.render({ curIndex: 0 })
+    this.tableTool.render()
+  }
+
+  // --- T5.2: Per-cell padding ---
+
+  public tableTdPadding(payload: [number, number, number, number]) {
+    const rowCol = this.tableParticle.getRangeRowCol()
+    if (!rowCol) return
+    for (let r = 0; r < rowCol.length; r++) {
+      const row = rowCol[r]
+      for (let c = 0; c < row.length; c++) {
+        row[c].padding = payload
+      }
+    }
+    const { endIndex } = this.range.getRange()
+    this.range.setRange(endIndex, endIndex)
+    this.draw.render({ curIndex: endIndex })
+  }
+
   // --- T3: Auto-fit & table sizing commands ---
 
   private getColIndex(

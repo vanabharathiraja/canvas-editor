@@ -84,6 +84,12 @@ export const INTERNAL_CONTEXT_MENU_KEY = {
     BORDER_TD_STYLE_SOLID: 'tableBorderTdStyleSolid',
     BORDER_TD_STYLE_DASHED: 'tableBorderTdStyleDashed',
     BORDER_TD_STYLE_DOTTED: 'tableBorderTdStyleDotted',
-    BORDER_TD_STYLE_DOUBLE: 'tableBorderTdStyleDouble'
+    BORDER_TD_STYLE_DOUBLE: 'tableBorderTdStyleDouble',
+    MOVE_ROW_UP: 'tableMoveRowUp',
+    MOVE_ROW_DOWN: 'tableMoveRowDown',
+    TD_PADDING: 'tableTdPadding',
+    TD_PADDING_SMALL: 'tableTdPaddingSmall',
+    TD_PADDING_MEDIUM: 'tableTdPaddingMedium',
+    TD_PADDING_LARGE: 'tableTdPaddingLarge'
   }
 }

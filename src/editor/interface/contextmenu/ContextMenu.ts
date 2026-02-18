@@ -87,6 +87,12 @@ export interface IContextmenuLang {
     borderTdStyleDashed: string
     borderTdStyleDotted: string
     borderTdStyleDouble: string
+    moveRowUp: string
+    moveRowDown: string
+    tdPadding: string
+    tdPaddingSmall: string
+    tdPaddingMedium: string
+    tdPaddingLarge: string
   }
   header: {
     fullWidth: string

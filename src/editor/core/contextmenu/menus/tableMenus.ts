@@ -56,7 +56,13 @@ const {
     BORDER_TD_STYLE_SOLID,
     BORDER_TD_STYLE_DASHED,
     BORDER_TD_STYLE_DOTTED,
-    BORDER_TD_STYLE_DOUBLE
+    BORDER_TD_STYLE_DOUBLE,
+    MOVE_ROW_UP,
+    MOVE_ROW_DOWN,
+    TD_PADDING,
+    TD_PADDING_SMALL,
+    TD_PADDING_MEDIUM,
+    TD_PADDING_LARGE
   }
 } = INTERNAL_CONTEXT_MENU_KEY
 
@@ -515,6 +521,74 @@ export const tableMenus: IRegisterContextMenu[] = [
         when: () => true,
         callback: (command: Command) => {
           command.executeTableTdBorderStyle(TdBorderStyle.DOUBLE)
+        }
+      }
+    ]
+  },
+  {
+    key: MOVE_ROW_UP,
+    i18nPath: 'contextmenu.table.moveRowUp',
+    icon: 'move-row-up',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    callback: (command: Command) => {
+      command.executeMoveTableRowUp()
+    }
+  },
+  {
+    key: MOVE_ROW_DOWN,
+    i18nPath: 'contextmenu.table.moveRowDown',
+    icon: 'move-row-down',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    callback: (command: Command) => {
+      command.executeMoveTableRowDown()
+    }
+  },
+  {
+    key: TD_PADDING,
+    i18nPath: 'contextmenu.table.tdPadding',
+    icon: 'td-padding',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    childMenus: [
+      {
+        key: TD_PADDING_SMALL,
+        i18nPath: 'contextmenu.table.tdPaddingSmall',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdPadding([2, 2, 2, 2])
+        }
+      },
+      {
+        key: TD_PADDING_MEDIUM,
+        i18nPath: 'contextmenu.table.tdPaddingMedium',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdPadding([5, 5, 5, 5])
+        }
+      },
+      {
+        key: TD_PADDING_LARGE,
+        i18nPath: 'contextmenu.table.tdPaddingLarge',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableTdPadding([10, 10, 10, 10])
         }
       }
     ]

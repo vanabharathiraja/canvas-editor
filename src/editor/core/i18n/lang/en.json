@@ -73,7 +73,13 @@
       "borderTdStyleSolid": "Solid",
       "borderTdStyleDashed": "Dashed",
       "borderTdStyleDotted": "Dotted",
-      "borderTdStyleDouble": "Double"
+      "borderTdStyleDouble": "Double",
+      "moveRowUp": "Move row up",
+      "moveRowDown": "Move row down",
+      "tdPadding": "Cell padding",
+      "tdPaddingSmall": "Small (2px)",
+      "tdPaddingMedium": "Medium (5px)",
+      "tdPaddingLarge": "Large (10px)"
     },
     "header": {
       "fullWidth": "Full width background",

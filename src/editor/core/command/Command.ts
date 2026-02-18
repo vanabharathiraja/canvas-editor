@@ -62,6 +62,9 @@ export class Command {
   public executeTableTdBorderColor: CommandAdapt['tableTdBorderColor']
   public executeTableTdBorderWidth: CommandAdapt['tableTdBorderWidth']
   public executeTableTdBorderStyle: CommandAdapt['tableTdBorderStyle']
+  public executeMoveTableRowUp: CommandAdapt['moveTableRowUp']
+  public executeMoveTableRowDown: CommandAdapt['moveTableRowDown']
+  public executeTableTdPadding: CommandAdapt['tableTdPadding']
   public executeImage: CommandAdapt['image']
   public executeHyperlink: CommandAdapt['hyperlink']
   public executeDeleteHyperlink: CommandAdapt['deleteHyperlink']
@@ -227,6 +230,9 @@ export class Command {
     this.executeTableTdBorderColor = adapt.tableTdBorderColor.bind(adapt)
     this.executeTableTdBorderWidth = adapt.tableTdBorderWidth.bind(adapt)
     this.executeTableTdBorderStyle = adapt.tableTdBorderStyle.bind(adapt)
+    this.executeMoveTableRowUp = adapt.moveTableRowUp.bind(adapt)
+    this.executeMoveTableRowDown = adapt.moveTableRowDown.bind(adapt)
+    this.executeTableTdPadding = adapt.tableTdPadding.bind(adapt)
     this.executeImage = adapt.image.bind(adapt)
     this.executeHyperlink = adapt.hyperlink.bind(adapt)
     this.executeDeleteHyperlink = adapt.deleteHyperlink.bind(adapt)

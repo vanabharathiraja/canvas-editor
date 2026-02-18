@@ -35,6 +35,7 @@ export interface ITd {
   borderColor?: string           // per-cell border color (overrides table-level)
   borderWidth?: number           // per-cell border width (overrides table-level)
   borderStyle?: TdBorderStyle    // per-cell border style
+  padding?: [number, number, number, number] // per-cell padding [top, right, bottom, left]
   mainHeight?: number // 内容 + 内边距高度
   realHeight?: number // 真实高度（包含跨列）
   realMinHeight?: number // 真实最小高度（包含跨列）

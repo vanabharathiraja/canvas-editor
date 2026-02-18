@@ -73,7 +73,13 @@
       "borderTdStyleSolid": "实线",
       "borderTdStyleDashed": "虚线",
       "borderTdStyleDotted": "点线",
-      "borderTdStyleDouble": "双线"
+      "borderTdStyleDouble": "双线",
+      "moveRowUp": "上移一行",
+      "moveRowDown": "下移一行",
+      "tdPadding": "单元格内边距",
+      "tdPaddingSmall": "小 (2px)",
+      "tdPaddingMedium": "中 (5px)",
+      "tdPaddingLarge": "大 (10px)"
     },
     "header": {
       "fullWidth": "全宽背景",
