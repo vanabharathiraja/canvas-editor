@@ -89,9 +89,11 @@ export class TableParticle {
     const rowCol: ITd[][] = []
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
+      if (!tr || !tr.tdList) continue
       const tdList: ITd[] = []
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
+        if (!td) continue
         const tdColIndex = td.colIndex!
         const tdRowIndex = td.rowIndex!
         if (
