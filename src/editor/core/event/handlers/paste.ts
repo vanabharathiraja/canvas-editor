@@ -12,6 +12,7 @@ import {
   formatElementContext,
   getElementListByHTML
 } from '../../../utils/element'
+import { normalizePasteHTML } from '../../../utils/paste-normalizer'
 import { CanvasEvent } from '../CanvasEvent'
 import { IOverrideResult } from '../../override/Override'
 import { normalizeLineBreak } from '../../../utils'
@@ -67,7 +68,9 @@ export function pasteElement(host: CanvasEvent, elementList: IElement[]) {
 export function pasteHTML(host: CanvasEvent, htmlText: string) {
   const draw = host.getDraw()
   if (draw.isReadonly() || draw.isDisabled()) return
-  const elementList = getElementListByHTML(htmlText, {
+  // Normalize vendor-specific HTML (Word, Docs, Excel) and sanitize XSS
+  const { html: cleanHTML } = normalizePasteHTML(htmlText)
+  const elementList = getElementListByHTML(cleanHTML, {
     innerWidth: draw.getOriginalInnerWidth()
   })
   pasteElement(host, elementList)

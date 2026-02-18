@@ -1493,6 +1493,19 @@ export function convertTextNodeToElement(
     italic: style.fontStyle.includes('italic'),
     size: Math.floor(parseFloat(style.fontSize))
   }
+  // font-family: capture first family name, fall back to default at render
+  const fontFamily = style.fontFamily
+  if (fontFamily) {
+    const resolved = fontFamily.replace(/['"|]/g, '').split(',')[0].trim()
+    if (resolved) {
+      element.font = resolved
+    }
+  }
+  // letter-spacing
+  const letterSpacing = parseFloat(style.letterSpacing)
+  if (letterSpacing && !isNaN(letterSpacing)) {
+    element.letterSpacing = letterSpacing
+  }
   // 元素类型-默认文本
   if (anchorNode.nodeName === 'SUB' || style.verticalAlign === 'sub') {
     element.type = ElementType.SUBSCRIPT
@@ -1759,6 +1772,14 @@ export function getElementListByHTML(
                   td.borderStyle = TdBorderStyle.DOUBLE
                 }
               }
+              // Per-cell padding from pasted HTML
+              const pTop = parseFloat(cellStyle.paddingTop) || 0
+              const pRight = parseFloat(cellStyle.paddingRight) || 0
+              const pBottom = parseFloat(cellStyle.paddingBottom) || 0
+              const pLeft = parseFloat(cellStyle.paddingLeft) || 0
+              if (pTop || pRight || pBottom || pLeft) {
+                td.padding = [pTop, pRight, pBottom, pLeft]
+              }
               tr.tdList.push(td)
             })
             element.trList!.push(tr)
@@ -1779,6 +1800,29 @@ export function getElementListByHTML(
             // Auto-fit: normalize colgroup widths to fit within innerWidth
             normalizeTableColWidths(element.colgroup!, options.innerWidth)
             elementList.push(element)
+          }
+        } else if (
+          node.nodeName === 'PRE' ||
+          node.nodeName === 'CODE'
+        ) {
+          // <pre>/<code> → text elements with monospace font
+          const codeNode = node as HTMLElement
+          const textContent = codeNode.textContent || ''
+          if (textContent) {
+            // Split by newlines to preserve line structure
+            const lines = textContent.split('\n')
+            for (let l = 0; l < lines.length; l++) {
+              if (l > 0) {
+                elementList.push({ value: '\n' })
+              }
+              if (lines[l]) {
+                elementList.push({
+                  value: lines[l],
+                  font: 'Courier New',
+                  size: 14
+                })
+              }
+            }
           }
         } else if (
           node.nodeName === 'INPUT' &&
