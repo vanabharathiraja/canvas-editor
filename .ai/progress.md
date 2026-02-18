@@ -1,4 +1,4 @@
-# Canvas Editor AI Progress
+﻿# Canvas Editor AI Progress
 
 ## Completed Phases
 
@@ -36,11 +36,21 @@
 - Patched `emitSearch` and color menu handlers for TypeScript null safety
 - Removed unused `highlightSpanDom` variable
 
+
+### T5: Table Operations & Properties
+- **T5.1** - moveTableRowUp/Down commands + context menu entries
+- **T5.2** - Per-cell padding on ITd; tableTdPadding command; presets in menu
+- **T5.3** - TablePropertiesDialog component; "Table Properties..." context menu entry
+- **Bug 1** - Cell backgrounds moved to selCtx so selection stays visible
+- **Bug 3** - "None (0px)" added to border width submenu
+- **Bug 4+5** - _drawBorder() rewritten; per-cell override draws all 4 sides correctly
+- Commits: e1fe34bf (T5.1+T5.2), e0740801 (T5.3 + rendering bug fixes)
+
 ## In Progress
-- **T5: Table Operations & Properties** — move row, cell padding, table properties dialog
+- Nothing - all planned T1-T5 phases complete
 
 ## Upcoming
-- **T6: Advanced Table Features** — sort, themes, percentage widths (backlog)
+- **T6: Advanced Table Features** - sort, themes, percentage widths (backlog)
 
 ---
-_Last updated: 2026-02-18_
+_Last updated: 2026-02-19_

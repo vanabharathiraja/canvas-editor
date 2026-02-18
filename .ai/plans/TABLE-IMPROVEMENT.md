@@ -2,7 +2,7 @@
 
 **Created**: 2026-02-17
 **Branch**: `shape-engine`
-**Status**: In Progress (T1-T4 complete, T5 next)
+**Status**: In Progress (T1-T5 complete, T6 backlog)
 **ADR**: [adr-0002-table-auto-fit-and-multipage.md](../decisions/adr-0002-table-auto-fit-and-multipage.md)
 
 ---
@@ -198,42 +198,54 @@ per-cell border customization (color, width, style for each side).
 
 ---
 
-## Phase T5: Table Operations & Properties (Medium) — NEXT 🔜
+## Phase T5: Table Operations & Properties (Medium) — COMPLETE ✅
 
 **Problem**: Missing convenience operations that Google Docs provides.
 
-**Estimated effort**: 2-3 sessions
+**Completed**: 2026-02-19 (Session 021)
+**Commits**: `e1fe34bf` (T5.1+T5.2), `e0740801` (T5.3 + bug fixes)
+
+### Implementation Summary
+
+- [x] **T5.1** — `moveTableRowUp()` / `moveTableRowDown()` commands in `TableOperate.ts`
+- [x] **T5.2** — `padding?: [T,R,B,L]` on `ITd`; `tableTdPadding()` command; position/draw/getContextInnerWidth updated
+- [x] **T5.3** — `TablePropertiesDialog` component (`src/components/tablePropertiesDialog/`)
+  - Table border type selector (all/none/outer/inner/dashed)
+  - Table border color picker + text field
+  - Cell background color, border color/width/style, vertical align, uniform padding
+  - Accessible from context menu: "Table Properties..."
+- [x] **Bug 1** — Cell backgrounds moved to `selCtx` (bottom layer) so selection remains visible
+- [x] **Bug 3** — "None (0px)" option added to border width submenu
+- [x] **Bug 4+5** — `_drawBorder()` rewritten: per-edge `drawLine()` helper, `!== undefined` check,
+  per-cell override draws all 4 explicit sides (fixes dashed style on top/left shared edges)
+
+### Key Code Locations
+- `TableOperate.ts` — `moveTableRowUp/Down()`, `tableTdPadding()`
+- `TableParticle.ts` — rewritten `_drawBorder()`, `render()` now accepts `bgCtx`
+- `Draw.ts` — passes `selCtx` as `bgCtx` to `tableParticle.render()`; per-cell padding in layout
+- `Position.ts` — per-cell padding in position computation
+- `tableMenus.ts` — Move row up/down, Cell padding presets, None border option, Table Properties
+- `TablePropertiesDialog.ts` — new modal dialog component with CSS
+- `ContextMenu.ts` / `en.json` / `zh-CN.json` / `ar.json` — new constants and i18n keys
 
 ### T5.1 — Move Row Up/Down
-- [ ] Add `executeTableMoveRowUp()` command — swap current row with row above
-- [ ] Add `executeTableMoveRowDown()` command — swap current row with row below
-- [ ] Handle rowspan cells that span across the move boundary
-- [ ] Add to context menu under "Row" submenu
+- [x] `moveTableRowUp()`: swaps `trList[trIndex]` ↔ `trList[trIndex-1]`, updates positionContext
+- [x] `moveTableRowDown()`: swaps `trList[trIndex]` ↔ `trList[trIndex+1]`, updates positionContext
+- [x] Context menu entries with icons: "Move row up", "Move row down"
 
 ### T5.2 — Per-Cell Padding
-- [ ] Add `padding?: IPadding` to `ITd` interface
-  - Per-cell padding overrides global `tdPadding`
-- [ ] Update cell content layout in `computeRowList()` to use per-cell padding
-- [ ] Add `executeTableTdPadding(padding: IPadding)` command
+- [x] `padding?: [number, number, number, number]` added to `ITd` interface
+- [x] `tableTdPadding(payload)` command iterates selected cells, sets per-cell padding
+- [x] Context menu: Small (2px) / Medium (5px) / Large (10px) presets
+- [x] `Position.ts` and `Draw.ts` use `td.padding` when set, fall back to global `tdPadding`
 
 ### T5.3 — Table Properties Dialog
-- [ ] New dialog accessible from context menu: "Table properties..."
-- [ ] Shows and allows editing of:
-  - Table border type, color, width
-  - Table width (auto/exact)
-  - Default cell padding
-  - Default cell vertical alignment
-- [ ] Uses existing `Dialog` component pattern
-- [ ] File: new `src/components/tablePropertiesDialog/`
-
-### T5.4 — Cell Properties Dialog (optional)
-- [ ] New dialog: "Cell properties..."
-- [ ] Shows and allows editing of:
-  - Cell background color
-  - Cell border color/width/style per side
-  - Cell padding
-  - Cell vertical alignment
-- [ ] Useful as a unified UI for all T4 features
+- [x] `src/components/tablePropertiesDialog/TablePropertiesDialog.ts`
+- [x] `src/components/tablePropertiesDialog/tablePropertiesDialog.css`
+- [x] Opens from context menu "Table Properties..." entry (last item in table menus, with divider)
+- [x] Section 1 (Table Border): type select, color picker+text
+- [x] Section 2 (Cell Styling): bg color, border color, border width (0-3px), border style, vertical align, padding
+- [x] Apply button calls commands; Cancel/Close dismiss without changes
 
 ---
 
@@ -255,12 +267,12 @@ Future improvements, not currently planned for implementation.
 ## Implementation Order
 
 ```
-T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 (NEXT) ──→ T6 (Backlog)
+T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 ✅ ──→ T6 (Backlog)
   Paste fit   Multi-page   Auto-fit &   Cell border   Table ops    Advanced
               splitting    sizing cmds  styling        & dialogs
 ```
 
-**Estimated remaining**: 2-3 sessions for T5. T6 is backlog.
+**All planned phases T1-T5 complete.** T6 is backlog.
 
 ---
 
@@ -278,5 +290,5 @@ T1 ✅ ──→ T2 ✅ ──→ T3 ✅ ──→ T4 ✅ ──→ T5 (NEXT) �
 2. **T2** ✅: Tables with rowspan split correctly across pages with continuation cells
 3. **T3** ✅: User can auto-fit table, set exact row/col sizes, distribute evenly via context menu
 4. **T4** ✅: User can set per-cell border color, width, style via context menu
-5. **T5**: User can move rows, set cell padding, access table/cell properties dialog
+5. **T5** ✅: User can move rows, set cell padding, access table/cell properties dialog
 6. **T6**: Advanced features (sort, themes, percentage widths) available
