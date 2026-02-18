@@ -197,6 +197,108 @@ export class TableParticle {
     ctx.restore()
   }
 
+  /**
+   * Build a lookup map of per-cell border overrides keyed by
+   * "rowIndex,colIndex" for O(1) neighbor lookups.
+   */
+  private _buildOverrideMap(trList: ITr[]): Map<string, ITd> {
+    const map = new Map<string, ITd>()
+    for (let t = 0; t < trList.length; t++) {
+      const tr = trList[t]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const td = tr.tdList[d]
+        if (
+          td.borderColor !== undefined ||
+          td.borderWidth !== undefined ||
+          td.borderStyle !== undefined
+        ) {
+          // Register all cell positions covered by this td (for merged cells)
+          for (let r = 0; r < td.rowspan; r++) {
+            for (let c = 0; c < td.colspan; c++) {
+              map.set(`${td.rowIndex! + r},${td.colIndex! + c}`, td)
+            }
+          }
+        }
+      }
+    }
+    return map
+  }
+
+  /**
+   * Resolve the effective border style for one edge of a cell.
+   * Shared edges between two cells follow a "last applied wins"
+   * precedence model: if the cell has an override for that edge the
+   * cell's style wins; otherwise the neighbor that shares the edge
+   * is consulted; finally the table-level style is used as fallback.
+   *
+   * Returns null when the edge should NOT be drawn (width=0 with no
+   * neighbor override wanting to draw).
+   */
+  private _resolveEdgeStyle(
+    td: ITd,
+    edge: 'top' | 'right' | 'bottom' | 'left',
+    overrideMap: Map<string, ITd>,
+    tableBorderColor: string,
+    tableBorderWidth: number,
+    tableBorderStyle: TdBorderStyle | undefined,
+    colCount: number,
+    rowCount: number
+  ): {
+    color: string
+    width: number
+    style: TdBorderStyle
+  } | null {
+    const hasSelfOverride =
+      td.borderColor !== undefined ||
+      td.borderWidth !== undefined ||
+      td.borderStyle !== undefined
+
+    // Find the neighbor that shares this edge
+    let neighborKey: string | null = null
+    if (edge === 'top' && td.rowIndex! > 0) {
+      neighborKey = `${td.rowIndex! - 1},${td.colIndex!}`
+    } else if (edge === 'bottom' && td.rowIndex! + td.rowspan < rowCount) {
+      neighborKey = `${td.rowIndex! + td.rowspan},${td.colIndex!}`
+    } else if (edge === 'left' && td.colIndex! > 0) {
+      neighborKey = `${td.rowIndex!},${td.colIndex! - 1}`
+    } else if (edge === 'right' && td.colIndex! + td.colspan < colCount) {
+      neighborKey = `${td.rowIndex!},${td.colIndex! + td.colspan}`
+    }
+    const neighbor = neighborKey ? overrideMap.get(neighborKey) : undefined
+
+    // Determine which source to use for this edge:
+    // Priority: self override > neighbor override > table-level
+    let source: 'self' | 'neighbor' | 'table' = 'table'
+    if (hasSelfOverride) {
+      source = 'self'
+    } else if (neighbor) {
+      source = 'neighbor'
+    }
+
+    let color: string
+    let width: number
+    let style: TdBorderStyle
+
+    if (source === 'self') {
+      color = td.borderColor ?? tableBorderColor
+      width = td.borderWidth ?? tableBorderWidth
+      style = td.borderStyle ?? tableBorderStyle ?? TdBorderStyle.SOLID
+    } else if (source === 'neighbor') {
+      color = neighbor!.borderColor ?? tableBorderColor
+      width = neighbor!.borderWidth ?? tableBorderWidth
+      style = neighbor!.borderStyle ?? tableBorderStyle ?? TdBorderStyle.SOLID
+    } else {
+      color = tableBorderColor
+      width = tableBorderWidth
+      style = tableBorderStyle ?? TdBorderStyle.SOLID
+    }
+
+    // width=0 means "no border on this edge"
+    if (width <= 0) return null
+
+    return { color, width, style }
+  }
+
   private _drawBorder(
     ctx: CanvasRenderingContext2D,
     element: IElement,
@@ -218,6 +320,11 @@ export class TableParticle {
     } = this.options
     const tableWidth = element.width! * scale
     const tableHeight = element.height! * scale
+    const tableBorderColor = borderColor || defaultBorderColor
+    const tableBorderStyle = borderType === TableBorder.DASH
+      ? TdBorderStyle.DASHED
+      : undefined
+
     // 无边框
     const isEmptyBorderType = borderType === TableBorder.EMPTY
     // 仅外边框
@@ -225,15 +332,53 @@ export class TableParticle {
     // 内边框
     const isInternalBorderType = borderType === TableBorder.INTERNAL
 
+    // Build override lookup for shared-edge resolution
+    const overrideMap = this._buildOverrideMap(trList)
+    const colCount = colgroup.length
+    const rowCount = trList.length
+
     ctx.save()
-    // Table-level dash
+
+    // Helper: draw a single line segment
+    const drawLine = (
+      x1: number, y1: number,
+      x2: number, y2: number
+    ) => {
+      ctx.beginPath()
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(x2, y2)
+      ctx.stroke()
+    }
+
+    // Helper: clear a line area so override edges don't layer on
+    // top of previously drawn lines (solves dashed-over-solid issue)
+    const clearEdge = (
+      x1: number, y1: number,
+      x2: number, y2: number,
+      lineWidth: number
+    ) => {
+      const half = Math.ceil(lineWidth / 2) + 1
+      if (y1 === y2) {
+        // horizontal
+        const minX = Math.min(x1, x2)
+        const maxX = Math.max(x1, x2)
+        ctx.clearRect(minX - 1, y1 - half, maxX - minX + 2, half * 2)
+      } else {
+        // vertical
+        const minY = Math.min(y1, y2)
+        const maxY = Math.max(y1, y2)
+        ctx.clearRect(x1 - half, minY - 1, half * 2, maxY - minY + 2)
+      }
+    }
+
+    // ── Pass 1: Outer border + standard grid (non-override cells) ──
+    ctx.lineWidth = borderWidth * scale
+    ctx.strokeStyle = tableBorderColor
     if (borderType === TableBorder.DASH) {
       ctx.setLineDash([3, 3])
     }
-    ctx.lineWidth = borderWidth * scale
-    ctx.strokeStyle = borderColor || defaultBorderColor
 
-    // Outer border
+    // Outer border — but skip edges where outer cells have overrides
     if (!isEmptyBorderType && !isInternalBorderType) {
       this._drawOuterBorder({
         ctx,
@@ -246,24 +391,13 @@ export class TableParticle {
       })
     }
 
-    // Helper: draw a single line segment with its own beginPath/stroke
-    const drawLine = (
-      x1: number, y1: number,
-      x2: number, y2: number
-    ) => {
-      ctx.beginPath()
-      ctx.moveTo(x1, y1)
-      ctx.lineTo(x2, y2)
-      ctx.stroke()
-    }
-
-    // Per-cell border drawing
+    // Standard grid pass: non-override cells draw right + bottom
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
 
-        // 单元格内斜线
+        // Slashes always drawn
         if (td.slashTypes?.length) {
           this._drawSlash(ctx, td, startX, startY)
         }
@@ -274,10 +408,12 @@ export class TableParticle {
           td.borderStyle !== undefined
         )
 
+        // Skip override cells — they are handled in pass 2
+        if (hasCellOverride) continue
+
         // Skip cells with no visible borders
         if (
           !td.borderTypes?.length &&
-          !hasCellOverride &&
           (isEmptyBorderType || isExternalBorderType)
         ) {
           continue
@@ -290,7 +426,7 @@ export class TableParticle {
 
         ctx.translate(0.5, 0.5)
 
-        // ── Individual cell border toggles (TdBorder.TOP/RIGHT/etc.) ──
+        // Individual cell border toggles (TdBorder.TOP/RIGHT/etc.)
         if (td.borderTypes?.length) {
           if (td.borderTypes.includes(TdBorder.TOP))
             drawLine(x, y, x + width, y)
@@ -302,79 +438,204 @@ export class TableParticle {
             drawLine(x, y, x, y + height)
         }
 
-        // ── Table-grid or per-cell override drawing ──
+        // Standard table-grid: draw right + bottom only
         if (!isEmptyBorderType && !isExternalBorderType) {
-          if (hasCellOverride) {
-            // Per-cell override: draw all 4 sides explicitly with override style
-            // so top & left also get the custom color/width/style (overpainting
-            // whatever the adjacent cell drew for those shared edges).
-            ctx.save()
-            // Only override the values that are actually set (undefined = inherit)
-            if (td.borderColor !== undefined) ctx.strokeStyle = td.borderColor
-            if (td.borderWidth !== undefined) {
-              ctx.lineWidth = td.borderWidth === 0
-                ? 0
-                : td.borderWidth * scale
-            }
-            if (td.borderStyle !== undefined) {
-              this._applyLineDash(ctx, td.borderStyle, scale)
-            }
-            if ((td.borderWidth ?? 1) > 0) {
-              // top
-              drawLine(x, y, x + width, y)
-              // right
-              if (!isInternalBorderType || td.colIndex! + td.colspan < colgroup.length) {
-                drawLine(x + width, y, x + width, y + height)
-              }
-              // bottom
-              if (!isInternalBorderType || td.rowIndex! + td.rowspan < trList.length) {
-                drawLine(x + width, y + height, x, y + height)
-              }
-              // left
-              drawLine(x, y, x, y + height)
-            }
-            ctx.restore()
-          } else {
-            // Standard table-grid: draw right + bottom only.
-            // Top comes from the row above's bottom; left from the col before's right.
-            // right
+          // right
+          if (
+            !isInternalBorderType ||
+            td.colIndex! + td.colspan < colCount
+          ) {
+            const lw = ctx.lineWidth
             if (
-              !isInternalBorderType ||
-              td.colIndex! + td.colspan < colgroup.length
+              borderExternalWidth &&
+              borderExternalWidth !== borderWidth &&
+              td.colIndex! + td.colspan === colCount
             ) {
-              const lineWidth = ctx.lineWidth
-              if (
-                borderExternalWidth &&
-                borderExternalWidth !== borderWidth &&
-                td.colIndex! + td.colspan === colgroup.length
-              ) {
-                ctx.lineWidth = borderExternalWidth * scale
-              }
-              drawLine(x + width, y, x + width, y + height)
-              ctx.lineWidth = lineWidth
+              ctx.lineWidth = borderExternalWidth * scale
             }
-            // bottom
+            drawLine(x + width, y, x + width, y + height)
+            ctx.lineWidth = lw
+          }
+          // bottom
+          if (
+            !isInternalBorderType ||
+            td.rowIndex! + td.rowspan < rowCount
+          ) {
+            const lw = ctx.lineWidth
             if (
-              !isInternalBorderType ||
-              td.rowIndex! + td.rowspan < trList.length
+              borderExternalWidth &&
+              borderExternalWidth !== borderWidth &&
+              td.rowIndex! + td.rowspan === rowCount
             ) {
-              const lineWidth = ctx.lineWidth
-              if (
-                borderExternalWidth &&
-                borderExternalWidth !== borderWidth &&
-                td.rowIndex! + td.rowspan === trList.length
-              ) {
-                ctx.lineWidth = borderExternalWidth * scale
-              }
-              drawLine(x + width, y + height, x, y + height)
-              ctx.lineWidth = lineWidth
+              ctx.lineWidth = borderExternalWidth * scale
             }
+            drawLine(x + width, y + height, x, y + height)
+            ctx.lineWidth = lw
           }
         }
 
         ctx.translate(-0.5, -0.5)
       }
     }
+
+    // ── Pass 2: Per-cell override cells ──
+    // These cells clear shared edges first, then redraw with their
+    // own style. This prevents layering artifacts (dashed over solid)
+    // and ensures borderWidth=0 actually hides the edge.
+    for (let t = 0; t < trList.length; t++) {
+      const tr = trList[t]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const td = tr.tdList[d]
+        const hasCellOverride = !!(
+          td.borderColor !== undefined ||
+          td.borderWidth !== undefined ||
+          td.borderStyle !== undefined
+        )
+        if (!hasCellOverride) continue
+
+        const width = td.width! * scale
+        const height = td.height! * scale
+        const x = Math.round(td.x! * scale + startX)
+        const y = Math.round(td.y! * scale + startY)
+
+        ctx.translate(0.5, 0.5)
+
+        // Resolve each edge style using shared-edge precedence
+        const edges = ['top', 'right', 'bottom', 'left'] as const
+        const edgeCoords = {
+          top: [x, y, x + width, y],
+          right: [x + width, y, x + width, y + height],
+          bottom: [x + width, y + height, x, y + height],
+          left: [x, y, x, y + height]
+        }
+
+        // Determine max line width for clearing
+        const maxClearWidth = Math.max(
+          (td.borderWidth ?? borderWidth) * scale,
+          borderWidth * scale,
+          3
+        )
+
+        for (const edge of edges) {
+          // Skip internal-border-type edges at table boundary
+          if (isInternalBorderType) {
+            if (edge === 'right' && td.colIndex! + td.colspan >= colCount) continue
+            if (edge === 'bottom' && td.rowIndex! + td.rowspan >= rowCount) continue
+          }
+
+          const [x1, y1, x2, y2] = edgeCoords[edge]
+
+          // Clear the edge area to remove any previously drawn line
+          clearEdge(x1, y1, x2, y2, maxClearWidth)
+
+          // Resolve what style this edge should have
+          const edgeStyle = this._resolveEdgeStyle(
+            td, edge, overrideMap,
+            tableBorderColor, borderWidth,
+            tableBorderStyle,
+            colCount, rowCount
+          )
+
+          if (!edgeStyle) continue // null = no border
+
+          ctx.save()
+          ctx.strokeStyle = edgeStyle.color
+          ctx.lineWidth = edgeStyle.width * scale
+          this._applyLineDash(ctx, edgeStyle.style, scale)
+          drawLine(x1, y1, x2, y2)
+          ctx.restore()
+        }
+
+        // Re-draw the outer border segments that we may have cleared
+        // (only for cells on the table perimeter when outer border is visible)
+        if (!isEmptyBorderType && !isInternalBorderType) {
+          const isTopEdge = td.rowIndex === 0
+          const isLeftEdge = td.colIndex === 0
+          const isRightEdge = td.colIndex! + td.colspan >= colCount
+          const isBottomEdge = td.rowIndex! + td.rowspan >= rowCount
+
+          // Check if outer border was cleared but should still exist
+          // (when the override cell doesn't suppress the outer border)
+          if (isTopEdge || isLeftEdge || isRightEdge || isBottomEdge) {
+            const outerWidth = (borderExternalWidth || borderWidth) * scale
+            ctx.save()
+            ctx.lineWidth = outerWidth
+            ctx.strokeStyle = tableBorderColor
+            if (borderType === TableBorder.DASH) {
+              ctx.setLineDash([3, 3])
+            }
+
+            // Only redraw outer edges that the cell's override doesn't replace
+            if (isTopEdge) {
+              const topStyle = this._resolveEdgeStyle(
+                td, 'top', overrideMap, tableBorderColor,
+                borderWidth, tableBorderStyle, colCount, rowCount
+              )
+              if (!topStyle || (
+                topStyle.color === tableBorderColor &&
+                topStyle.width === (borderExternalWidth || borderWidth) &&
+                topStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+              )) {
+                // Outer border was cleared; redraw it
+                drawLine(x, y, x + width, y)
+              }
+            }
+            if (isLeftEdge) {
+              const leftStyle = this._resolveEdgeStyle(
+                td, 'left', overrideMap, tableBorderColor,
+                borderWidth, tableBorderStyle, colCount, rowCount
+              )
+              if (!leftStyle || (
+                leftStyle.color === tableBorderColor &&
+                leftStyle.width === (borderExternalWidth || borderWidth) &&
+                leftStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+              )) {
+                drawLine(x, y, x, y + height)
+              }
+            }
+            if (isRightEdge && !isExternalBorderType) {
+              const rightStyle = this._resolveEdgeStyle(
+                td, 'right', overrideMap, tableBorderColor,
+                borderWidth, tableBorderStyle, colCount, rowCount
+              )
+              if (!rightStyle || (
+                rightStyle.color === tableBorderColor &&
+                rightStyle.width === (borderExternalWidth || borderWidth) &&
+                rightStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+              )) {
+                drawLine(x + width, y, x + width, y + height)
+              }
+            }
+            if (isBottomEdge && !isExternalBorderType) {
+              const bottomStyle = this._resolveEdgeStyle(
+                td, 'bottom', overrideMap, tableBorderColor,
+                borderWidth, tableBorderStyle, colCount, rowCount
+              )
+              if (!bottomStyle || (
+                bottomStyle.color === tableBorderColor &&
+                bottomStyle.width === (borderExternalWidth || borderWidth) &&
+                bottomStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+              )) {
+                drawLine(x + width, y + height, x, y + height)
+              }
+            }
+            ctx.restore()
+          }
+        }
+
+        // Redraw background color in cleared areas
+        if (td.backgroundColor) {
+          ctx.save()
+          ctx.fillStyle = td.backgroundColor
+          // Inset fill to avoid covering the border lines
+          ctx.fillRect(x + 1, y + 1, width - 2, height - 2)
+          ctx.restore()
+        }
+
+        ctx.translate(-0.5, -0.5)
+      }
+    }
+
     ctx.restore()
   }
 
