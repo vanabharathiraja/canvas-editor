@@ -69,6 +69,14 @@ export interface IContextmenuLang {
     deleteTable: string
     mergeCell: string
     mergeCancelCell: string
+    autoFit: string
+    autoFitPage: string
+    autoFitContent: string
+    autoFitEqual: string
+    distributeRows: string
+    splitCell: string
+    splitVertical: string
+    splitHorizontal: string
   }
   header: {
     fullWidth: string

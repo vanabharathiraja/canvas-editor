@@ -55,6 +55,10 @@ export class Command {
   public executeTableTdSlashType: CommandAdapt['tableTdSlashType']
   public executeTableTdBackgroundColor: CommandAdapt['tableTdBackgroundColor']
   public executeTableSelectAll: CommandAdapt['tableSelectAll']
+  public executeTableAutoFit: CommandAdapt['tableAutoFit']
+  public executeTableColWidth: CommandAdapt['tableColWidth']
+  public executeTableRowHeight: CommandAdapt['tableRowHeight']
+  public executeDistributeTableRows: CommandAdapt['distributeTableRows']
   public executeImage: CommandAdapt['image']
   public executeHyperlink: CommandAdapt['hyperlink']
   public executeDeleteHyperlink: CommandAdapt['deleteHyperlink']
@@ -213,6 +217,10 @@ export class Command {
     this.executeTableTdBackgroundColor =
       adapt.tableTdBackgroundColor.bind(adapt)
     this.executeTableSelectAll = adapt.tableSelectAll.bind(adapt)
+    this.executeTableAutoFit = adapt.tableAutoFit.bind(adapt)
+    this.executeTableColWidth = adapt.tableColWidth.bind(adapt)
+    this.executeTableRowHeight = adapt.tableRowHeight.bind(adapt)
+    this.executeDistributeTableRows = adapt.distributeTableRows.bind(adapt)
     this.executeImage = adapt.image.bind(adapt)
     this.executeHyperlink = adapt.hyperlink.bind(adapt)
     this.executeDeleteHyperlink = adapt.deleteHyperlink.bind(adapt)

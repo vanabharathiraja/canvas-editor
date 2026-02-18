@@ -66,6 +66,14 @@ export const INTERNAL_CONTEXT_MENU_KEY = {
     DELETE_COL: 'tableDeleteCol',
     DELETE_TABLE: 'tableDeleteTable',
     MERGE_CELL: 'tableMergeCell',
-    CANCEL_MERGE_CELL: 'tableCancelMergeCell'
+    CANCEL_MERGE_CELL: 'tableCancelMergeCell',
+    AUTO_FIT: 'tableAutoFit',
+    AUTO_FIT_PAGE: 'tableAutoFitPage',
+    AUTO_FIT_CONTENT: 'tableAutoFitContent',
+    AUTO_FIT_EQUAL: 'tableAutoFitEqual',
+    DISTRIBUTE_ROWS: 'tableDistributeRows',
+    SPLIT_CELL: 'tableSplitCell',
+    SPLIT_VERTICAL: 'tableSplitVertical',
+    SPLIT_HORIZONTAL: 'tableSplitHorizontal'
   }
 }

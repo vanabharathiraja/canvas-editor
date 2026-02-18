@@ -2,6 +2,7 @@ import { INTERNAL_CONTEXT_MENU_KEY } from '../../../dataset/constant/ContextMenu
 import { EditorMode } from '../../../dataset/enum/Editor'
 import { VerticalAlign } from '../../../dataset/enum/VerticalAlign'
 import {
+  TableAutoFit,
   TableBorder,
   TdBorder,
   TdSlash
@@ -37,7 +38,15 @@ const {
     DELETE_COL,
     DELETE_TABLE,
     MERGE_CELL,
-    CANCEL_MERGE_CELL
+    CANCEL_MERGE_CELL,
+    AUTO_FIT,
+    AUTO_FIT_PAGE,
+    AUTO_FIT_CONTENT,
+    AUTO_FIT_EQUAL,
+    DISTRIBUTE_ROWS,
+    SPLIT_CELL,
+    SPLIT_VERTICAL,
+    SPLIT_HORIZONTAL
   }
 } = INTERNAL_CONTEXT_MENU_KEY
 
@@ -327,5 +336,93 @@ export const tableMenus: IRegisterContextMenu[] = [
     callback: (command: Command) => {
       command.executeCancelMergeTableCell()
     }
+  },
+  {
+    key: AUTO_FIT,
+    i18nPath: 'contextmenu.table.autoFit',
+    icon: 'auto-fit',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    childMenus: [
+      {
+        key: AUTO_FIT_PAGE,
+        i18nPath: 'contextmenu.table.autoFitPage',
+        icon: 'auto-fit-page',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableAutoFit(TableAutoFit.PAGE)
+        }
+      },
+      {
+        key: AUTO_FIT_CONTENT,
+        i18nPath: 'contextmenu.table.autoFitContent',
+        icon: 'auto-fit-content',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableAutoFit(TableAutoFit.CONTENT)
+        }
+      },
+      {
+        key: AUTO_FIT_EQUAL,
+        i18nPath: 'contextmenu.table.autoFitEqual',
+        icon: 'auto-fit-equal',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeTableAutoFit(TableAutoFit.EQUAL)
+        }
+      }
+    ]
+  },
+  {
+    key: DISTRIBUTE_ROWS,
+    i18nPath: 'contextmenu.table.distributeRows',
+    icon: 'distribute-row',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    callback: (command: Command) => {
+      command.executeDistributeTableRows()
+    }
+  },
+  {
+    key: SPLIT_CELL,
+    i18nPath: 'contextmenu.table.splitCell',
+    icon: 'split-cell',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    childMenus: [
+      {
+        key: SPLIT_VERTICAL,
+        i18nPath: 'contextmenu.table.splitVertical',
+        icon: 'split-vertical',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeSplitVerticalTableCell()
+        }
+      },
+      {
+        key: SPLIT_HORIZONTAL,
+        i18nPath: 'contextmenu.table.splitHorizontal',
+        icon: 'split-horizontal',
+        when: () => true,
+        callback: (command: Command) => {
+          command.executeSplitHorizontalTableCell()
+        }
+      }
+    ]
   }
 ]

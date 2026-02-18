@@ -55,7 +55,15 @@
       "borderTdBottom": "下边框",
       "borderTdLeft": "左边框",
       "borderTdForward": "正斜线",
-      "borderTdBack": "反斜线"
+      "borderTdBack": "反斜线",
+      "autoFit": "自动调整",
+      "autoFitPage": "适应页面宽度",
+      "autoFitContent": "适应内容",
+      "autoFitEqual": "等宽列",
+      "distributeRows": "平均分布各行",
+      "splitCell": "拆分单元格",
+      "splitVertical": "垂直拆分",
+      "splitHorizontal": "水平拆分"
     },
     "header": {
       "fullWidth": "全宽背景",

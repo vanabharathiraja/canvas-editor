@@ -55,7 +55,15 @@
       "borderTdBottom": "أسفل",
       "borderTdLeft": "يسار",
       "borderTdForward": "قطري أمامي",
-      "borderTdBack": "قطري خلفي"
+      "borderTdBack": "قطري خلفي",
+      "autoFit": "ملاءمة تلقائية",
+      "autoFitPage": "ملاءمة عرض الصفحة",
+      "autoFitContent": "ملاءمة المحتوى",
+      "autoFitEqual": "أعمدة متساوية العرض",
+      "distributeRows": "توزيع الصفوف بالتساوي",
+      "splitCell": "تقسيم الخلية",
+      "splitVertical": "تقسيم عمودي",
+      "splitHorizontal": "تقسيم أفقي"
     },
     "header": {
       "fullWidth": "خلفية بعرض كامل",

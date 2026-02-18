@@ -17,3 +17,9 @@ export enum TdSlash {
   FORWARD = 'forward', // 正斜线 /
   BACK = 'back' // 反斜线 \
 }
+
+export enum TableAutoFit {
+  PAGE = 'page',
+  CONTENT = 'content',
+  EQUAL = 'equal'
+}

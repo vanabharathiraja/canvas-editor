@@ -55,7 +55,15 @@
       "borderTdBottom": "Bottom",
       "borderTdLeft": "Left",
       "borderTdForward": "Forward",
-      "borderTdBack": "Back"
+      "borderTdBack": "Back",
+      "autoFit": "Auto-fit",
+      "autoFitPage": "Fit to page width",
+      "autoFitContent": "Fit to content",
+      "autoFitEqual": "Equal column width",
+      "distributeRows": "Distribute rows evenly",
+      "splitCell": "Split cell",
+      "splitVertical": "Split vertically",
+      "splitHorizontal": "Split horizontally"
     },
     "header": {
       "fullWidth": "Full width background",

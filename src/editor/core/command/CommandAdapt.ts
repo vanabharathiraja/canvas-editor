@@ -24,7 +24,12 @@ import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
 import { ListStyle, ListType } from '../../dataset/enum/List'
 import { MoveDirection } from '../../dataset/enum/Observer'
 import { RowFlex } from '../../dataset/enum/Row'
-import { TableBorder, TdBorder, TdSlash } from '../../dataset/enum/table/Table'
+import {
+  TableAutoFit,
+  TableBorder,
+  TdBorder,
+  TdSlash
+} from '../../dataset/enum/table/Table'
 import { TitleLevel } from '../../dataset/enum/Title'
 import { VerticalAlign } from '../../dataset/enum/VerticalAlign'
 import { ICatalog } from '../../interface/Catalog'
@@ -1073,6 +1078,30 @@ export class CommandAdapt {
 
   public tableSelectAll() {
     this.tableOperate.tableSelectAll()
+  }
+
+  public tableAutoFit(payload: TableAutoFit) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableAutoFit(payload)
+  }
+
+  public tableColWidth(payload: number) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableColWidth(payload)
+  }
+
+  public tableRowHeight(payload: number) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableRowHeight(payload)
+  }
+
+  public distributeTableRows() {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.distributeTableRows()
   }
 
   public hyperlink(

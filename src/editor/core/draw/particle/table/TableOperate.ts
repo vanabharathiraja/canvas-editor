@@ -1,4 +1,10 @@
-import { ElementType, IElement, TableBorder, VerticalAlign } from '../../../..'
+import {
+  ElementType,
+  IElement,
+  TableAutoFit,
+  TableBorder,
+  VerticalAlign
+} from '../../../..'
 import { ZERO } from '../../../../dataset/constant/Common'
 import { TABLE_CONTEXT_ATTR } from '../../../../dataset/constant/Element'
 import { TdBorder, TdSlash } from '../../../../dataset/enum/table/Table'
@@ -984,5 +990,203 @@ export class TableOperate {
       isCompute: false,
       isSubmitHistory: false
     })
+  }
+
+  // --- T3: Auto-fit & table sizing commands ---
+
+  private getColIndex(
+    trList: ITr[],
+    trIndex: number,
+    tdIndex: number
+  ): number {
+    const tr = trList[trIndex]
+    if (!tr) return -1
+    let colIdx = 0
+    for (let i = 0; i < tdIndex && i < tr.tdList.length; i++) {
+      colIdx += tr.tdList[i].colspan || 1
+    }
+    return colIdx
+  }
+
+  public tableAutoFit(payload: TableAutoFit) {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return
+    const { index } = positionContext
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = originalElementList[index!]
+    const colgroup = element.colgroup
+    if (!colgroup || !colgroup.length) return
+    const { defaultColMinWidth } = this.options.table
+    const innerWidth = this.draw.getOriginalInnerWidth()
+    if (payload === TableAutoFit.PAGE) {
+      // Scale proportionally to fill page width
+      const currentTotal = colgroup.reduce(
+        (sum, col) => sum + col.width,
+        0
+      )
+      if (currentTotal === 0) return
+      const scale = innerWidth / currentTotal
+      for (let g = 0; g < colgroup.length; g++) {
+        colgroup[g].width = Math.max(
+          defaultColMinWidth,
+          Math.round(colgroup[g].width * scale)
+        )
+      }
+      // Fix rounding error on last column
+      const newTotal = colgroup.reduce(
+        (sum, col) => sum + col.width,
+        0
+      )
+      const diff = innerWidth - newTotal
+      if (diff !== 0) {
+        colgroup[colgroup.length - 1].width += diff
+      }
+    } else if (payload === TableAutoFit.EQUAL) {
+      // All columns equal width
+      const colWidth = Math.max(
+        defaultColMinWidth,
+        Math.floor(innerWidth / colgroup.length)
+      )
+      for (let g = 0; g < colgroup.length; g++) {
+        colgroup[g].width = colWidth
+      }
+      // Fix rounding remainder
+      const newTotal = colgroup.reduce(
+        (sum, col) => sum + col.width,
+        0
+      )
+      const diff = innerWidth - newTotal
+      if (diff !== 0) {
+        colgroup[colgroup.length - 1].width += diff
+      }
+    } else if (payload === TableAutoFit.CONTENT) {
+      // Measure max content length per column
+      const trList = element.trList
+      if (!trList) return
+      const colCount = colgroup.length
+      const colContentWidths: number[] = new Array(colCount).fill(0)
+      for (let t = 0; t < trList.length; t++) {
+        const tr = trList[t]
+        let colCursor = 0
+        for (let d = 0; d < tr.tdList.length; d++) {
+          const td = tr.tdList[d]
+          const span = td.colspan || 1
+          let charCount = 0
+          if (td.value) {
+            for (let v = 0; v < td.value.length; v++) {
+              charCount += td.value[v].value?.length || 0
+            }
+          }
+          const fontSize = td.value?.[0]?.size || 16
+          const contentWidth = Math.max(
+            charCount * fontSize * 0.6,
+            defaultColMinWidth
+          )
+          const perCol = contentWidth / span
+          for (let s = 0; s < span && colCursor + s < colCount; s++) {
+            colContentWidths[colCursor + s] = Math.max(
+              colContentWidths[colCursor + s],
+              perCol
+            )
+          }
+          colCursor += span
+        }
+      }
+      const totalContent = colContentWidths.reduce(
+        (sum, w) => sum + w,
+        0
+      )
+      if (totalContent === 0) return
+      const scale = Math.min(1, innerWidth / totalContent)
+      for (let i = 0; i < colgroup.length; i++) {
+        colgroup[i].width = Math.max(
+          defaultColMinWidth,
+          Math.round(colContentWidths[i] * scale)
+        )
+      }
+      // Ensure total does not exceed innerWidth
+      const newTotal = colgroup.reduce(
+        (sum, col) => sum + col.width,
+        0
+      )
+      if (newTotal > innerWidth && colgroup.length > 0) {
+        const excess = newTotal - innerWidth
+        colgroup[colgroup.length - 1].width = Math.max(
+          defaultColMinWidth,
+          colgroup[colgroup.length - 1].width - excess
+        )
+      }
+    }
+    const { endIndex } = this.range.getRange()
+    this.draw.render({ curIndex: endIndex })
+  }
+
+  public tableColWidth(payload: number) {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return
+    const { index, trIndex, tdIndex } = positionContext
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = originalElementList[index!]
+    const colgroup = element.colgroup
+    const trList = element.trList
+    if (!colgroup || !trList) return
+    const colIdx = this.getColIndex(trList, trIndex!, tdIndex!)
+    if (colIdx < 0 || colIdx >= colgroup.length) return
+    const { defaultColMinWidth } = this.options.table
+    const newWidth = Math.max(payload, defaultColMinWidth)
+    const oldWidth = colgroup[colIdx].width
+    const diff = newWidth - oldWidth
+    if (diff === 0) return
+    colgroup[colIdx].width = newWidth
+    // Adjust neighbor column to maintain total table width
+    if (colIdx + 1 < colgroup.length) {
+      colgroup[colIdx + 1].width = Math.max(
+        defaultColMinWidth,
+        colgroup[colIdx + 1].width - diff
+      )
+    } else if (colIdx - 1 >= 0) {
+      colgroup[colIdx - 1].width = Math.max(
+        defaultColMinWidth,
+        colgroup[colIdx - 1].width - diff
+      )
+    }
+    const { endIndex } = this.range.getRange()
+    this.draw.render({ curIndex: endIndex })
+  }
+
+  public tableRowHeight(payload: number) {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return
+    const { index, trIndex } = positionContext
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = originalElementList[index!]
+    const trList = element.trList
+    if (!trList) return
+    const tr = trList[trIndex!]
+    if (!tr) return
+    tr.minHeight = Math.max(payload, 0)
+    const { endIndex } = this.range.getRange()
+    this.draw.render({ curIndex: endIndex })
+  }
+
+  public distributeTableRows() {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return
+    const { index } = positionContext
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = originalElementList[index!]
+    const trList = element.trList
+    if (!trList || !trList.length) return
+    // Calculate average row height
+    const totalHeight = trList.reduce(
+      (sum, tr) => sum + tr.height,
+      0
+    )
+    const avgHeight = Math.floor(totalHeight / trList.length)
+    for (let t = 0; t < trList.length; t++) {
+      trList[t].minHeight = avgHeight
+    }
+    const { endIndex } = this.range.getRange()
+    this.draw.render({ curIndex: endIndex })
   }
 }
