@@ -350,25 +350,18 @@ export class TableParticle {
       ctx.stroke()
     }
 
-    // Helper: clear a line area so override edges don't layer on
-    // top of previously drawn lines (solves dashed-over-solid issue)
-    const clearEdge = (
-      x1: number, y1: number,
-      x2: number, y2: number,
+    // Helper: clear the entire cell border area in one pass so that
+    // per-edge clearing doesn't erase previously drawn corner pixels.
+    const clearCellBorders = (
+      x: number, y: number,
+      w: number, h: number,
       lineWidth: number
     ) => {
       const half = Math.ceil(lineWidth / 2) + 1
-      if (y1 === y2) {
-        // horizontal
-        const minX = Math.min(x1, x2)
-        const maxX = Math.max(x1, x2)
-        ctx.clearRect(minX - 1, y1 - half, maxX - minX + 2, half * 2)
-      } else {
-        // vertical
-        const minY = Math.min(y1, y2)
-        const maxY = Math.max(y1, y2)
-        ctx.clearRect(x1 - half, minY - 1, half * 2, maxY - minY + 2)
-      }
+      ctx.clearRect(
+        x - half, y - half,
+        w + half * 2, h + half * 2
+      )
     }
 
     // ── Pass 1: Outer border + standard grid (non-override cells) ──
@@ -479,9 +472,43 @@ export class TableParticle {
     }
 
     // ── Pass 2: Per-cell override cells ──
-    // These cells clear shared edges first, then redraw with their
-    // own style. This prevents layering artifacts (dashed over solid)
-    // and ensures borderWidth=0 actually hides the edge.
+    // Uses three-phase rendering with edge deduplication:
+    //   1. Precompute grid positions so shared edges have identical coords
+    //   2. Collect ALL edges into a dedup map (each physical edge drawn once)
+    //   3. Phase A: clear, Phase B: backgrounds, Phase C: draw unique edges
+
+    // --- Precompute consistent grid positions ---
+    // Using cumulative column widths and row heights ensures shared edges
+    // have identical coordinates regardless of which cell references them.
+    // Without this, Math.round(tdA.x*s + off) + tdA.w*s ≠
+    // Math.round(tdB.x*s + off) for adjacent cells → double lines.
+    const rawColX: number[] = [0]
+    for (let c = 0; c < colgroup.length; c++) {
+      rawColX.push(rawColX[c] + colgroup[c].width * scale)
+    }
+    const rawRowY: number[] = [0]
+    for (let r = 0; r < trList.length; r++) {
+      rawRowY.push(rawRowY[r] + trList[r].height * scale)
+    }
+    const gridX = rawColX.map(v => Math.round(v + startX))
+    const gridY = rawRowY.map(v => Math.round(v + startY))
+
+    type EdgeStyle = { color: string; width: number; style: TdBorderStyle }
+
+    // Override cell info for clearing/background phases
+    const overrideCells: Array<{
+      td: ITd
+      x: number; y: number; width: number; height: number
+    }> = []
+
+    // Edge deduplication map: "x1,y1,x2,y2" → style + priority
+    // When two cells claim the same edge, highest priority wins.
+    // Priority: +2 for borderStyle, +1 for borderColor, +1 for borderWidth
+    const edgeMap = new Map<string, {
+      x1: number; y1: number; x2: number; y2: number
+      resolved: EdgeStyle; priority: number
+    }>()
+
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
@@ -493,145 +520,179 @@ export class TableParticle {
         )
         if (!hasCellOverride) continue
 
-        const width = td.width! * scale
-        const height = td.height! * scale
-        const x = Math.round(td.x! * scale + startX)
-        const y = Math.round(td.y! * scale + startY)
+        const ri = td.rowIndex!
+        const ci = td.colIndex!
+        const cx = gridX[ci]
+        const cy = gridY[ri]
+        const cx2 = gridX[ci + td.colspan]
+        const cy2 = gridY[ri + td.rowspan]
 
-        ctx.translate(0.5, 0.5)
+        overrideCells.push({
+          td, x: cx, y: cy, width: cx2 - cx, height: cy2 - cy
+        })
 
-        // Resolve each edge style using shared-edge precedence
-        const edges = ['top', 'right', 'bottom', 'left'] as const
-        const edgeCoords = {
-          top: [x, y, x + width, y],
-          right: [x + width, y, x + width, y + height],
-          bottom: [x + width, y + height, x, y + height],
-          left: [x, y, x, y + height]
-        }
+        // Compute priority: more specific overrides win on shared edges
+        let priority = 0
+        if (td.borderColor !== undefined) priority++
+        if (td.borderWidth !== undefined) priority++
+        if (td.borderStyle !== undefined) priority += 2
 
-        // Determine max line width for clearing
-        const maxClearWidth = Math.max(
-          (td.borderWidth ?? borderWidth) * scale,
-          borderWidth * scale,
-          3
-        )
+        // Resolve and collect edges into the dedup map
+        const edgeDefs = [
+          { edge: 'top' as const, x1: cx, y1: cy, x2: cx2, y2: cy },
+          { edge: 'right' as const, x1: cx2, y1: cy, x2: cx2, y2: cy2 },
+          { edge: 'bottom' as const, x1: cx, y1: cy2, x2: cx2, y2: cy2 },
+          { edge: 'left' as const, x1: cx, y1: cy, x2: cx, y2: cy2 }
+        ]
 
-        for (const edge of edges) {
-          // Skip internal-border-type edges at table boundary
+        for (const { edge, x1, y1, x2, y2 } of edgeDefs) {
           if (isInternalBorderType) {
-            if (edge === 'right' && td.colIndex! + td.colspan >= colCount) continue
-            if (edge === 'bottom' && td.rowIndex! + td.rowspan >= rowCount) continue
+            if (edge === 'right' && ci + td.colspan >= colCount) continue
+            if (edge === 'bottom' && ri + td.rowspan >= rowCount) continue
           }
 
-          const [x1, y1, x2, y2] = edgeCoords[edge]
-
-          // Clear the edge area to remove any previously drawn line
-          clearEdge(x1, y1, x2, y2, maxClearWidth)
-
-          // Resolve what style this edge should have
           const edgeStyle = this._resolveEdgeStyle(
             td, edge, overrideMap,
             tableBorderColor, borderWidth,
             tableBorderStyle,
             colCount, rowCount
           )
+          if (!edgeStyle) continue
 
-          if (!edgeStyle) continue // null = no border
+          // Normalize key so both cells produce the same key for shared edge
+          const nx1 = Math.min(x1, x2)
+          const ny1 = Math.min(y1, y2)
+          const nx2 = Math.max(x1, x2)
+          const ny2 = Math.max(y1, y2)
+          const key = `${nx1},${ny1},${nx2},${ny2}`
 
-          ctx.save()
-          ctx.strokeStyle = edgeStyle.color
-          ctx.lineWidth = edgeStyle.width * scale
-          this._applyLineDash(ctx, edgeStyle.style, scale)
-          drawLine(x1, y1, x2, y2)
-          ctx.restore()
-        }
-
-        // Re-draw the outer border segments that we may have cleared
-        // (only for cells on the table perimeter when outer border is visible)
-        if (!isEmptyBorderType && !isInternalBorderType) {
-          const isTopEdge = td.rowIndex === 0
-          const isLeftEdge = td.colIndex === 0
-          const isRightEdge = td.colIndex! + td.colspan >= colCount
-          const isBottomEdge = td.rowIndex! + td.rowspan >= rowCount
-
-          // Check if outer border was cleared but should still exist
-          // (when the override cell doesn't suppress the outer border)
-          if (isTopEdge || isLeftEdge || isRightEdge || isBottomEdge) {
-            const outerWidth = (borderExternalWidth || borderWidth) * scale
-            ctx.save()
-            ctx.lineWidth = outerWidth
-            ctx.strokeStyle = tableBorderColor
-            if (borderType === TableBorder.DASH) {
-              ctx.setLineDash([3, 3])
-            }
-
-            // Only redraw outer edges that the cell's override doesn't replace
-            if (isTopEdge) {
-              const topStyle = this._resolveEdgeStyle(
-                td, 'top', overrideMap, tableBorderColor,
-                borderWidth, tableBorderStyle, colCount, rowCount
-              )
-              if (!topStyle || (
-                topStyle.color === tableBorderColor &&
-                topStyle.width === (borderExternalWidth || borderWidth) &&
-                topStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-              )) {
-                // Outer border was cleared; redraw it
-                drawLine(x, y, x + width, y)
-              }
-            }
-            if (isLeftEdge) {
-              const leftStyle = this._resolveEdgeStyle(
-                td, 'left', overrideMap, tableBorderColor,
-                borderWidth, tableBorderStyle, colCount, rowCount
-              )
-              if (!leftStyle || (
-                leftStyle.color === tableBorderColor &&
-                leftStyle.width === (borderExternalWidth || borderWidth) &&
-                leftStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-              )) {
-                drawLine(x, y, x, y + height)
-              }
-            }
-            if (isRightEdge && !isExternalBorderType) {
-              const rightStyle = this._resolveEdgeStyle(
-                td, 'right', overrideMap, tableBorderColor,
-                borderWidth, tableBorderStyle, colCount, rowCount
-              )
-              if (!rightStyle || (
-                rightStyle.color === tableBorderColor &&
-                rightStyle.width === (borderExternalWidth || borderWidth) &&
-                rightStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-              )) {
-                drawLine(x + width, y, x + width, y + height)
-              }
-            }
-            if (isBottomEdge && !isExternalBorderType) {
-              const bottomStyle = this._resolveEdgeStyle(
-                td, 'bottom', overrideMap, tableBorderColor,
-                borderWidth, tableBorderStyle, colCount, rowCount
-              )
-              if (!bottomStyle || (
-                bottomStyle.color === tableBorderColor &&
-                bottomStyle.width === (borderExternalWidth || borderWidth) &&
-                bottomStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-              )) {
-                drawLine(x + width, y + height, x, y + height)
-              }
-            }
-            ctx.restore()
+          const existing = edgeMap.get(key)
+          if (!existing || priority >= existing.priority) {
+            edgeMap.set(key, {
+              x1: nx1, y1: ny1, x2: nx2, y2: ny2,
+              resolved: edgeStyle, priority
+            })
           }
         }
+      }
+    }
 
-        // Redraw background color in cleared areas
-        if (td.backgroundColor) {
-          ctx.save()
-          ctx.fillStyle = td.backgroundColor
-          // Inset fill to avoid covering the border lines
-          ctx.fillRect(x + 1, y + 1, width - 2, height - 2)
-          ctx.restore()
+    // Phase A: Clear ALL override cells' border areas at once
+    for (const { td, x, y, width, height } of overrideCells) {
+      ctx.translate(0.5, 0.5)
+      const maxClearWidth = Math.max(
+        (td.borderWidth ?? borderWidth) * scale,
+        borderWidth * scale,
+        3
+      )
+      clearCellBorders(x, y, width, height, maxClearWidth)
+      ctx.translate(-0.5, -0.5)
+    }
+
+    // Phase B: Redraw ALL backgrounds in cleared areas
+    for (const { td, x, y, width, height } of overrideCells) {
+      if (!td.backgroundColor) continue
+      ctx.translate(0.5, 0.5)
+      ctx.save()
+      ctx.fillStyle = td.backgroundColor
+      ctx.fillRect(x, y, width, height)
+      ctx.restore()
+      ctx.translate(-0.5, -0.5)
+    }
+
+    // Phase C: Draw ALL unique edges from the dedup map
+    // Each physical edge is drawn exactly once, eliminating double borders.
+    ctx.translate(0.5, 0.5)
+    ctx.save()
+    ctx.lineCap = 'square'
+    for (const { x1, y1, x2, y2, resolved } of edgeMap.values()) {
+      ctx.strokeStyle = resolved.color
+      ctx.lineWidth = resolved.width * scale
+      this._applyLineDash(ctx, resolved.style, scale)
+      drawLine(x1, y1, x2, y2)
+    }
+    ctx.restore()
+    ctx.translate(-0.5, -0.5)
+
+    // Phase D: Restore outer border segments cleared in Phase A
+    // Only needed for perimeter cells when the outer border should
+    // remain at the table-level style (not replaced by the cell override).
+    if (!isEmptyBorderType && !isInternalBorderType) {
+      for (const { td, x, y, width, height } of overrideCells) {
+        const ri = td.rowIndex!
+        const ci = td.colIndex!
+        const isTopEdge = ri === 0
+        const isLeftEdge = ci === 0
+        const isRightEdge = ci + td.colspan >= colCount
+        const isBottomEdge = ri + td.rowspan >= rowCount
+
+        if (!(isTopEdge || isLeftEdge || isRightEdge || isBottomEdge)) {
+          continue
         }
 
+        ctx.translate(0.5, 0.5)
+        const outerWidth = (borderExternalWidth || borderWidth) * scale
+        ctx.save()
+        ctx.lineWidth = outerWidth
+        ctx.strokeStyle = tableBorderColor
+        ctx.lineCap = 'square'
+        if (borderType === TableBorder.DASH) {
+          ctx.setLineDash([3, 3])
+        }
+
+        if (isTopEdge) {
+          const topStyle = this._resolveEdgeStyle(
+            td, 'top', overrideMap, tableBorderColor,
+            borderWidth, tableBorderStyle, colCount, rowCount
+          )
+          if (!topStyle || (
+            topStyle.color === tableBorderColor &&
+            topStyle.width === (borderExternalWidth || borderWidth) &&
+            topStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+          )) {
+            drawLine(x, y, x + width, y)
+          }
+        }
+        if (isLeftEdge) {
+          const leftStyle = this._resolveEdgeStyle(
+            td, 'left', overrideMap, tableBorderColor,
+            borderWidth, tableBorderStyle, colCount, rowCount
+          )
+          if (!leftStyle || (
+            leftStyle.color === tableBorderColor &&
+            leftStyle.width === (borderExternalWidth || borderWidth) &&
+            leftStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+          )) {
+            drawLine(x, y, x, y + height)
+          }
+        }
+        if (isRightEdge && !isExternalBorderType) {
+          const rightStyle = this._resolveEdgeStyle(
+            td, 'right', overrideMap, tableBorderColor,
+            borderWidth, tableBorderStyle, colCount, rowCount
+          )
+          if (!rightStyle || (
+            rightStyle.color === tableBorderColor &&
+            rightStyle.width === (borderExternalWidth || borderWidth) &&
+            rightStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+          )) {
+            drawLine(x + width, y, x + width, y + height)
+          }
+        }
+        if (isBottomEdge && !isExternalBorderType) {
+          const bottomStyle = this._resolveEdgeStyle(
+            td, 'bottom', overrideMap, tableBorderColor,
+            borderWidth, tableBorderStyle, colCount, rowCount
+          )
+          if (!bottomStyle || (
+            bottomStyle.color === tableBorderColor &&
+            bottomStyle.width === (borderExternalWidth || borderWidth) &&
+            bottomStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
+          )) {
+            drawLine(x + width, y + height, x, y + height)
+          }
+        }
+        ctx.restore()
         ctx.translate(-0.5, -0.5)
       }
     }
