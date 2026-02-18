@@ -2,19 +2,60 @@
 
 **Created**: 2026-02-17
 **Branch**: `shape-engine`
-**Status**: In Progress (T1 complete, T2 next)
+**Status**: In Progress (T1 & T2 complete, T3 next)
 **ADR**: [adr-0002-table-auto-fit-and-multipage.md](../decisions/adr-0002-table-auto-fit-and-multipage.md)
 
 ---
 
 ## Overview
 
-Bring table system closer to Google Docs quality. Four phases, ordered by
+Bring table system closer to Google Docs quality. Six phases, ordered by
 user impact and implementation complexity.
 
 ---
 
-## Phase T1: Paste Auto-Fit (Critical) — COMPLETE
+## Existing Table Feature Inventory
+
+Before planning new work, here's what already exists:
+
+### Commands (19 total in CommandAdapt.ts → Command.ts)
+| Command | Status |
+|---|---|
+| Insert table, row (top/bottom), col (left/right) | ✅ |
+| Delete row, col, table | ✅ |
+| Merge / unmerge cells | ✅ |
+| Split cell vertically / horizontally | ✅ (command only, not in context menu) |
+| Cell vertical align (top/middle/bottom) | ✅ |
+| Table border type (all/empty/external/internal/dash) | ✅ |
+| Table border color (table-level) | ✅ (command only, not in context menu) |
+| Cell border toggle (top/right/bottom/left) | ✅ |
+| Cell diagonal slash (forward/back) | ✅ |
+| Cell background color | ✅ |
+| Select all cells | ✅ |
+
+### Context Menu Items (tableMenus.ts)
+Border submenu, cell border submenu, vertical align, insert/delete row/col, merge/unmerge.
+
+### What's Missing (Gap Analysis vs Google Docs)
+| Feature | Gap |
+|---|---|
+| **Per-cell border color** | ❌ Only table-level `borderColor` |
+| **Per-cell border width** | ❌ Only table-level `borderWidth` |
+| **Per-cell border style** (solid/dashed/dotted/double) | ❌ Only table-level DASH |
+| **Per-cell padding** | ❌ Only global `tdPadding` |
+| **Distribute rows/columns evenly** | ❌ No command |
+| **Set exact row height** | ⚠️ ITr.height exists, no command |
+| **Set exact column width** | ⚠️ IColgroup.width exists, no command |
+| **Auto-fit table width** | ❌ No command |
+| **Move row up/down** | ❌ No command |
+| **Sort table by column** | ❌ No command |
+| **Table properties dialog** | ❌ No UI |
+| **Border color in context menu** | ⚠️ Command exists, no menu entry |
+| **Split cell in context menu** | ⚠️ Commands exist, no menu entries |
+
+---
+
+## Phase T1: Paste Auto-Fit (Critical) — COMPLETE ✅
 
 **Problem**: Pasting a Google Docs table with wide columns creates an un-resizable
 table that overflows the editor panel.
@@ -24,177 +65,204 @@ table that overflows the editor panel.
 
 ### Implementation Summary
 
-- [x] **T1.1** — Added `normalizeTableColWidths()` in `element.ts` (not TableOperate)
-  - Proportionally scales colgroup widths when total > innerWidth
-  - Enforces 40px minimum column width floor
-  - Redistributes deficit from flexible columns after floor enforcement
-
-- [x] **T1.2** — Normalization wired into ALL data entry paths:
-  - `getElementListByHTML()` — paste from clipboard
-  - Editor constructor — initial data load
-  - `setValue()` — programmatic data set
-  - `insertElementList()` — programmatic insert
-  - `_normalizeTableElements()` private method in Draw.ts handles recursive
-    normalization for nested tables in cells
-
-- [x] **T1.3** — Edge cases handled:
-  - Tables without `<colgroup>` fall back to `innerWidth / tdCount` (unchanged)
-  - Minimum width floor prevents columns from becoming unusable
-  - Nested tables normalized recursively with cell width minus padding
-
-- [x] **T1.4** — Test coverage:
-  - 6 test tables in mock.ts (T1-1 through T1-6)
-  - Wide LTR (1200px), extreme 6-col (2400px), RTL Arabic (900px),
-    BiDi mixed (1000px), colspan (800px), within-bounds (400px)
-  - All visually verified to fit within 554px panel
-
+- [x] **T1.1** — Added `normalizeTableColWidths()` in `element.ts`
+- [x] **T1.2** — Normalization wired into ALL data entry paths
+- [x] **T1.3** — Edge cases handled (no colgroup, min width floor, nested tables)
+- [x] **T1.4** — Test coverage (6 test tables in mock.ts)
 - [ ] **T1.5** — Overflow option enforcement (deferred to T3)
-  - Not critical since normalization already prevents overflow for all paths
 
 ### Key Code Locations
 - `element.ts` L1609-L1650 — table HTML parsing
-- `TableOperate.ts` L228-L249 — existing `adjustColWidth()` (reference)
+- `TableOperate.ts` L228-L249 — existing `adjustColWidth()`
 - `Draw.ts` L571 — `getContextInnerWidth()`
-- `Table.ts` constant — `defaultTableOption.overflow`
 
 ---
 
-## Phase T2: Multi-Page Table Splitting (High) — 2-3 Sessions
+## Phase T2: Multi-Page Table Splitting (High) — COMPLETE ✅
 
 **Problem**: Tables with merged cells (rowspan > 1) cannot split across pages.
 The split is abandoned when a row has cross-row cells, leaving blank page space.
 
-### Phase T2a: Improve Split-Point Selection (1 session)
+**Completed**: 2026-02-18 (Session 016-018)
+**Commits**: `673f36f7`, `1a98a924`
 
-- [ ] **T2a.1** — Refactor split-point algorithm
-  - Current: abandons split if ANY row at split point has rowspan
-  - New: scan backwards from split point to find the nearest "clean" row
-    (where all cells either start at that row or their rowspan ends before it)
-  - If no clean row exists within the current page, fall back to current behavior
-  - File: `src/editor/core/draw/Draw.ts` L1795-L1880
+### Implementation Summary
 
-- [ ] **T2a.2** — Track rowspan state per column
-  - Build a `rowspanTracker: number[]` array (one per column)
-  - Initialize all to 0
-  - For each row, decrement all non-zero entries; for each cell, set
-    `tracker[colIndex] = cell.rowspan - 1`
-  - A row is "clean" when all `tracker[colIndex] === 0`
-  - This replaces the crude `rowColCount !== colgroup.length` check
+- [x] **T2a** — Rowspan-aware split-point selection with `rowspanTracker[]`
+- [x] **T2b** — Rowspan carryover: continuation cells with `isPageBreakContinuation` marker
+- [x] **T2c** — Intra-row split for oversized single rows
+- [x] **T2-fix** — Null checks in `TableParticle.getRangeRowCol()` and `main.ts`
+- [x] **T2-fix** — Virtual row `minHeight` bug fix
+- [x] **T2-fix** — Recombination logic for continuation cells in `element.ts`
 
-- [ ] **T2a.3** — Test multi-page split
-  - Table with simple rows → splits correctly (no regression)
-  - Table with rowspan=2 at split point → finds earlier clean row
-  - Table with rowspan=5 spanning entire page → no split (correct, can't fit)
-  - Table with rowspan in one column, not in another → correct clean row detection
-
-### Phase T2b: Rowspan Carryover (2 sessions)
-
-- [ ] **T2b.1** — Implement rowspan carryover algorithm
-  - When splitting at a non-clean row (no clean row found earlier):
-    1. For each column, if a cell's rowspan crosses the split point:
-       - Calculate `remainingRows = (cell.rowIndex + cell.rowspan) - splitRowIndex`
-       - On current page's fragment: reduce cell's rowspan to `splitRowIndex - cell.rowIndex`
-       - On next page's fragment: create a continuation cell with `rowspan = remainingRows`
-       - The continuation cell gets **empty content** (content stays on first page)
-         OR a `continuedFrom` marker for potential content carry-over
-    2. Update the continuation fragment's first row's tdList to include these cells
-  - File: `src/editor/core/draw/Draw.ts` table split section
-
-- [ ] **T2b.2** — Continuation cell rendering
-  - Continuation cells render with top border dashed or hidden (visual cue)
-  - Content is NOT duplicated — only the original page shows cell content
-  - Background color carries over
-  - File: `src/editor/core/draw/particle/table/TableParticle.ts`
-
-- [ ] **T2b.3** — Recombination update
-  - When recombining split tables (L1674-L1694), merge continuation cells back
-    into their original rowspan
-  - Match continuation cells by column index and `continuedFrom` marker
-  - File: `src/editor/core/draw/Draw.ts`
-
-- [ ] **T2b.4** — Edge cases
-  - Cell with rowspan spanning 3+ pages
-  - Multiple columns with different rowspans at same split point
-  - Rowspan cell is the ONLY cell in a row (single-cell row with rowspan)
-  - Header repeat rows with rowspan
+### Key Code Locations
+- `Draw.ts` — table split logic (rowspan tracking, carryover, intra-row split)
+- `TableParticle.ts` — `getRangeRowCol()` null safety
+- `element.ts` — recombination of split table fragments
+- `Tr.ts` / `Td.ts` — `isVirtualRow`, `isPageBreakContinuation`, `originalRowspan` fields
 
 ---
 
-## Phase T3: Auto-Fit Command & UI (Medium) — 1 Session
+## Phase T3: Auto-Fit & Table Sizing Commands (Medium) — NEXT 🔜
 
-**Problem**: No way to auto-size columns based on content width.
+**Problem**: No way to auto-size columns, set exact row heights, or set exact column
+widths. Missing commands and context menu entries for existing features.
 
-### Tasks
+**Estimated**: 1-2 sessions
 
-- [ ] **T3.1** — Add `executeAutoFitTableWidth` command
-  - **Fit to page**: Scale all columns proportionally so table width = innerWidth
-  - **Fit to content**: Measure content width per column, set proportionally
-  - **Fixed column width**: Reset to equal widths (innerWidth / colCount)
-  - File: `src/editor/core/command/CommandAdapt.ts`
+### T3.1 — Auto-Fit Table Width Command
+- [ ] Add `executeAutoFitTableWidth(mode)` command in `CommandAdapt.ts`
+  - **`'page'`**: Scale all columns proportionally so table width = innerWidth
+  - **`'content'`**: Measure content width per column, set proportionally
+  - **`'equal'`**: Reset to equal widths (innerWidth / colCount)
+- [ ] Wire to `TableOperate.ts` for the actual column recalculation
 
-- [ ] **T3.2** — Add auto-fit to context menu
-  - New submenu under table context menu: "Auto-fit"
-    - "Fit to page width"
-    - "Fit to contents"
-    - "Fixed column width"
-  - File: `src/editor/core/contextmenu/menus/tableMenus.ts`
+### T3.2 — Set Exact Column Width Command
+- [ ] Add `executeTableColWidth(width: number)` command
+  - Sets the current column's width to exact pixel value
+  - Rebalances neighboring columns to maintain total table width
+- [ ] Wire to `TableOperate.ts`
 
-- [ ] **T3.3** — Measure content width per column
-  - For "fit to content": iterate all rows, for each column find max content width
-  - Content width = max(width of all cells in that column after text wrapping at
-    minimum width)
-  - This requires a trial `computeRowList()` at min width → measure actual used width
-  - Simpler heuristic: measure longest word in each column × font size
-  - File: `src/editor/core/draw/particle/table/TableOperate.ts`
+### T3.3 — Set Exact Row Height Command
+- [ ] Add `executeTableRowHeight(height: number)` command
+  - Sets the current row's `minHeight` to exact pixel value
+  - Row will still expand if content exceeds this height
+- [ ] Wire to `TableOperate.ts`
 
-- [ ] **T3.4** — Keyboard shortcut (optional)
-  - Ctrl+Shift+F when cursor is in table → auto-fit to page
+### T3.4 — Distribute Rows/Columns Evenly
+- [ ] Add `executeDistributeTableRows()` command
+  - Sets all row heights to `totalTableHeight / rowCount`
+- [ ] Add `executeDistributeTableCols()` command
+  - Sets all column widths to `innerWidth / colCount`
+
+### T3.5 — Context Menu Updates
+- [ ] Add **Auto-fit** submenu to table context menu:
+  - "Fit to page width" → `executeAutoFitTableWidth('page')`
+  - "Fit to contents" → `executeAutoFitTableWidth('content')`
+  - "Fixed column width" → `executeAutoFitTableWidth('equal')`
+- [ ] Add **Distribute** submenu:
+  - "Distribute rows evenly" → `executeDistributeTableRows()`
+  - "Distribute columns evenly" → `executeDistributeTableCols()`
+- [ ] Add **Split cell** submenu (commands already exist, just not in menu):
+  - "Split vertically" → `executeSplitVerticalTableCell()`
+  - "Split horizontally" → `executeSplitHorizontalTableCell()`
+- [ ] Add **Border color** entry (command exists, not in menu):
+  - Opens color picker → `executeTableBorderColor(color)`
+- [ ] File: `src/editor/core/contextmenu/menus/tableMenus.ts`
+
+### T3.6 — i18n Keys
+- [ ] Add translation keys for all new menu items in all locale files
+- [ ] File: `src/editor/core/i18n/lang/`
+
+### T3.7 — Keyboard Shortcut (optional)
+- [ ] Ctrl+Shift+F when cursor is in table → auto-fit to page
 
 ---
 
-## Phase T4: Advanced Table Features (Low) — Backlog
+## Phase T4: Per-Cell Border Styling (Medium) — 2 Sessions
+
+**Problem**: Border color, width, and style are table-level only. Google Docs allows
+per-cell border customization (color, width, style for each side).
+
+### T4.1 — Interface & Enum Changes
+- [ ] Add to `ITd` interface in `Td.ts`:
+  ```
+  borderColor?: string           // per-cell border color (overrides table-level)
+  borderWidth?: number           // per-cell border width
+  borderStyle?: TdBorderStyle    // per-cell border style
+  ```
+- [ ] Add new enum `TdBorderStyle` in `src/editor/dataset/enum/table/Table.ts`:
+  ```
+  enum TdBorderStyle { SOLID, DASHED, DOTTED, DOUBLE }
+  ```
+
+### T4.2 — Drawing Changes
+- [ ] Update `_drawBorder()` in `TableParticle.ts` to read per-cell overrides:
+  - When drawing cell borders, check `td.borderColor`, `td.borderWidth`, `td.borderStyle`
+  - Fall back to table-level values if not set
+  - Apply `ctx.setLineDash()` based on style enum
+- [ ] Handle `DOUBLE` style (draw two parallel lines with gap)
+
+### T4.3 — New Commands
+- [ ] `executeTableTdBorderColor(color: string)` — set border color for selected cells
+- [ ] `executeTableTdBorderWidth(width: number)` — set border width for selected cells
+- [ ] `executeTableTdBorderStyle(style: TdBorderStyle)` — set border style for selected cells
+- [ ] Implementation in `TableOperate.ts` → iterate selected cells, set properties
+
+### T4.4 — Context Menu Updates
+- [ ] Add **Cell border style** submenu under existing border menu:
+  - "Border color" → color picker → `executeTableTdBorderColor(color)`
+  - "Border width" submenu: "Thin (1px)" / "Medium (2px)" / "Thick (3px)"
+  - "Border style" submenu: "Solid" / "Dashed" / "Dotted" / "Double"
+
+### T4.5 — Paste Preservation
+- [ ] Update `getElementListByHTML()` in `element.ts` to parse inline CSS border
+  properties (`border-color`, `border-width`, `border-style`) from pasted HTML
+  and map to new ITd properties
+
+---
+
+## Phase T5: Table Operations & Properties (Medium) — 1-2 Sessions
+
+**Problem**: Missing convenience operations that Google Docs provides.
+
+### T5.1 — Move Row Up/Down
+- [ ] Add `executeTableMoveRowUp()` command — swap current row with row above
+- [ ] Add `executeTableMoveRowDown()` command — swap current row with row below
+- [ ] Handle rowspan cells that span across the move boundary
+- [ ] Add to context menu under "Row" submenu
+
+### T5.2 — Per-Cell Padding
+- [ ] Add `padding?: IPadding` to `ITd` interface
+  - Per-cell padding overrides global `tdPadding`
+- [ ] Update cell content layout in `computeRowList()` to use per-cell padding
+- [ ] Add `executeTableTdPadding(padding: IPadding)` command
+
+### T5.3 — Table Properties Dialog
+- [ ] New dialog accessible from context menu: "Table properties..."
+- [ ] Shows and allows editing of:
+  - Table border type, color, width
+  - Table width (auto/exact)
+  - Default cell padding
+  - Default cell vertical alignment
+- [ ] Uses existing `Dialog` component pattern
+- [ ] File: new `src/components/tablePropertiesDialog/`
+
+### T5.4 — Cell Properties Dialog (optional)
+- [ ] New dialog: "Cell properties..."
+- [ ] Shows and allows editing of:
+  - Cell background color
+  - Cell border color/width/style per side
+  - Cell padding
+  - Cell vertical alignment
+- [ ] Useful as a unified UI for all T4 features
+
+---
+
+## Phase T6: Advanced Table Features (Low) — Backlog
 
 Future improvements, not currently planned for implementation.
 
-- [ ] **T4.1** — Minimum column width enforcement throughout system
-  - Currently `defaultColMinWidth` (40px) is only used in `adjustColWidth()`
-  - Should be enforced in paste, resize, and auto-fit paths consistently
-
-- [ ] **T4.2** — Table width percentage mode
-  - Columns stored as percentages of available width rather than fixed pixels
-  - Auto-adjusts when page width or margins change
-  - Google Docs uses this internally
-
-- [ ] **T4.3** — Nested table support
-  - Currently not explicitly supported
-  - Would require recursive table parsing in `getElementListByHTML()`
-  - Layout engine already supports recursion (computeRowList → isFromTable)
-
-- [ ] **T4.4** — Better cell vertical alignment
-  - Currently supports TOP, MIDDLE, BOTTOM
-  - Add baseline alignment for cells in same row
-  - Improve MIDDLE calculation for cells with complex content
-
-- [ ] **T4.5** — Cell content overflow indicators
-  - When cell content is clipped (if ever), show visual indicator
-  - Currently content always wraps, so this may not be needed
-
-- [ ] **T4.6** — Table styles / themes
-  - Predefined table color schemes
-  - Alternating row colors
-  - Header row styling
+- [ ] **T6.1** — Minimum column width enforcement throughout system
+- [ ] **T6.2** — Table width percentage mode (columns as % of available width)
+- [ ] **T6.3** — Nested table support (recursive parsing)
+- [ ] **T6.4** — Baseline vertical alignment for cells in same row
+- [ ] **T6.5** — Table styles / themes (predefined color schemes, alternating rows)
+- [ ] **T6.6** — Sort table by column (ascending/descending)
+- [ ] **T6.7** — Table header row repeat control from context menu
+  - `pagingRepeat` exists on ITr but no command/menu to toggle it
 
 ---
 
 ## Implementation Order
 
 ```
-Phase T1 (Critical) ──→ Phase T2a (High) ──→ Phase T2b (High) ──→ Phase T3 (Medium)
-     │                                                                    │
-     └── Can be demo'd after T1 alone                                     └── Phase T4 (Backlog)
+T1 (DONE) ──→ T2 (DONE) ──→ T3 (NEXT) ──→ T4 ──→ T5 ──→ T6 (Backlog)
+  Paste fit     Multi-page     Auto-fit &    Cell border   Table ops    Advanced
+                splitting      sizing cmds   styling       & dialogs
 ```
 
-**Estimated total**: 5-7 sessions for T1-T3. T4 is backlog.
+**Estimated remaining**: 5-7 sessions for T3-T5. T6 is backlog.
 
 ---
 
@@ -203,10 +271,14 @@ Phase T1 (Critical) ──→ Phase T2a (High) ──→ Phase T2b (High) ──
 - No dependency on shaping engine or RTL work
 - RTL table column ordering (Phase 9.B) is already complete
 - The `overflow` option infrastructure already exists
+- T4 depends on T3 being complete (context menu patterns established)
+- T5.3/T5.4 dialogs can be built independently
 
 ## Success Criteria
 
-1. **T1**: Pasting any Google Docs table results in a table that fits within the editor
-2. **T2a**: Tables with rowspan split at the best available clean row
-3. **T2b**: Tables with rowspan split at any row with continuation cells
-4. **T3**: User can auto-fit any table to page width via context menu
+1. **T1** ✅: Pasting any Google Docs table results in a table that fits within the editor
+2. **T2** ✅: Tables with rowspan split correctly across pages with continuation cells
+3. **T3**: User can auto-fit table, set exact row/col sizes, distribute evenly via context menu
+4. **T4**: User can set per-cell border color, width, style via context menu
+5. **T5**: User can move rows, set cell padding, access table/cell properties dialog
+6. **T6**: Advanced features (sort, themes, percentage widths) available
