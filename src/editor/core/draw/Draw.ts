@@ -237,6 +237,14 @@ export class Draw {
   // Number of pages around the viewport to keep alive (±N from visible)
   private static readonly CANVAS_VIEWPORT_BUFFER = 3
 
+  // Dirty-page layout tracking — supports incremental recomputation.
+  // pageElementBounds[i] = [startElementIdx, endElementIdx] for each page.
+  // Rebuilt after every full computeRowList + computePageList cycle.
+  private pageElementBounds: [number, number][]
+  // First page requiring layout recompute (-1 = full recompute needed).
+  // Reset to -1 after each render cycle.
+  private layoutDirtyFromPage: number
+
   // Performance Monitoring
   private renderCount = 0
   private perfRenderCount = 0
@@ -366,6 +374,8 @@ export class Draw {
     this.lazyRenderIntersectionObserver = null
     this.printModeData = null
     this.freedPageSet = new Set()
+    this.pageElementBounds = []
+    this.layoutDirtyFromPage = -1
 
     // Initialize ShapeEngine if shaping is enabled
     if (options.shaping.enabled) {
@@ -2856,6 +2866,87 @@ export class Draw {
     return rowList
   }
 
+  /**
+   * Rebuild pageElementBounds from the current pageRowList.
+   * Each entry maps a page number to the [startIndex, endIndex] range
+   * of element indices contained in that page's rows.
+   * Used by dirty-page tracking to determine which page a given
+   * cursor position falls on.
+   */
+  private _updatePageElementBounds() {
+    this.pageElementBounds = []
+    for (let p = 0; p < this.pageRowList.length; p++) {
+      const rows = this.pageRowList[p]
+      if (!rows || !rows.length) {
+        // Empty page — inherit start from previous page's end
+        const prev = this.pageElementBounds[p - 1]
+        const idx = prev ? prev[1] : 0
+        this.pageElementBounds.push([idx, idx])
+        continue
+      }
+      const firstRow = rows[0]
+      const lastRow = rows[rows.length - 1]
+      const startIdx = firstRow.startIndex
+      const endIdx = lastRow.startIndex + lastRow.elementList.length - 1
+      this.pageElementBounds.push([startIdx, endIdx])
+    }
+  }
+
+  /**
+   * Find which page a given element index belongs to.
+   * Returns -1 if no matching page is found.
+   */
+  public getPageByElementIndex(elementIndex: number): number {
+    for (let p = 0; p < this.pageElementBounds.length; p++) {
+      const [start, end] = this.pageElementBounds[p]
+      if (elementIndex >= start && elementIndex <= end) {
+        return p
+      }
+    }
+    return -1
+  }
+
+  /**
+   * Get the page element bounds array.
+   * Each entry: [startElementIndex, endElementIndex] for that page.
+   */
+  public getPageElementBounds(): [number, number][] {
+    return this.pageElementBounds
+  }
+
+  /**
+   * Get the current dirty-page marker.
+   * -1 means full recompute needed.
+   */
+  public getLayoutDirtyFromPage(): number {
+    return this.layoutDirtyFromPage
+  }
+
+  /**
+   * Mark all pages from `pageNo` onward as needing layout recomputation.
+   * Takes the minimum of the existing dirty marker and the new one,
+   * ensuring we always recompute from the earliest dirty page.
+   */
+  public setLayoutDirtyFromPage(pageNo: number) {
+    if (this.layoutDirtyFromPage === -1) {
+      this.layoutDirtyFromPage = pageNo
+    } else {
+      this.layoutDirtyFromPage = Math.min(
+        this.layoutDirtyFromPage,
+        pageNo
+      )
+    }
+  }
+
+  /**
+   * Force a full layout recompute on the next render cycle.
+   * Used for global mutations: margin change, scale change,
+   * paper size, undo/redo, setValue, first render, etc.
+   */
+  public invalidateAllLayout() {
+    this.layoutDirtyFromPage = -1
+  }
+
   private _computePageList(): IRow[][] {
     const pageRowList: IRow[][] = [[]]
     const {
@@ -3989,6 +4080,8 @@ export class Draw {
       })
       // 页面信息
       this.pageRowList = this._computePageList()
+      // Build page element bounds for dirty-page tracking
+      this._updatePageElementBounds()
       layoutTime = performance.now() - layoutStart
       // 位置信息
       const positionStart = performance.now()
