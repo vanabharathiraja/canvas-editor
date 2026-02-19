@@ -243,6 +243,10 @@ export class Draw {
   private lastPerfUpdate = performance.now()
   private avgRenderTime = 0
   private renderTimes: number[] = []
+  // Granular phase timing (layout, position, paint)
+  private layoutTimes: number[] = []
+  private positionTimes: number[] = []
+  private paintTimes: number[] = []
 
   constructor(
     rootContainer: HTMLElement,
@@ -3944,6 +3948,8 @@ export class Draw {
     // 缓存当前页数信息
     const oldPageSize = this.pageRowList.length
     // 计算文档信息
+    let layoutTime = 0
+    let positionTime = 0
     if (isCompute) {
       // 清空浮动元素位置信息
       this.position.setFloatPositionList([])
@@ -3970,6 +3976,7 @@ export class Draw {
       const startX = margins[3]
       const startY = margins[0] + extraHeight
       const surroundElementList = pickSurroundElementList(this.elementList)
+      const layoutStart = performance.now()
       this.rowList = this.computeRowList({
         startX,
         startY,
@@ -3982,8 +3989,11 @@ export class Draw {
       })
       // 页面信息
       this.pageRowList = this._computePageList()
+      layoutTime = performance.now() - layoutStart
       // 位置信息
+      const positionStart = performance.now()
       this.position.computePositionList()
+      positionTime = performance.now() - positionStart
       // 区域信息
       this.area.compute()
       if (!this.isPrintMode()) {
@@ -4029,11 +4039,13 @@ export class Draw {
     }
     // 绘制元素
     // 连续页因为有高度的变化会导致canvas渲染空白，需立即渲染，否则会出现闪动
+    const paintStart = performance.now()
     if (isLazy && isPagingMode) {
       this._lazyRender()
     } else {
       this._immediateRender()
     }
+    const paintTime = performance.now() - paintStart
     // 光标重绘
     if (isSetCursor) {
       curIndex = this.setCursor(curIndex)
@@ -4094,6 +4106,11 @@ export class Draw {
     
     // Track render performance (separate counter from renderCount)
     this.renderTimes.push(renderTime)
+    if (isCompute) {
+      this.layoutTimes.push(layoutTime)
+      this.positionTimes.push(positionTime)
+    }
+    this.paintTimes.push(paintTime)
     this.perfRenderCount++
     const now = performance.now()
     
@@ -4102,11 +4119,22 @@ export class Draw {
       this.avgRenderTime = this.renderTimes.reduce((a, b) => a + b, 0) / this.renderTimes.length
       const maxRenderTime = Math.max(...this.renderTimes)
       const is60FpsCapable = this.avgRenderTime < 16.67
+      const avgLayout = this.layoutTimes.length
+        ? this.layoutTimes.reduce((a, b) => a + b, 0) / this.layoutTimes.length
+        : 0
+      const avgPosition = this.positionTimes.length
+        ? this.positionTimes.reduce((a, b) => a + b, 0) / this.positionTimes.length
+        : 0
+      const avgPaint = this.paintTimes.length
+        ? this.paintTimes.reduce((a, b) => a + b, 0) / this.paintTimes.length
+        : 0
       
       console.log(`📊 Performance Stats:`)
       console.log(`  Renders/sec: ${this.perfRenderCount}`)
       console.log(`  Avg render: ${this.avgRenderTime.toFixed(2)}ms`)
       console.log(`  Max render: ${maxRenderTime.toFixed(2)}ms`)
+      console.log(`  Layout: ${avgLayout.toFixed(2)}ms | Position: ${avgPosition.toFixed(2)}ms | Paint: ${avgPaint.toFixed(2)}ms`)
+      console.log(`  Pages: ${this.pageList.length} total, ${this.freedPageSet.size} virtualized`)
       console.log(`  60 FPS capable: ${is60FpsCapable ? '✅ Yes' : '❌ No'}`)
       
       if (!is60FpsCapable) {
@@ -4115,6 +4143,9 @@ export class Draw {
       
       this.perfRenderCount = 0
       this.renderTimes = []
+      this.layoutTimes = []
+      this.positionTimes = []
+      this.paintTimes = []
       this.lastPerfUpdate = now
     }
   }
