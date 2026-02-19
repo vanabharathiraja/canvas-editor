@@ -57,7 +57,7 @@ What other options were evaluated?
 - [ADR-0002](adr-0002-table-auto-fit-and-multipage.md) - Table Auto-Fit and Multi-Page Improvements (2026-02-17)
 
 ### Performance
-- (none yet)
+- [ADR-0005](adr-0005-performance-architecture.md) - Performance Architecture for Large Documents (2026-02-17)
 
 ### API Design
 - (none yet)

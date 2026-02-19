@@ -4,6 +4,43 @@ Chronological log of all AI-assisted development sessions on this project.
 
 ---
 
+## Session #016 - 2026-02-17
+
+**Machine**: Windows - vraja
+**Goal**: Performance analysis and planning — no implementation
+**AI Agent**: GitHub Copilot (Claude Sonnet 4.6)
+
+### Summary
+Deep analysis of the render pipeline to plan performance improvements for large
+documents (300+ pages, 2 000–2 700 ms render time). No code changes — analysis
+and documentation only.
+
+Key findings from code analysis:
+- `computeRowList()` (Draw.ts ~1593) is the primary bottleneck: O(n) over ALL
+  elements on every render, including a throwaway canvas created each call.
+- Lazy painting via IntersectionObserver (`_lazyRender`) already exists and works.
+  The missing piece is **incremental layout** (only recompute changed pages).
+- 300 pages = 600 live canvas elements; memory is a secondary concern.
+- `computePositionList()` (Position.ts ~338) is a secondary O(n) scan.
+- HistoryManager uses slim-clone snapshots (not deep clone) — efficient.
+- `textParticle.cacheMeasureText` Map is already caching text measurements.
+
+Documented three performance plans and an ADR. Plan A (incremental layout)
+is the recommended path and is expected to achieve the 20 ms target.
+
+### Commits
+- None (analysis-only session)
+
+### Files Created
+- `.ai/decisions/adr-0005-performance-architecture.md`
+- `.ai/plans/PERFORMANCE-IMPROVEMENT.md`
+
+### Files Modified
+- `.ai/decisions/adr-index.md` — added ADR-0005 entry
+- `.ai/sessions/session-log.md` — this entry
+
+---
+
 ## Session #015 - 2026-02-17
 
 **Machine**: Windows - vraja

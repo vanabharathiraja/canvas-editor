@@ -56,10 +56,15 @@
 - Commit: `9c094472`
 
 ## In Progress
-- **T6: Advanced Table Features** — Alternating colors, style picker, row/col select, toolbar
-- **Paste Improvement** — Word/Docs/Excel paste fidelity (P1-P6 planned)
+- **Performance Planning** — Analysis complete, ADR-0005 + PERFORMANCE-IMPROVEMENT.md written
+  - Plan A (incremental layout) is next: persistent metrics canvas, dirty-page cache, canvas virtualization
+  - No implementation yet — ready to start Plan A Phase 0 (quick wins)
 
 ## Upcoming
+- **Performance Plan A Phase 0** (quick wins, 1 session): persistent metrics canvas, rAF coalescing
+- **Performance Plan A Phase 1–4** (6–7 sessions): dirty-page layout cache, canvas virtualization, incremental positions
+- **T6: Advanced Table Features** — Alternating colors, style picker, row/col select, toolbar
+- **Paste Improvement** — Word/Docs/Excel paste fidelity (P1-P6 planned)
 - **T6.1**: Alternating row colors (banding)
 - **T6.2**: Table style picker (presets)
 - **T6.3**: Row/column selection + apply styles
@@ -72,4 +77,4 @@
 - **P6**: Paste as plain text (Ctrl+Shift+V)
 
 ---
-_Last updated: 2026-02-18_
+_Last updated: 2026-02-17_
