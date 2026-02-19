@@ -4038,6 +4038,27 @@ export class Draw {
     const isPagingMode = this.getIsPagingMode()
     // 缓存当前页数信息
     const oldPageSize = this.pageRowList.length
+    // Determine layout scope: full or incremental.
+    // Full recompute required when:
+    //   - First render or explicit first render flag
+    //   - History undo/redo (element list replaced entirely)
+    //   - Init render
+    //   - No cursor index available (unknown edit position)
+    //   - No cached page bounds (first compute cycle)
+    const needsFullLayout = isFirstRender
+      || isSourceHistory
+      || isInit
+      || curIndex === undefined
+      || !this.pageElementBounds.length
+    if (isCompute && !needsFullLayout && curIndex !== undefined) {
+      // Incremental: find which page the edit is on
+      const dirtyPage = this.getPageByElementIndex(curIndex)
+      if (dirtyPage >= 0) {
+        this.setLayoutDirtyFromPage(dirtyPage)
+      }
+      // dirtyPage === -1 means curIndex is out of bounds (e.g. paste
+      // extending the document) — fall through to full compute
+    }
     // 计算文档信息
     let layoutTime = 0
     let positionTime = 0
@@ -4102,6 +4123,8 @@ export class Draw {
       if (this.isGraffitiMode()) {
         this.graffiti.compute()
       }
+      // Reset dirty-page marker after compute cycle
+      this.layoutDirtyFromPage = -1
     }
     // 清除光标等副作用
     this.imageObserver.clearAll()
