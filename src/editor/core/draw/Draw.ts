@@ -1718,12 +1718,33 @@ export class Draw {
         if (element.pagingId) {
           let tableIndex = i + 1
           let combineCount = 0
+          const rangeState = this.range.getRange()
           while (tableIndex < elementList.length) {
             const nextElement = elementList[tableIndex]
             if (nextElement.pagingId === element.pagingId) {
+              const repeatCount = nextElement.trList!.filter(
+                tr => tr.pagingRepeat
+              ).length
               const nexTrList = nextElement.trList!.filter(
                 tr => !tr.pagingRepeat
               )
+              // Remap range indices when the selected table fragment
+              // is being absorbed into the surviving element.
+              if (
+                rangeState.isCrossRowCol &&
+                rangeState.tableId === nextElement.id
+              ) {
+                const offset = element.trList!.length
+                rangeState.tableId = element.id
+                if (rangeState.startTrIndex != null) {
+                  rangeState.startTrIndex =
+                    offset + (rangeState.startTrIndex - repeatCount)
+                }
+                if (rangeState.endTrIndex != null) {
+                  rangeState.endTrIndex =
+                    offset + (rangeState.endTrIndex - repeatCount)
+                }
+              }
               // T2b recombination: remove continuation cells from
               // the first content row of continuation fragments
               if (nexTrList.length > 0) {
@@ -1934,7 +1955,10 @@ export class Draw {
               1
             )
             if (maxSegs <= 1) continue
-            // Create synthetic TRs
+            // Create synthetic TRs — first segment inherits the
+            // original TR/TD ids so that after virtual-row merge the
+            // reconstituted row retains its identity (needed for
+            // positionContext.tdId matching in selection rendering).
             const syntheticTrs: ITr[] = []
             for (let s = 0; s < maxSegs; s++) {
               const newTdList: ITd[] = tr.tdList.map((td, ci) => {
@@ -1943,6 +1967,7 @@ export class Draw {
                   ? segValue
                   : [{ value: ZERO }]
                 return {
+                  id: s === 0 ? td.id : getUUID(),
                   colspan: td.colspan,
                   rowspan: 1,
                   value: cellValue,
@@ -1955,6 +1980,7 @@ export class Draw {
                 }
               })
               syntheticTrs.push({
+                id: s === 0 ? tr.id : getUUID(),
                 height: defaultTrMinHeight,
                 minHeight: defaultTrMinHeight,
                 tdList: newTdList,
@@ -2181,6 +2207,19 @@ export class Draw {
                     // deleteStart - 1
                     td.rowspan = deleteStart - td.rowIndex!
                     td.originalRowspan = origRowspan
+                    // Recalculate td.height for truncated rowspan so
+                    // content rendering uses correct cell bounds
+                    let truncatedHeight = 0
+                    for (
+                      let ri = td.rowIndex!;
+                      ri < deleteStart;
+                      ri++
+                    ) {
+                      if (trList[ri]) {
+                        truncatedHeight += trList[ri].height
+                      }
+                    }
+                    td.height = truncatedHeight
                     // Create a continuation cell for the next page
                     const continuationTd: ITd = {
                       id: getUUID(),
@@ -2219,6 +2258,14 @@ export class Draw {
               element.height -= cloneTrHeight
               metrics.height -= cloneTrRealHeight
               metrics.boundingBoxDescent -= cloneTrRealHeight
+              // Propagate RTL direction so clone fragments inherit
+              // it (auto-detection may fail on continuation cells)
+              if (
+                !element.direction &&
+                this.tableParticle.isTableRTL(element)
+              ) {
+                element.direction = 'rtl'
+              }
               // 追加拆分表格
               const cloneElement = deepClone(element)
               cloneElement.pagingId = pagingId
@@ -2259,6 +2306,8 @@ export class Draw {
               if (~newPositionContextIndex) {
                 positionContext.index = newPositionContextIndex
                 positionContext.trIndex = newPositionContextTrIndex
+                positionContext.tableId =
+                  elementList[newPositionContextIndex].id
                 this.position.setPositionContext(positionContext)
               }
             }
@@ -2983,6 +3032,69 @@ export class Draw {
     const isPrintMode = this.isPrintMode()
     const isGraffitiMode = this.isGraffitiMode()
     const { isCrossRowCol, tableId } = this.range.getRange()
+    // For paged tables, the original table element's ID may differ from
+    // continuation fragments.  Look up the pagingId so drawRange can
+    // match any fragment sharing the same pagingId.
+    let tablePagingId: string | undefined
+    // Pre-compute cross-row/col selection bounds (col/row index ranges)
+    // from the original table element so that split fragments can draw
+    // their portion of the selection without needing valid trIndex access.
+    let crossRowColBounds: {
+      startCol: number
+      endCol: number
+      startRow: number
+      endRow: number
+    } | null = null
+    if (isCrossRowCol && tableId) {
+      const rangeState = this.range.getRange()
+      for (let e = 0; e < elementList.length; e++) {
+        if (elementList[e].id === tableId) {
+          tablePagingId = elementList[e].pagingId
+          // Reconstruct the full trList from all fragments sharing the
+          // same pagingId.  After recombine → re-split, the first
+          // fragment only has page-1 rows, but rangeState indices are
+          // relative to the full recombined table.
+          let fullTrList = elementList[e].trList || []
+          if (tablePagingId) {
+            fullTrList = [...fullTrList]
+            for (let f = e + 1; f < elementList.length; f++) {
+              if (elementList[f].pagingId !== tablePagingId) break
+              const contRows = elementList[f].trList?.filter(
+                tr => !tr.pagingRepeat
+              ) || []
+              fullTrList.push(...contRows)
+            }
+          }
+          if (
+            fullTrList.length &&
+            rangeState.startTrIndex != null &&
+            rangeState.endTrIndex != null &&
+            rangeState.startTdIndex != null &&
+            rangeState.endTdIndex != null &&
+            rangeState.startTrIndex < fullTrList.length &&
+            rangeState.endTrIndex < fullTrList.length
+          ) {
+            const sTd = fullTrList[rangeState.startTrIndex]
+              .tdList[rangeState.startTdIndex]
+            const eTd = fullTrList[rangeState.endTrIndex]
+              .tdList[rangeState.endTdIndex]
+            if (sTd && eTd) {
+              const c1 = sTd.colIndex!
+              const c2 = eTd.colIndex! + (eTd.colspan - 1)
+              const r1 = sTd.rowIndex!
+              const r2 = eTd.rowIndex! + (eTd.rowspan - 1)
+              crossRowColBounds = {
+                startCol: Math.min(c1, c2),
+                endCol: Math.max(c1, c2),
+                startRow: Math.min(r1, r2),
+                endRow: Math.max(r1, r2)
+              }
+            }
+          }
+          break
+        }
+      }
+    }
     let index = startIndex
     for (let i = 0; i < rowList.length; i++) {
       const curRow = rowList[i]
@@ -3492,14 +3604,18 @@ export class Draw {
         if (
           isCrossRowCol &&
           tableRangeElement &&
-          tableRangeElement.id === tableId
+          (tableRangeElement.id === tableId ||
+            (tablePagingId != null &&
+              tableRangeElement.pagingId === tablePagingId))
         ) {
           const {
             coordinate: {
               leftTop: [x, y]
             }
           } = positionList[curRow.startIndex]
-          this.tableParticle.drawRange(selCtx, tableRangeElement, x, y)
+          this.tableParticle.drawRange(
+            selCtx, tableRangeElement, x, y, crossRowColBounds
+          )
         }
       }
     }

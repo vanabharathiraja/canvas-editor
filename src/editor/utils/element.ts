@@ -1486,9 +1486,15 @@ export function convertTextNodeToElement(
   const value = textNode.textContent
   const style = window.getComputedStyle(anchorNode)
   if (!value || anchorNode.nodeName === 'STYLE') return null
+  // When the text lives inside a <font color="..."> tag (common in
+  // Excel paste), the color attribute is on the FONT element — read
+  // it from there rather than the grandparent.
+  const colorStyle = parentNode.nodeName === 'FONT'
+    ? window.getComputedStyle(parentNode)
+    : style
   const element: IElement = {
     value,
-    color: style.color,
+    color: colorStyle.color,
     bold: Number(style.fontWeight) > 500,
     italic: style.fontStyle.includes('italic'),
     size: Math.floor(parseFloat(style.fontSize))
@@ -1749,27 +1755,88 @@ export function getElementListByHTML(
                 td.backgroundColor = tableCell.style.backgroundColor
               }
               // Per-cell border styling from pasted HTML
+              // Read individual side styles since the shorthand
+              // (cellStyle.borderStyle) is unreliable when sides differ
+              // (e.g. Google Docs: dotted internal + solid outer edges).
               const cellStyle = window.getComputedStyle(tableCell)
-              const parsedBorderColor = cellStyle.borderColor
-              if (
-                parsedBorderColor &&
-                parsedBorderColor !== 'rgb(0, 0, 0)' &&
-                parsedBorderColor !== 'rgba(0, 0, 0, 0)'
-              ) {
-                td.borderColor = parsedBorderColor
+              const sideStyles = [
+                cellStyle.borderTopStyle,
+                cellStyle.borderRightStyle,
+                cellStyle.borderBottomStyle,
+                cellStyle.borderLeftStyle
+              ]
+              const sideColors = [
+                cellStyle.borderTopColor,
+                cellStyle.borderRightColor,
+                cellStyle.borderBottomColor,
+                cellStyle.borderLeftColor
+              ]
+              const sideWidths = [
+                parseFloat(cellStyle.borderTopWidth) || 0,
+                parseFloat(cellStyle.borderRightWidth) || 0,
+                parseFloat(cellStyle.borderBottomWidth) || 0,
+                parseFloat(cellStyle.borderLeftWidth) || 0
+              ]
+              // Pick the most "interesting" (non-default) border values.
+              // Priority: non-solid style > non-black color > non-1px width
+              const defaultColor = 'rgb(0, 0, 0)'
+              const transparentColor = 'rgba(0, 0, 0, 0)'
+              // Border color: pick first non-default, non-transparent color
+              const nonDefaultColor = sideColors.find(
+                c => c && c !== defaultColor && c !== transparentColor
+              )
+              if (nonDefaultColor) {
+                td.borderColor = nonDefaultColor
               }
-              const parsedBorderWidth = parseFloat(cellStyle.borderWidth)
-              if (parsedBorderWidth && parsedBorderWidth !== 1) {
-                td.borderWidth = parsedBorderWidth
+              // Border width: pick the max non-1px width
+              const maxBorderWidth = Math.max(...sideWidths)
+              if (maxBorderWidth && maxBorderWidth !== 1) {
+                td.borderWidth = maxBorderWidth
               }
-              const parsedBorderStyle = cellStyle.borderStyle
-              if (parsedBorderStyle && parsedBorderStyle !== 'solid') {
-                if (parsedBorderStyle === 'dashed') {
+              // Border style: prefer non-solid styles (dashed/dotted/double)
+              // If mixed, pick the most prevalent non-solid style
+              const styleMap: Record<string, number> = {}
+              for (const s of sideStyles) {
+                if (s && s !== 'solid' && s !== 'none') {
+                  styleMap[s] = (styleMap[s] || 0) + 1
+                }
+              }
+              const dominantStyle = Object.entries(styleMap)
+                .sort((a, b) => b[1] - a[1])[0]?.[0]
+              if (dominantStyle) {
+                if (dominantStyle === 'dashed') {
                   td.borderStyle = TdBorderStyle.DASHED
-                } else if (parsedBorderStyle === 'dotted') {
+                } else if (dominantStyle === 'dotted') {
                   td.borderStyle = TdBorderStyle.DOTTED
-                } else if (parsedBorderStyle === 'double') {
+                } else if (dominantStyle === 'double') {
                   td.borderStyle = TdBorderStyle.DOUBLE
+                }
+              }
+              // Per-side border absence: when some sides have
+              // border-style:none or border-width:0, only include
+              // the visible sides in borderTypes so the renderer
+              // knows which edges to suppress.
+              const visibleSides: TdBorder[] = []
+              const sideNames = [
+                TdBorder.TOP, TdBorder.RIGHT,
+                TdBorder.BOTTOM, TdBorder.LEFT
+              ]
+              for (let si = 0; si < 4; si++) {
+                if (
+                  sideStyles[si] !== 'none' &&
+                  sideStyles[si] !== 'hidden' &&
+                  sideWidths[si] > 0
+                ) {
+                  visibleSides.push(sideNames[si])
+                }
+              }
+              // Only set borderTypes if some sides are hidden
+              // (if all 4 visible, no restriction needed)
+              if (visibleSides.length < 4) {
+                td.borderTypes = visibleSides
+                // If no visible borders at all, set width=0 to suppress
+                if (visibleSides.length === 0) {
+                  td.borderWidth = 0
                 }
               }
               // Per-cell padding from pasted HTML
@@ -1791,10 +1858,37 @@ export function getElementListByHTML(
               0
             )
             const defaultWidth = Math.ceil(options.innerWidth / tdCount)
+            // Try multiple sources for column widths:
+            // 1. <col width="..."> attribute
+            // 2. <col style="width:..."> inline style
+            // 3. First row <td> computed widths (most reliable for
+            //    sources like Google Docs that may not use colgroup)
+            const firstRowTds = tableElement.querySelectorAll(
+              'tr:first-child th, tr:first-child td'
+            )
             for (let i = 0; i < tdCount; i++) {
-              const colElement = colElements[i]?.getAttribute('width')
+              const colEl = colElements[i] as HTMLElement | undefined
+              let colWidth = 0
+              // Source 1: <col width="...">
+              const widthAttr = colEl?.getAttribute('width')
+              if (widthAttr) {
+                colWidth = parseFloat(widthAttr)
+              }
+              // Source 2: <col style="width:...">
+              if (!colWidth && colEl?.style.width) {
+                colWidth = parseFloat(colEl.style.width)
+              }
+              // Source 3: first-row <td> computed width
+              if (!colWidth && firstRowTds[i]) {
+                const tdComputedWidth = parseFloat(
+                  window.getComputedStyle(firstRowTds[i]).width
+                )
+                if (tdComputedWidth > 0) {
+                  colWidth = tdComputedWidth
+                }
+              }
               element.colgroup!.push({
-                width: colElement ? parseFloat(colElement) : defaultWidth
+                width: colWidth || defaultWidth
               })
             }
             // Auto-fit: normalize colgroup widths to fit within innerWidth

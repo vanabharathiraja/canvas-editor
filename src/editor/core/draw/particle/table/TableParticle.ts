@@ -13,16 +13,6 @@ import { detectDirection } from '../../../../utils/unicode'
 import { RangeManager } from '../../../range/RangeManager'
 import { Draw } from '../../Draw'
 
-interface IDrawTableBorderOption {
-  ctx: CanvasRenderingContext2D
-  startX: number
-  startY: number
-  width: number
-  height: number
-  borderExternalWidth?: number
-  isDrawFullBorder?: boolean
-}
-
 export class TableParticle {
   private draw: Draw
   private range: RangeManager
@@ -66,7 +56,32 @@ export class TableParticle {
     const originalElementList = this.draw.getOriginalElementList()
     const element = originalElementList[index!]
     if (!element || !element.trList) return null
-    const curTrList = element.trList
+    // For paged tables, the range's startTrIndex/endTrIndex are relative
+    // to the full recombined table, but the element at positionContext.index
+    // is only one fragment (truncated trList).  Reconstruct the full trList
+    // from all fragments sharing the same pagingId.
+    let curTrList = element.trList
+    if (element.pagingId && isCrossRowCol) {
+      curTrList = []
+      for (let e = 0; e < originalElementList.length; e++) {
+        const el = originalElementList[e]
+        if (
+          el.id === element.id ||
+          (el.pagingId && el.pagingId === element.pagingId)
+        ) {
+          if (curTrList.length === 0) {
+            // First fragment: include all rows
+            curTrList.push(...(el.trList || []))
+          } else {
+            // Continuation: exclude repeat header rows
+            const contRows = (el.trList || []).filter(
+              tr => !tr.pagingRepeat
+            )
+            curTrList.push(...contRows)
+          }
+        }
+      }
+    }
     // 非跨列直接返回光标所在单元格
     if (!isCrossRowCol) {
       if (!curTrList[trIndex!] || !curTrList[trIndex!].tdList) return null
@@ -134,41 +149,6 @@ export class TableParticle {
         ctx.setLineDash([])
         break
     }
-  }
-
-  private _drawOuterBorder(payload: IDrawTableBorderOption) {
-    const {
-      ctx,
-      startX,
-      startY,
-      width,
-      height,
-      isDrawFullBorder,
-      borderExternalWidth
-    } = payload
-    const { scale } = this.options
-    // 外部边框单独设置
-    const lineWidth = ctx.lineWidth
-    if (borderExternalWidth) {
-      ctx.lineWidth = borderExternalWidth * scale
-    }
-    ctx.beginPath()
-    const x = Math.round(startX)
-    const y = Math.round(startY)
-    ctx.translate(0.5, 0.5)
-    if (isDrawFullBorder) {
-      ctx.rect(x, y, width, height)
-    } else {
-      ctx.moveTo(x, y + height)
-      ctx.lineTo(x, y)
-      ctx.lineTo(x + width, y)
-    }
-    ctx.stroke()
-    // 还原边框设置
-    if (borderExternalWidth) {
-      ctx.lineWidth = lineWidth
-    }
-    ctx.translate(-0.5, -0.5)
   }
 
   private _drawSlash(
@@ -253,6 +233,20 @@ export class TableParticle {
       td.borderWidth !== undefined ||
       td.borderStyle !== undefined
 
+    // If the cell specifies which borders to draw (borderTypes),
+    // suppress edges not in the list. Maps edge name to TdBorder value.
+    if (td.borderTypes?.length) {
+      const edgeToBorder: Record<string, TdBorder> = {
+        top: TdBorder.TOP,
+        right: TdBorder.RIGHT,
+        bottom: TdBorder.BOTTOM,
+        left: TdBorder.LEFT
+      }
+      if (!td.borderTypes.includes(edgeToBorder[edge])) {
+        return null
+      }
+    }
+
     // Find the neighbor that shares this edge
     let neighborKey: string | null = null
     if (edge === 'top' && td.rowIndex! > 0) {
@@ -318,8 +312,6 @@ export class TableParticle {
       scale,
       table: { defaultBorderColor }
     } = this.options
-    const tableWidth = element.width! * scale
-    const tableHeight = element.height! * scale
     const tableBorderColor = borderColor || defaultBorderColor
     const tableBorderStyle = borderType === TableBorder.DASH
       ? TdBorderStyle.DASHED
@@ -336,6 +328,9 @@ export class TableParticle {
     const overrideMap = this._buildOverrideMap(trList)
     const colCount = colgroup.length
     const rowCount = trList.length
+    // RTL tables have mirrored column positions — colIndex=0 is at
+    // the visual right edge, colIndex=N-1 at the left.
+    const isRTL = this.isTableRTL(element)
 
     ctx.save()
 
@@ -350,216 +345,155 @@ export class TableParticle {
       ctx.stroke()
     }
 
-    // Helper: clear the entire cell border area in one pass so that
-    // per-edge clearing doesn't erase previously drawn corner pixels.
-    const clearCellBorders = (
-      x: number, y: number,
-      w: number, h: number,
-      lineWidth: number
-    ) => {
-      const half = Math.ceil(lineWidth / 2) + 1
-      ctx.clearRect(
-        x - half, y - half,
-        w + half * 2, h + half * 2
-      )
-    }
-
-    // ── Pass 1: Outer border + standard grid (non-override cells) ──
-    ctx.lineWidth = borderWidth * scale
-    ctx.strokeStyle = tableBorderColor
-    if (borderType === TableBorder.DASH) {
-      ctx.setLineDash([3, 3])
-    }
-
-    // Outer border — but skip edges where outer cells have overrides
-    if (!isEmptyBorderType && !isInternalBorderType) {
-      this._drawOuterBorder({
-        ctx,
-        startX,
-        startY,
-        width: tableWidth,
-        height: tableHeight,
-        borderExternalWidth,
-        isDrawFullBorder: isExternalBorderType
-      })
-    }
-
-    // Standard grid pass: non-override cells draw right + bottom
-    for (let t = 0; t < trList.length; t++) {
-      const tr = trList[t]
-      for (let d = 0; d < tr.tdList.length; d++) {
-        const td = tr.tdList[d]
-
-        // Slashes always drawn
-        if (td.slashTypes?.length) {
-          this._drawSlash(ctx, td, startX, startY)
-        }
-
-        const hasCellOverride = !!(
-          td.borderColor !== undefined ||
-          td.borderWidth !== undefined ||
-          td.borderStyle !== undefined
-        )
-
-        // Skip override cells — they are handled in pass 2
-        if (hasCellOverride) continue
-
-        // Skip cells with no visible borders
-        if (
-          !td.borderTypes?.length &&
-          (isEmptyBorderType || isExternalBorderType)
-        ) {
-          continue
-        }
-
-        const width = td.width! * scale
-        const height = td.height! * scale
-        const x = Math.round(td.x! * scale + startX)
-        const y = Math.round(td.y! * scale + startY)
-
-        ctx.translate(0.5, 0.5)
-
-        // Individual cell border toggles (TdBorder.TOP/RIGHT/etc.)
-        if (td.borderTypes?.length) {
-          if (td.borderTypes.includes(TdBorder.TOP))
-            drawLine(x, y, x + width, y)
-          if (td.borderTypes.includes(TdBorder.RIGHT))
-            drawLine(x + width, y, x + width, y + height)
-          if (td.borderTypes.includes(TdBorder.BOTTOM))
-            drawLine(x + width, y + height, x, y + height)
-          if (td.borderTypes.includes(TdBorder.LEFT))
-            drawLine(x, y, x, y + height)
-        }
-
-        // Standard table-grid: draw right + bottom only
-        if (!isEmptyBorderType && !isExternalBorderType) {
-          // right
-          if (
-            !isInternalBorderType ||
-            td.colIndex! + td.colspan < colCount
-          ) {
-            const lw = ctx.lineWidth
-            if (
-              borderExternalWidth &&
-              borderExternalWidth !== borderWidth &&
-              td.colIndex! + td.colspan === colCount
-            ) {
-              ctx.lineWidth = borderExternalWidth * scale
-            }
-            drawLine(x + width, y, x + width, y + height)
-            ctx.lineWidth = lw
-          }
-          // bottom
-          if (
-            !isInternalBorderType ||
-            td.rowIndex! + td.rowspan < rowCount
-          ) {
-            const lw = ctx.lineWidth
-            if (
-              borderExternalWidth &&
-              borderExternalWidth !== borderWidth &&
-              td.rowIndex! + td.rowspan === rowCount
-            ) {
-              ctx.lineWidth = borderExternalWidth * scale
-            }
-            drawLine(x + width, y + height, x, y + height)
-            ctx.lineWidth = lw
-          }
-        }
-
-        ctx.translate(-0.5, -0.5)
-      }
-    }
-
-    // ── Pass 2: Per-cell override cells ──
-    // Uses three-phase rendering with edge deduplication:
-    //   1. Precompute grid positions so shared edges have identical coords
-    //   2. Collect ALL edges into a dedup map (each physical edge drawn once)
-    //   3. Phase A: clear, Phase B: backgrounds, Phase C: draw unique edges
-
-    // --- Precompute consistent grid positions ---
-    // Using cumulative column widths and row heights ensures shared edges
-    // have identical coordinates regardless of which cell references them.
-    // Without this, Math.round(tdA.x*s + off) + tdA.w*s ≠
-    // Math.round(tdB.x*s + off) for adjacent cells → double lines.
-    const rawColX: number[] = [0]
-    for (let c = 0; c < colgroup.length; c++) {
-      rawColX.push(rawColX[c] + colgroup[c].width * scale)
-    }
+    // --- Precompute consistent row-Y grid positions ---
+    // Row heights are the same regardless of LTR/RTL, so a
+    // cumulative grid for Y is safe and ensures shared horizontal
+    // edges get identical coordinates.
     const rawRowY: number[] = [0]
     for (let r = 0; r < trList.length; r++) {
       rawRowY.push(rawRowY[r] + trList[r].height * scale)
     }
-    const gridX = rawColX.map(v => Math.round(v + startX))
     const gridY = rawRowY.map(v => Math.round(v + startY))
 
-    type EdgeStyle = { color: string; width: number; style: TdBorderStyle }
+    type EdgeStyle = {
+      color: string; width: number; style: TdBorderStyle
+    }
 
-    // Override cell info for clearing/background phases
-    const overrideCells: Array<{
-      td: ITd
-      x: number; y: number; width: number; height: number
-    }> = []
+    // --- Draw slashes (independent of edge logic) ---
+    for (let t = 0; t < trList.length; t++) {
+      const tr = trList[t]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const td = tr.tdList[d]
+        if (td.slashTypes?.length) {
+          this._drawSlash(ctx, td, startX, startY)
+        }
+      }
+    }
 
-    // Edge deduplication map: "x1,y1,x2,y2" → style + priority
-    // When two cells claim the same edge, highest priority wins.
-    // Priority: +2 for borderStyle, +1 for borderColor, +1 for borderWidth
+    // --- Unified edge map: collect ALL edges for every cell ---
+    // Each physical edge is stored exactly once via deduplication.
+    // Override cells' edges take priority over standard grid edges.
+    // This eliminates the need for clearRect + redraw phases that
+    // caused junction gaps between different border styles.
     const edgeMap = new Map<string, {
       x1: number; y1: number; x2: number; y2: number
       resolved: EdgeStyle; priority: number
     }>()
 
+    const outerBorderWidth = borderExternalWidth || borderWidth
+    const defaultGridStyle: TdBorderStyle =
+      tableBorderStyle ?? TdBorderStyle.SOLID
+
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
+        const ri = td.rowIndex!
+        const ci = td.colIndex!
+        // Use td.x/td.width directly — these are already mirrored
+        // for RTL tables by computeRowColInfo(), so borders align
+        // with cell content and backgrounds in both LTR and RTL.
+        const cx = Math.round(td.x! * scale + startX)
+        const cy = gridY[ri]
+        const cx2 = Math.round((td.x! + td.width!) * scale + startX)
+        const cy2 = gridY[ri + td.rowspan]
+
         const hasCellOverride = !!(
           td.borderColor !== undefined ||
           td.borderWidth !== undefined ||
           td.borderStyle !== undefined
         )
-        if (!hasCellOverride) continue
 
-        const ri = td.rowIndex!
-        const ci = td.colIndex!
-        const cx = gridX[ci]
-        const cy = gridY[ri]
-        const cx2 = gridX[ci + td.colspan]
-        const cy2 = gridY[ri + td.rowspan]
-
-        overrideCells.push({
-          td, x: cx, y: cy, width: cx2 - cx, height: cy2 - cy
-        })
-
-        // Compute priority: more specific overrides win on shared edges
-        let priority = 0
-        if (td.borderColor !== undefined) priority++
-        if (td.borderWidth !== undefined) priority++
-        if (td.borderStyle !== undefined) priority += 2
-
-        // Resolve and collect edges into the dedup map
-        const edgeDefs = [
-          { edge: 'top' as const, x1: cx, y1: cy, x2: cx2, y2: cy },
-          { edge: 'right' as const, x1: cx2, y1: cy, x2: cx2, y2: cy2 },
-          { edge: 'bottom' as const, x1: cx, y1: cy2, x2: cx2, y2: cy2 },
-          { edge: 'left' as const, x1: cx, y1: cy, x2: cx, y2: cy2 }
+        // Determine which edges this cell should contribute
+        const edges: Array<{
+          edge: 'top' | 'right' | 'bottom' | 'left'
+          x1: number; y1: number; x2: number; y2: number
+        }> = [
+          { edge: 'top', x1: cx, y1: cy, x2: cx2, y2: cy },
+          { edge: 'right', x1: cx2, y1: cy, x2: cx2, y2: cy2 },
+          { edge: 'bottom', x1: cx, y1: cy2, x2: cx2, y2: cy2 },
+          { edge: 'left', x1: cx, y1: cy, x2: cx, y2: cy2 }
         ]
 
-        for (const { edge, x1, y1, x2, y2 } of edgeDefs) {
+        for (const { edge, x1, y1, x2, y2 } of edges) {
+          // In RTL, colIndex=0 is at the visual right and
+          // colIndex=N-1 at the visual left, so left/right
+          // perimeter tests swap compared to LTR.
+          const isPerimeter =
+            (edge === 'top' && ri === 0) ||
+            (edge === 'bottom' && ri + td.rowspan >= rowCount) ||
+            (edge === 'left' && (
+              isRTL
+                ? ci + td.colspan >= colCount
+                : ci === 0
+            )) ||
+            (edge === 'right' && (
+              isRTL
+                ? ci === 0
+                : ci + td.colspan >= colCount
+            ))
+
+          // --- Apply table-level border type rules ---
+          if (isEmptyBorderType) {
+            // EMPTY: no edges unless cell has individual borderTypes
+            if (!hasCellOverride && !td.borderTypes?.length) continue
+          }
+          if (isExternalBorderType) {
+            // EXTERNAL: only perimeter edges, unless cell override
+            if (!isPerimeter && !hasCellOverride && !td.borderTypes?.length) {
+              continue
+            }
+          }
           if (isInternalBorderType) {
-            if (edge === 'right' && ci + td.colspan >= colCount) continue
-            if (edge === 'bottom' && ri + td.rowspan >= rowCount) continue
+            // INTERNAL: no perimeter edges, unless cell override
+            if (isPerimeter && !hasCellOverride && !td.borderTypes?.length) {
+              continue
+            }
           }
 
-          const edgeStyle = this._resolveEdgeStyle(
-            td, edge, overrideMap,
-            tableBorderColor, borderWidth,
-            tableBorderStyle,
-            colCount, rowCount
-          )
+          // --- borderTypes filter: explicit list of which edges to draw ---
+          if (td.borderTypes?.length) {
+            const edgeToBorder: Record<string, TdBorder> = {
+              top: TdBorder.TOP,
+              right: TdBorder.RIGHT,
+              bottom: TdBorder.BOTTOM,
+              left: TdBorder.LEFT
+            }
+            if (!td.borderTypes.includes(edgeToBorder[edge])) continue
+          }
+
+          // --- Resolve edge style ---
+          let edgeStyle: EdgeStyle | null = null
+          let priority = 0
+
+          if (hasCellOverride) {
+            // Use _resolveEdgeStyle for override cells (handles
+            // neighbor precedence and shared-edge logic)
+            edgeStyle = this._resolveEdgeStyle(
+              td, edge, overrideMap,
+              tableBorderColor, borderWidth,
+              tableBorderStyle,
+              colCount, rowCount
+            )
+            // Compute priority: more specific overrides win
+            if (td.borderColor !== undefined) priority++
+            if (td.borderWidth !== undefined) priority++
+            if (td.borderStyle !== undefined) priority += 2
+          } else {
+            // Standard grid: use table-level style with outer border
+            // width for perimeter edges
+            const w = isPerimeter ? outerBorderWidth : borderWidth
+            edgeStyle = {
+              color: tableBorderColor,
+              width: w,
+              style: defaultGridStyle
+            }
+            priority = -1 // lowest: override cells always win
+          }
+
           if (!edgeStyle) continue
 
-          // Normalize key so both cells produce the same key for shared edge
+          // Normalize key so shared edges produce the same key
           const nx1 = Math.min(x1, x2)
           const ny1 = Math.min(y1, y2)
           const nx2 = Math.max(x1, x2)
@@ -577,31 +511,9 @@ export class TableParticle {
       }
     }
 
-    // Phase A: Clear ALL override cells' border areas at once
-    for (const { td, x, y, width, height } of overrideCells) {
-      ctx.translate(0.5, 0.5)
-      const maxClearWidth = Math.max(
-        (td.borderWidth ?? borderWidth) * scale,
-        borderWidth * scale,
-        3
-      )
-      clearCellBorders(x, y, width, height, maxClearWidth)
-      ctx.translate(-0.5, -0.5)
-    }
-
-    // Phase B: Redraw ALL backgrounds in cleared areas
-    for (const { td, x, y, width, height } of overrideCells) {
-      if (!td.backgroundColor) continue
-      ctx.translate(0.5, 0.5)
-      ctx.save()
-      ctx.fillStyle = td.backgroundColor
-      ctx.fillRect(x, y, width, height)
-      ctx.restore()
-      ctx.translate(-0.5, -0.5)
-    }
-
-    // Phase C: Draw ALL unique edges from the dedup map
-    // Each physical edge is drawn exactly once, eliminating double borders.
+    // --- Draw all edges in a single pass ---
+    // Each physical edge is drawn exactly once, eliminating double
+    // borders and junction gaps from clear-then-redraw approaches.
     ctx.translate(0.5, 0.5)
     ctx.save()
     ctx.lineCap = 'square'
@@ -613,89 +525,6 @@ export class TableParticle {
     }
     ctx.restore()
     ctx.translate(-0.5, -0.5)
-
-    // Phase D: Restore outer border segments cleared in Phase A
-    // Only needed for perimeter cells when the outer border should
-    // remain at the table-level style (not replaced by the cell override).
-    if (!isEmptyBorderType && !isInternalBorderType) {
-      for (const { td, x, y, width, height } of overrideCells) {
-        const ri = td.rowIndex!
-        const ci = td.colIndex!
-        const isTopEdge = ri === 0
-        const isLeftEdge = ci === 0
-        const isRightEdge = ci + td.colspan >= colCount
-        const isBottomEdge = ri + td.rowspan >= rowCount
-
-        if (!(isTopEdge || isLeftEdge || isRightEdge || isBottomEdge)) {
-          continue
-        }
-
-        ctx.translate(0.5, 0.5)
-        const outerWidth = (borderExternalWidth || borderWidth) * scale
-        ctx.save()
-        ctx.lineWidth = outerWidth
-        ctx.strokeStyle = tableBorderColor
-        ctx.lineCap = 'square'
-        if (borderType === TableBorder.DASH) {
-          ctx.setLineDash([3, 3])
-        }
-
-        if (isTopEdge) {
-          const topStyle = this._resolveEdgeStyle(
-            td, 'top', overrideMap, tableBorderColor,
-            borderWidth, tableBorderStyle, colCount, rowCount
-          )
-          if (!topStyle || (
-            topStyle.color === tableBorderColor &&
-            topStyle.width === (borderExternalWidth || borderWidth) &&
-            topStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-          )) {
-            drawLine(x, y, x + width, y)
-          }
-        }
-        if (isLeftEdge) {
-          const leftStyle = this._resolveEdgeStyle(
-            td, 'left', overrideMap, tableBorderColor,
-            borderWidth, tableBorderStyle, colCount, rowCount
-          )
-          if (!leftStyle || (
-            leftStyle.color === tableBorderColor &&
-            leftStyle.width === (borderExternalWidth || borderWidth) &&
-            leftStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-          )) {
-            drawLine(x, y, x, y + height)
-          }
-        }
-        if (isRightEdge && !isExternalBorderType) {
-          const rightStyle = this._resolveEdgeStyle(
-            td, 'right', overrideMap, tableBorderColor,
-            borderWidth, tableBorderStyle, colCount, rowCount
-          )
-          if (!rightStyle || (
-            rightStyle.color === tableBorderColor &&
-            rightStyle.width === (borderExternalWidth || borderWidth) &&
-            rightStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-          )) {
-            drawLine(x + width, y, x + width, y + height)
-          }
-        }
-        if (isBottomEdge && !isExternalBorderType) {
-          const bottomStyle = this._resolveEdgeStyle(
-            td, 'bottom', overrideMap, tableBorderColor,
-            borderWidth, tableBorderStyle, colCount, rowCount
-          )
-          if (!bottomStyle || (
-            bottomStyle.color === tableBorderColor &&
-            bottomStyle.width === (borderExternalWidth || borderWidth) &&
-            bottomStyle.style === (tableBorderStyle ?? TdBorderStyle.SOLID)
-          )) {
-            drawLine(x + width, y + height, x, y + height)
-          }
-        }
-        ctx.restore()
-        ctx.translate(-0.5, -0.5)
-      }
-    }
 
     ctx.restore()
   }
@@ -902,23 +731,43 @@ export class TableParticle {
   public isTableRTL(element: IElement): boolean {
     if (element.direction === 'rtl') return true
     if (element.direction === 'ltr') return false
-    // Auto-detect: check text direction of first cell content
+    // Auto-detect: check text direction of first non-empty cell content
     if (!this.draw.getOptions().shaping?.enabled) return false
     const trList = element.trList
     if (!trList?.length) return false
-    const firstTd = trList[0].tdList[0]
-    if (!firstTd?.value?.length) return false
-    const text = (firstTd.value as IElement[])
-      .map(el => el.value)
-      .join('')
-    return detectDirection(text) === 'rtl'
+    // Search across all cells — continuation cells and empty cells
+    // (e.g. from T2b page break splits) may have no meaningful text.
+    for (const tr of trList) {
+      for (const td of tr.tdList) {
+        if ((td as any).isPageBreakContinuation) continue
+        if (!td.value?.length) continue
+        const text = (td.value as IElement[])
+          .map(el => el.value)
+          .join('')
+          .replace(/\u200B/g, '')
+          .replace(/\u200C/g, '')
+          .replace(/\u200D/g, '')
+          .replace(/\uFEFF/g, '')
+          .trim()
+        if (text.length > 0) {
+          return detectDirection(text) === 'rtl'
+        }
+      }
+    }
+    return false
   }
 
   public drawRange(
     ctx: CanvasRenderingContext2D,
     element: IElement,
     startX: number,
-    startY: number
+    startY: number,
+    colRowBounds?: {
+      startCol: number
+      endCol: number
+      startRow: number
+      endRow: number
+    } | null
   ) {
     const { scale, rangeAlpha, rangeColor } = this.options
     const { type, trList } = element
@@ -932,18 +781,45 @@ export class TableParticle {
     } = this.range.getRange()
     // 存在跨行/列
     if (!isCrossRowCol) return
-    const startTd = trList[startTrIndex!].tdList[startTdIndex!]
-    const endTd = trList[endTrIndex!].tdList[endTdIndex!]
-    // Normalize col/row ranges with min/max (handles RTL where x-swap
-    // inverts col index order)
-    const col1 = startTd.colIndex!
-    const col2 = endTd.colIndex! + (endTd.colspan - 1)
-    const startColIndex = Math.min(col1, col2)
-    const endColIndex = Math.max(col1, col2)
-    const row1 = startTd.rowIndex!
-    const row2 = endTd.rowIndex! + (endTd.rowspan - 1)
-    const startRowIndex = Math.min(row1, row2)
-    const endRowIndex = Math.max(row1, row2)
+
+    let startColIndex: number
+    let endColIndex: number
+    let startRowIndex: number
+    let endRowIndex: number
+
+    if (colRowBounds) {
+      // Use pre-computed bounds (reliable for paged table fragments)
+      startColIndex = colRowBounds.startCol
+      endColIndex = colRowBounds.endCol
+      startRowIndex = colRowBounds.startRow
+      endRowIndex = colRowBounds.endRow
+    } else {
+      // Fall back to trList index lookup (single-page or unsplit table)
+      if (
+        startTrIndex == null || endTrIndex == null ||
+        startTdIndex == null || endTdIndex == null
+      ) return
+      if (
+        startTrIndex >= trList.length || endTrIndex >= trList.length
+      ) return
+      const startTr = trList[startTrIndex]
+      const endTr = trList[endTrIndex]
+      if (
+        startTdIndex >= startTr.tdList.length ||
+        endTdIndex >= endTr.tdList.length
+      ) return
+      const startTd = startTr.tdList[startTdIndex]
+      const endTd = endTr.tdList[endTdIndex]
+      const col1 = startTd.colIndex!
+      const col2 = endTd.colIndex! + (endTd.colspan - 1)
+      startColIndex = Math.min(col1, col2)
+      endColIndex = Math.max(col1, col2)
+      const row1 = startTd.rowIndex!
+      const row2 = endTd.rowIndex! + (endTd.rowspan - 1)
+      startRowIndex = Math.min(row1, row2)
+      endRowIndex = Math.max(row1, row2)
+    }
+
     ctx.save()
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
