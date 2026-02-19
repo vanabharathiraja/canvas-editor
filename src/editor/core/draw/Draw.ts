@@ -213,6 +213,12 @@ export class Draw {
   private imageObserver: ImageObserver
   private graffiti: Graffiti
 
+  // Persistent metrics canvas — reused across all computeRowList calls
+  // (main body, table cells, headers, footers) to avoid creating a
+  // throwaway canvas + GPU context on every layout pass.
+  private metricsCanvas: HTMLCanvasElement
+  private metricsCtx: CanvasRenderingContext2D
+
   private LETTER_REG: RegExp
   private WORD_LIKE_REG: RegExp
   private rowList: IRow[]
@@ -255,6 +261,15 @@ export class Draw {
     this.listener = listener
     this.eventBus = eventBus
     this.override = override
+
+    // Create persistent metrics canvas for text measurement.
+    // 1×1 canvas with 2D context — never inserted into DOM.
+    // Eliminates GC pressure from creating a throwaway canvas
+    // on every computeRowList call (including per-table-cell calls).
+    this.metricsCanvas = document.createElement('canvas')
+    this.metricsCanvas.width = 1
+    this.metricsCanvas.height = 1
+    this.metricsCtx = this.metricsCanvas.getContext('2d')!
 
     this._formatContainer()
     this.pageContainer = this._createPageContainer()
@@ -1609,8 +1624,8 @@ export class Draw {
       defaultTabWidth
     } = this.options
     const defaultBasicRowMarginHeight = this.getDefaultBasicRowMarginHeight()
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    // Reuse persistent metrics canvas — no throwaway allocation.
+    const ctx = this.metricsCtx
     // Precompute contextual widths for complex-script elements (Arabic, etc.)
     // before iterating — shapes word groups together for accurate metrics.
     this.textParticle.precomputeContextualWidths(ctx, elementList)
