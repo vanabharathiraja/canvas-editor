@@ -230,6 +230,13 @@ export class Draw {
   private lazyRenderIntersectionObserver: IntersectionObserver | null
   private printModeData: Required<Omit<IEditorData, 'graffiti'>> | null
 
+  // Canvas virtualization — tracks pages whose canvas bitmaps have been
+  // freed (set to 1×1) to release GPU memory. Restored on demand when
+  // the page enters the viewport buffer zone.
+  private freedPageSet: Set<number>
+  // Number of pages around the viewport to keep alive (±N from visible)
+  private static readonly CANVAS_VIEWPORT_BUFFER = 3
+
   // Performance Monitoring
   private renderCount = 0
   private perfRenderCount = 0
@@ -354,6 +361,7 @@ export class Draw {
     this.intersectionPageNo = 0
     this.lazyRenderIntersectionObserver = null
     this.printModeData = null
+    this.freedPageSet = new Set()
 
     // Initialize ShapeEngine if shaping is enabled
     if (options.shaping.enabled) {
@@ -669,6 +677,8 @@ export class Draw {
     if (this.eventBus.isSubscribe('visiblePageNoListChange')) {
       this.eventBus.emit('visiblePageNoListChange', this.visiblePageNoList)
     }
+    // Virtualize distant pages to free GPU memory
+    this._virtualizeDistantPages()
   }
 
   public getIntersectionPageNo(): number {
@@ -3681,6 +3691,8 @@ export class Draw {
 
   private _drawPage(payload: IDrawPagePayload) {
     const { elementList, positionList, rowList, pageNo } = payload
+    // Restore canvas bitmap if it was virtualized (freed to 1×1)
+    this._ensurePageCanvasAlive(pageNo)
     const {
       inactiveAlpha,
       pageMode,
@@ -3817,6 +3829,9 @@ export class Draw {
   }
 
   private _immediateRender() {
+    // Restore all freed canvases — immediate render is used for
+    // print/export where every page must be painted synchronously.
+    this._restoreAllFreedPages()
     const positionList = this.position.getOriginalMainPositionList()
     const elementList = this.getOriginalMainElementList()
     for (let i = 0; i < this.pageRowList.length; i++) {
@@ -3826,6 +3841,85 @@ export class Draw {
         rowList: this.pageRowList[i],
         pageNo: i
       })
+    }
+  }
+
+  /**
+   * Free GPU memory for pages far from the viewport.
+   * Sets canvas dimensions to 1×1, which releases the backing bitmap.
+   * The wrapper div retains its full size so scroll position is preserved.
+   * Called whenever visiblePageNoList changes (scroll events).
+   */
+  private _virtualizeDistantPages() {
+    if (!this.visiblePageNoList.length) return
+    // Only virtualize in paging mode — continuity mode has 1 canvas
+    if (!this.getIsPagingMode()) return
+    const buffer = Draw.CANVAS_VIEWPORT_BUFFER
+    const minVisible = this.visiblePageNoList[0]
+    const maxVisible =
+      this.visiblePageNoList[this.visiblePageNoList.length - 1]
+    const keepFrom = minVisible - buffer
+    const keepTo = maxVisible + buffer
+    for (let p = 0; p < this.pageList.length; p++) {
+      if (p >= keepFrom && p <= keepTo) {
+        // Within buffer — leave alive (restore happens in _drawPage)
+        continue
+      }
+      this._freePageCanvasBitmap(p)
+    }
+  }
+
+  /**
+   * Release GPU memory for a single page's canvases.
+   * Sets both content and selection canvas to 1×1.
+   * The 2D context remains valid — just needs re-init after restore.
+   */
+  private _freePageCanvasBitmap(pageNo: number) {
+    if (this.freedPageSet.has(pageNo)) return
+    const canvas = this.pageList[pageNo]
+    const selCanvas = this.selectionPageList[pageNo]
+    if (!canvas || !selCanvas) return
+    // Setting width/height to 1 releases the backing store
+    canvas.width = 1
+    canvas.height = 1
+    selCanvas.width = 1
+    selCanvas.height = 1
+    this.freedPageSet.add(pageNo)
+  }
+
+  /**
+   * Restore a freed page's canvases to full size.
+   * Re-initializes the 2D context (DPR scaling).
+   * Called by _drawPage before any painting occurs.
+   */
+  private _ensurePageCanvasAlive(pageNo: number) {
+    if (!this.freedPageSet.has(pageNo)) return
+    const width = this.getWidth()
+    const height = this.getHeight()
+    const dpr = this.getPagePixelRatio()
+    const canvas = this.pageList[pageNo]
+    const selCanvas = this.selectionPageList[pageNo]
+    if (canvas) {
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      this._initPageContext(this.ctxList[pageNo])
+    }
+    if (selCanvas) {
+      selCanvas.width = width * dpr
+      selCanvas.height = height * dpr
+      this._initPageContext(this.selectionCtxList[pageNo])
+    }
+    this.freedPageSet.delete(pageNo)
+  }
+
+  /**
+   * Restore ALL freed pages — used by _immediateRender (print/export)
+   * where every page must be fully painted synchronously.
+   */
+  private _restoreAllFreedPages() {
+    if (!this.freedPageSet.size) return
+    for (const pageNo of this.freedPageSet) {
+      this._ensurePageCanvasAlive(pageNo)
     }
   }
 
@@ -3928,6 +4022,10 @@ export class Draw {
       this.pageWrapperList
         .splice(curPageCount, deleteCount)
         .forEach(wrapper => wrapper.remove())
+      // Clean up virtualization tracking for removed pages
+      for (let p = curPageCount; p < prePageCount; p++) {
+        this.freedPageSet.delete(p)
+      }
     }
     // 绘制元素
     // 连续页因为有高度的变化会导致canvas渲染空白，需立即渲染，否则会出现闪动
