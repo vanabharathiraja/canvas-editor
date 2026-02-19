@@ -336,9 +336,6 @@ export class Position {
   }
 
   public computePositionList() {
-    // 置空原位置信息
-    this.positionList = []
-    // 按每页行计算
     const innerWidth = this.draw.getInnerWidth()
     const pageRowList = this.draw.getPageRowList()
     const margins = this.draw.getMargins()
@@ -347,8 +344,33 @@ export class Position {
     const header = this.draw.getHeader()
     const extraHeight = header.getExtraHeight()
     const startY = margins[0] + extraHeight
+    // Determine incremental start page
+    const dirtyFromPage = this.draw.getLayoutDirtyFromPage()
+    const pageElementBounds = this.draw.getPageElementBounds()
+    const canIncremental = dirtyFromPage > 0
+      && pageElementBounds.length > 0
+      && dirtyFromPage < pageRowList.length
+      && this.positionList.length > 0
+    let startPage = 0
+    if (canIncremental) {
+      // Truncate positions from the dirty page onward
+      const dirtyStartIdx = pageElementBounds[dirtyFromPage][0]
+      this.positionList = this.positionList.slice(0, dirtyStartIdx)
+      startPage = dirtyFromPage
+    } else {
+      // Full recompute
+      this.positionList = []
+    }
+    // 按每页行计算
     let startRowIndex = 0
-    for (let i = 0; i < pageRowList.length; i++) {
+    // Accumulate startRowIndex for skipped pages
+    for (let i = 0; i < startPage; i++) {
+      const rowList = pageRowList[i]
+      if (rowList?.length) {
+        startRowIndex += rowList.length
+      }
+    }
+    for (let i = startPage; i < pageRowList.length; i++) {
       const rowList = pageRowList[i]
       if (!rowList?.length) continue
       const startIndex = rowList[0].startIndex
