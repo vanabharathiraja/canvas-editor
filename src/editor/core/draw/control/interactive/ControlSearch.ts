@@ -44,6 +44,9 @@ export class ControlSearch {
       }
     } = this.options
     const element = elementList[index]
+    // Guard against stale row data referencing out-of-bounds indices
+    // (can occur briefly during bounded/incremental layout transitions)
+    if (!element) return null
     const isPrintMode = this.draw.isPrintMode()
     const activeControlElement = this.control.getActiveControl()?.getElement()
     // 颜色配置：元素 > 控件激活 > 控件禁用 > 控件存在值 > 控件不存在值

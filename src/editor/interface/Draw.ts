@@ -102,4 +102,8 @@ export interface IComputeRowListPayload {
   startFromIndex?: number
   initialLayoutState?: IPageBoundaryState
   initialRows?: IRow[]
+  // When set, stop computing new pages after this page number.
+  // Used by bounded visible layout (Plan B.3) to limit layout
+  // to visible pages ± buffer during rapid typing.
+  stopAtPage?: number
 }

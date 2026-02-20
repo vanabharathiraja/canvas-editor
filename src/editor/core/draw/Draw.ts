@@ -290,6 +290,19 @@ export class Draw {
   private lastKeystrokeTime = 0
   private keystrokeCount = 0
 
+  // Bounded visible layout (Plan B.3) — during typing, only compute
+  // layout for visible pages ± BOUNDED_PAGE_WINDOW. Schedule a full
+  // layout after FULL_LAYOUT_IDLE_MS of inactivity so accuracy is restored.
+  private static readonly BOUNDED_PAGE_WINDOW = 8
+  private static readonly FULL_LAYOUT_IDLE_MS = 500
+  private _isBoundedLayoutActive = false
+  // Last page whose layout was computed in bounded mode (-1 = full layout)
+  private _boundedLayoutMaxPage = -1
+  // Page count from the last full layout — preserved during bounded mode
+  // to prevent premature canvas removal/creation.
+  private _lastFullPageCount = 0
+  private _fullLayoutTimer: ReturnType<typeof setTimeout> | null = null
+
   constructor(
     rootContainer: HTMLElement,
     options: DeepRequired<IEditorOption>,
@@ -411,6 +424,10 @@ export class Draw {
     this.pageElementBounds = []
     this.layoutDirtyFromPage = -1
     this.pageBoundaryStates = []
+    this._isBoundedLayoutActive = false
+    this._boundedLayoutMaxPage = -1
+    this._lastFullPageCount = 0
+    this._fullLayoutTimer = null
 
     // Initialize ShapeEngine if shaping is enabled
     if (options.shaping.enabled) {
@@ -1952,7 +1969,8 @@ export class Draw {
       surroundElementList = [],
       startFromIndex = 0,
       initialLayoutState,
-      initialRows
+      initialRows,
+      stopAtPage
     } = payload
     const isIncremental = startFromIndex > 0 && !!initialRows && !!initialLayoutState
     const {
@@ -3190,6 +3208,12 @@ export class Draw {
               listHierarchy: [...listHierarchy],
               controlRealWidth
             }
+            // Bounded visible layout: stop after computing stopAtPage pages.
+            // The current row has been pushed to the new page; any elements
+            // that start on page > stopAtPage are not needed for visible paint.
+            if (stopAtPage !== undefined && pageNo > stopAtPage) {
+              break
+            }
           }
         }
         // 计算下一行第一个元素是否存在环绕交叉
@@ -4258,6 +4282,20 @@ export class Draw {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const index = Number((<HTMLDivElement>entry.target).dataset.index)
+          // Bounded layout: skip pages beyond the computed range.
+          // Their pageRowList entries are empty padding — drawing them
+          // would produce blank frames. The full layout timer will repaint
+          // them accurately after the user pauses typing.
+          if (
+            this._isBoundedLayoutActive &&
+            (index > this._boundedLayoutMaxPage ||
+              !this.pageRowList[index] ||
+              this.pageRowList[index].length === 0)
+          ) {
+            // Ensure the full layout is scheduled if not already
+            if (!this._fullLayoutTimer) this._scheduleFullLayout()
+            return
+          }
           this._drawPage({
             elementList,
             positionList,
@@ -4394,6 +4432,9 @@ export class Draw {
     if (this.layoutDebounceTimer) {
       clearTimeout(this.layoutDebounceTimer)
     }
+    // Cancel any pending full layout — the new keystroke will trigger its
+    // own debounced render + full layout schedule after it settles.
+    this._cancelFullLayoutTimer()
 
     // Update pending state
     this.pendingRenderPayload = payload
@@ -4552,6 +4593,24 @@ export class Draw {
             elementList: this.elementList
           })
         } else {
+          // Bounded visible layout (Plan B.3):
+          // During rapid typing in large documents, only compute layout for
+          // the visible pages ± BOUNDED_PAGE_WINDOW. Far-away pages are padded
+          // with empty rowList entries and skipped by _lazyRender. A full
+          // layout is scheduled to fire after FULL_LAYOUT_IDLE_MS of silence.
+          const useBounded = isPagingMode
+            && this.elementList.length >= Draw.ASYNC_LAYOUT_THRESHOLD
+            && !isFirstRender && !isSourceHistory && !isInit
+          const boundedStop = useBounded
+            ? dirtyFrom + Draw.BOUNDED_PAGE_WINDOW
+            : undefined
+          if (useBounded) {
+            this._isBoundedLayoutActive = true
+            this._boundedLayoutMaxPage = boundedStop!
+          } else {
+            this._isBoundedLayoutActive = false
+            this._boundedLayoutMaxPage = -1
+          }
           this.incrementalLayoutCount++
           this.rowList = this.computeRowList({
             startX,
@@ -4564,12 +4623,15 @@ export class Draw {
             elementList: this.elementList,
             startFromIndex: dirtyStartIdx,
             initialLayoutState: this.pageBoundaryStates[dirtyFrom],
-            initialRows: cleanRows
+            initialRows: cleanRows,
+            stopAtPage: boundedStop
           })
         }
       } else {
         // Full layout compute
         this.fullLayoutCount++
+        this._isBoundedLayoutActive = false
+        this._boundedLayoutMaxPage = -1
         this.rowList = this.computeRowList({
           startX,
           startY,
@@ -4583,6 +4645,20 @@ export class Draw {
       }
       // 页面信息
       this.pageRowList = this._computePageList()
+      // Bounded mode: preserve stale pages beyond computed range so that
+      // canvases aren't destroyed and IntersectionObserver skips them.
+      if (this._isBoundedLayoutActive) {
+        // Pad with empty arrays — these pages won't be drawn until full layout
+        while (this.pageRowList.length < this._lastFullPageCount) {
+          this.pageRowList.push([])
+        }
+        // Schedule full layout to fire after idle period
+        this._scheduleFullLayout()
+      } else {
+        // Full or full-fallback layout: record page count, cancel any timer
+        this._lastFullPageCount = this.pageRowList.length
+        this._cancelFullLayoutTimer()
+      }
       // Build page element bounds for dirty-page tracking
       this._updatePageElementBounds()
       layoutTime = performance.now() - layoutStart
@@ -4620,7 +4696,10 @@ export class Draw {
     // 移除多余页
     const curPageCount = this.pageRowList.length
     const prePageCount = this.pageList.length
-    if (prePageCount > curPageCount) {
+    // Skip canvas removal during bounded layout — the pageRowList is padded
+    // with empty entries to preserve canvas count; removal happens on next
+    // full layout when accurate page count is known.
+    if (prePageCount > curPageCount && !this._isBoundedLayoutActive) {
       const deleteCount = prePageCount - curPageCount
       this.ctxList.splice(curPageCount, deleteCount)
       this.selectionCtxList.splice(curPageCount, deleteCount)
@@ -4803,6 +4882,44 @@ export class Draw {
       isShow: isShowCursor
     })
     return curIndex
+  }
+
+  /**
+   * Cancel any pending full-layout background timer.
+   * Called when a new keystroke begins debouncing (the new debounce will
+   * re-schedule a full layout after it settles) and when a full layout runs.
+   */
+  private _cancelFullLayoutTimer() {
+    if (this._fullLayoutTimer) {
+      clearTimeout(this._fullLayoutTimer)
+      this._fullLayoutTimer = null
+    }
+  }
+
+  /**
+   * Schedule a complete document layout after FULL_LAYOUT_IDLE_MS of silence.
+   * Only effective when a bounded layout is active. Ensures that pages beyond
+   * the bounded window are laid out accurately after the user stops typing.
+   */
+  private _scheduleFullLayout(delayMs = Draw.FULL_LAYOUT_IDLE_MS) {
+    this._cancelFullLayoutTimer()
+    this._fullLayoutTimer = setTimeout(() => {
+      this._fullLayoutTimer = null
+      if (!this._isBoundedLayoutActive) return
+      // Mark bounded layout as done before calling _renderInternal so that
+      // the full layout path is taken (canIncremental will be false because
+      // layoutDirtyFromPage is -1 after the last bounded render reset it).
+      this._isBoundedLayoutActive = false
+      this._boundedLayoutMaxPage = -1
+      // Do NOT pass curIndex here. Omitting it forces needsFullLayout = true
+      // (via the `|| curIndex === undefined` branch), which takes the full
+      // layout path and avoids re-entering the bounded layout cycle.
+      this._renderInternal({
+        isCompute: true,
+        isSetCursor: false,
+        isSubmitHistory: false
+      })
+    }, delayMs)
   }
 
   public submitHistory(curIndex: number | undefined) {
