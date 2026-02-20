@@ -73,6 +73,18 @@ export interface IGetImageOption {
   mode?: EditorMode
 }
 
+/**
+ * Captured layout state at a page boundary.
+ * Used to resume computeRowList from a mid-point during incremental layout.
+ */
+export interface IPageBoundaryState {
+  pageNo: number
+  listId?: string
+  prevListLevel?: number
+  listHierarchy: number[]
+  controlRealWidth: number
+}
+
 export interface IComputeRowListPayload {
   innerWidth: number
   elementList: IElement[]
@@ -83,4 +95,11 @@ export interface IComputeRowListPayload {
   pageHeight?: number
   mainOuterHeight?: number
   surroundElementList?: IElement[]
+  // --- Incremental layout parameters ---
+  // When provided, skip elements before this index and seed the
+  // rowList with initialRows + an empty starter row. The main loop
+  // begins at startFromIndex using state from initialLayoutState.
+  startFromIndex?: number
+  initialLayoutState?: IPageBoundaryState
+  initialRows?: IRow[]
 }

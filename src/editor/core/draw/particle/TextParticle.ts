@@ -157,6 +157,23 @@ export class TextParticle {
   }
 
   /**
+   * Selectively clear contextual caches for elements from a given index.
+   * Used during incremental layout to preserve cached shaping data for
+   * clean-page elements. Only elements at indices >= startFromIndex have
+   * their cache entries removed so they can be recomputed.
+   */
+  public clearContextualCacheFrom(
+    elementList: IElement[],
+    startFromIndex: number
+  ): void {
+    for (let i = startFromIndex; i < elementList.length; i++) {
+      const el = elementList[i]
+      this.contextualWidths.delete(el)
+      this.contextualRenderInfo.delete(el)
+    }
+  }
+
+  /**
    * Precompute contextual advance widths for complex-script elements.
    *
    * Groups consecutive TEXT elements that need complex shaping (Arabic, etc.)
@@ -171,7 +188,8 @@ export class TextParticle {
    */
   public precomputeContextualWidths(
     ctx: CanvasRenderingContext2D,
-    elementList: IElement[]
+    elementList: IElement[],
+    fromIndex = 0
   ): void {
     // NOTE: Maps are NOT cleared here. They are cleared once per render
     // cycle via clearContextualCache() to avoid table-cell/header/footer
@@ -193,7 +211,7 @@ export class TextParticle {
       groupStart = -1
     }
 
-    for (let i = 0; i <= elementList.length; i++) {
+    for (let i = fromIndex; i <= elementList.length; i++) {
       const el = elementList[i]
       // Group plain TEXT, HYPERLINK, and control PLACEHOLDER/VALUE elements
       // with complex script content. HYPERLINK elements are flattened to

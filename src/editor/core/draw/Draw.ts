@@ -13,6 +13,7 @@ import {
   IGetImageOption,
   IGetOriginValueOption,
   IGetValueOption,
+  IPageBoundaryState,
   IPainterOption
 } from '../../interface/Draw'
 import {
@@ -245,6 +246,12 @@ export class Draw {
   // Reset to -1 after each render cycle.
   private layoutDirtyFromPage: number
 
+  // Captured layout state at every page boundary during the last full
+  // computeRowList run. pageBoundaryStates[p] holds the state right AFTER
+  // transitioning to page p (i.e. at the start of page p's first element).
+  // Used to seed an incremental computeRowList that skips clean pages.
+  private pageBoundaryStates: IPageBoundaryState[]
+
   // Performance Monitoring
   private renderCount = 0
   private perfRenderCount = 0
@@ -255,6 +262,9 @@ export class Draw {
   private layoutTimes: number[] = []
   private positionTimes: number[] = []
   private paintTimes: number[] = []
+  // Track how many layouts used the incremental path
+  private incrementalLayoutCount = 0
+  private fullLayoutCount = 0
 
   constructor(
     rootContainer: HTMLElement,
@@ -376,6 +386,7 @@ export class Draw {
     this.freedPageSet = new Set()
     this.pageElementBounds = []
     this.layoutDirtyFromPage = -1
+    this.pageBoundaryStates = []
 
     // Initialize ShapeEngine if shaping is enabled
     if (options.shaping.enabled) {
@@ -1639,8 +1650,12 @@ export class Draw {
       startY = 0,
       pageHeight = 0,
       mainOuterHeight = 0,
-      surroundElementList = []
+      surroundElementList = [],
+      startFromIndex = 0,
+      initialLayoutState,
+      initialRows
     } = payload
+    const isIncremental = startFromIndex > 0 && !!initialRows && !!initialLayoutState
     const {
       defaultSize,
       scale,
@@ -1652,21 +1667,13 @@ export class Draw {
     const ctx = this.metricsCtx
     // Precompute contextual widths for complex-script elements (Arabic, etc.)
     // before iterating — shapes word groups together for accurate metrics.
-    this.textParticle.precomputeContextualWidths(ctx, elementList)
+    // In incremental mode, skip clean elements (their caches are preserved).
+    this.textParticle.precomputeContextualWidths(
+      ctx, elementList, isIncremental ? startFromIndex : 0
+    )
     // 计算列表偏移宽度
     const listStyleMap = this.listParticle.computeListStyle(ctx, elementList)
     const rowList: IRow[] = []
-    if (elementList.length) {
-      rowList.push({
-        width: 0,
-        height: 0,
-        ascent: 0,
-        elementList: [],
-        startIndex: 0,
-        rowIndex: 0,
-        rowFlex: elementList?.[0]?.rowFlex || elementList?.[1]?.rowFlex
-      })
-    }
     // 起始位置及页码计算
     let x = startX
     let y = startY
@@ -1677,7 +1684,39 @@ export class Draw {
     let listHierarchy: number[] = []
     // 控件最小宽度
     let controlRealWidth = 0
-    for (let i = 0; i < elementList.length; i++) {
+    // Incremental mode: seed with cached clean-page rows and restored state
+    if (isIncremental) {
+      rowList.push(...initialRows)
+      const lastRow = initialRows[initialRows.length - 1]
+      rowList.push({
+        width: 0,
+        height: 0,
+        ascent: 0,
+        elementList: [],
+        startIndex: startFromIndex,
+        rowIndex: lastRow.rowIndex + 1,
+        rowFlex: elementList?.[startFromIndex]?.rowFlex
+          || elementList?.[startFromIndex + 1]?.rowFlex
+      })
+      pageNo = initialLayoutState.pageNo
+      listId = initialLayoutState.listId
+      prevListLevel = initialLayoutState.prevListLevel
+      listHierarchy = [...initialLayoutState.listHierarchy]
+      controlRealWidth = initialLayoutState.controlRealWidth
+    } else {
+      if (elementList.length) {
+        rowList.push({
+          width: 0,
+          height: 0,
+          ascent: 0,
+          elementList: [],
+          startIndex: 0,
+          rowIndex: 0,
+          rowFlex: elementList?.[0]?.rowFlex || elementList?.[1]?.rowFlex
+        })
+      }
+    }
+    for (let i = isIncremental ? startFromIndex : 0; i < elementList.length; i++) {
       const curRow: IRow = rowList[rowList.length - 1]
       const element = elementList[i]
       const rowMargin = this.getElementRowMargin(element)
@@ -2842,6 +2881,17 @@ export class Draw {
           // 删除多余四周环绕型元素
           deleteSurroundElementList(surroundElementList, pageNo)
           pageNo += 1
+          // Capture layout state at this page boundary for incremental reuse.
+          // Only capture for top-level (non-table) computeRowList calls.
+          if (!isFromTable) {
+            this.pageBoundaryStates[pageNo] = {
+              pageNo,
+              listId,
+              prevListLevel,
+              listHierarchy: [...listHierarchy],
+              controlRealWidth
+            }
+          }
         }
         // 计算下一行第一个元素是否存在环绕交叉
         rowElement.left = 0
@@ -4065,11 +4115,26 @@ export class Draw {
     if (isCompute) {
       // 清空浮动元素位置信息
       this.position.setFloatPositionList([])
-      // Clear contextual shaping caches once per render cycle.
-      // Individual computeRowList calls (header, footer, table cells)
-      // accumulate into these maps without clearing — so by the time
-      // drawRow runs, ALL elements have their contextual data intact.
-      this.textParticle.clearContextualCache()
+      // Determine layout scope early for cache clearing strategy
+      const dirtyFrom = this.layoutDirtyFromPage
+      const canIncremental = dirtyFrom > 0
+        && this.pageBoundaryStates[dirtyFrom]
+        && this.pageElementBounds.length > dirtyFrom
+        && isPagingMode
+      // Element index where the dirty region starts (0 if full recompute)
+      const dirtyStartIdx = canIncremental
+        ? this.pageElementBounds[dirtyFrom][0]
+        : 0
+      // Clear contextual shaping caches. In incremental mode, only clear
+      // entries for dirty-page elements to preserve clean-page shaping.
+      if (canIncremental) {
+        this.textParticle.clearContextualCacheFrom(
+          this.elementList,
+          dirtyStartIdx
+        )
+      } else {
+        this.textParticle.clearContextualCache()
+      }
       if (isPagingMode) {
         // 页眉信息
         if (!header.disabled) {
@@ -4089,16 +4154,65 @@ export class Draw {
       const startY = margins[0] + extraHeight
       const surroundElementList = pickSurroundElementList(this.elementList)
       const layoutStart = performance.now()
-      this.rowList = this.computeRowList({
-        startX,
-        startY,
-        pageHeight,
-        mainOuterHeight,
-        isPagingMode,
-        innerWidth,
-        surroundElementList,
-        elementList: this.elementList
-      })
+      // Dispatch incremental or full layout
+      // Reset page boundary states for full recompute. Done here (not inside
+      // computeRowList) so header/footer computeRowList calls don't wipe
+      // the cached states before the main body incremental call uses them.
+      if (!canIncremental) {
+        this.pageBoundaryStates = []
+      }
+      if (canIncremental) {
+        // Incremental: reuse clean-page rows, compute only from dirty page
+        const cleanRows = this.pageRowList
+          .slice(0, dirtyFrom)
+          .flat()
+        // Safety: fall back to full compute if dirty page starts inside
+        // a table continuation (pagingId) — table splitting relies on
+        // processing the full table run from its first fragment.
+        const firstDirtyEl = this.elementList[dirtyStartIdx]
+        if (firstDirtyEl?.pagingId) {
+          // Table continuation — full recompute needed
+          this.fullLayoutCount++
+          this.rowList = this.computeRowList({
+            startX,
+            startY,
+            pageHeight,
+            mainOuterHeight,
+            isPagingMode,
+            innerWidth,
+            surroundElementList,
+            elementList: this.elementList
+          })
+        } else {
+          this.incrementalLayoutCount++
+          this.rowList = this.computeRowList({
+            startX,
+            startY,
+            pageHeight,
+            mainOuterHeight,
+            isPagingMode,
+            innerWidth,
+            surroundElementList,
+            elementList: this.elementList,
+            startFromIndex: dirtyStartIdx,
+            initialLayoutState: this.pageBoundaryStates[dirtyFrom],
+            initialRows: cleanRows
+          })
+        }
+      } else {
+        // Full layout compute
+        this.fullLayoutCount++
+        this.rowList = this.computeRowList({
+          startX,
+          startY,
+          pageHeight,
+          mainOuterHeight,
+          isPagingMode,
+          innerWidth,
+          surroundElementList,
+          elementList: this.elementList
+        })
+      }
       // 页面信息
       this.pageRowList = this._computePageList()
       // Build page element bounds for dirty-page tracking
@@ -4250,6 +4364,7 @@ export class Draw {
       console.log(`  Avg render: ${this.avgRenderTime.toFixed(2)}ms`)
       console.log(`  Max render: ${maxRenderTime.toFixed(2)}ms`)
       console.log(`  Layout: ${avgLayout.toFixed(2)}ms | Position: ${avgPosition.toFixed(2)}ms | Paint: ${avgPaint.toFixed(2)}ms`)
+      console.log(`  Layout mode: ${this.incrementalLayoutCount} incremental, ${this.fullLayoutCount} full`)
       console.log(`  Pages: ${this.pageList.length} total, ${this.freedPageSet.size} virtualized`)
       console.log(`  60 FPS capable: ${is60FpsCapable ? '✅ Yes' : '❌ No'}`)
       
@@ -4262,6 +4377,8 @@ export class Draw {
       this.layoutTimes = []
       this.positionTimes = []
       this.paintTimes = []
+      this.incrementalLayoutCount = 0
+      this.fullLayoutCount = 0
       this.lastPerfUpdate = now
     }
   }
