@@ -80,12 +80,14 @@ function getCatalog(payload: IGetCatalogPayload): ICatalog | null {
     ) => {
       const titleId = element.titleId
       const level = element.level
+      // positionList may be shorter than elementList during bounded
+      // layout — guard against undefined to avoid a crash.
       const titleElement: ICatalogElement = {
         type: ElementType.TITLE,
         value: '',
         level,
         titleId,
-        pageNo: positionList[t].pageNo
+        pageNo: positionList[t]?.pageNo ?? 0
       }
       const valueList: IElement[] = []
       while (position < elementList.length) {

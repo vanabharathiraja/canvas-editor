@@ -64,6 +64,16 @@ export class WorkerManager {
 
       const elementList = this.draw.getOriginalMainElementList()
       const positionList = this.draw.getPosition().getOriginalMainPositionList()
+      // During bounded visible layout the positionList only covers the
+      // computed pages, not the full document. Sending mismatched arrays
+      // to the worker causes "Cannot read properties of undefined
+      // (reading 'pageNo')" crashes. Defer the catalog update — the full
+      // idle layout fires after FULL_LAYOUT_IDLE_MS and will trigger
+      // another contentChange which re-requests the catalog.
+      if (positionList.length < elementList.length) {
+        resolve(null)
+        return
+      }
       this.catalogWorker.postMessage({
         elementList,
         positionList
