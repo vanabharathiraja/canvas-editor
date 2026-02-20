@@ -58,9 +58,20 @@
 ## In Progress
 - **Performance Plan B** — Web Worker async layout computation
   - Plan A complete: incremental layout implemented with 175x speedup on last-page edits
-  - Plan B next: offload remaining full-layout cases to Web Worker for non-blocking UI
+  - Plan B.1 complete: Worker infrastructure + message protocol
+  - Plan B.2 next: Async layout dispatch integration
 
 ## Recently Completed
+
+### Performance Plan B.1: Layout Worker Infrastructure ✅
+- **Message Protocol**: `ILayoutWorkerRequest`, `ILayoutWorkerResponse` interfaces
+- **Layout Worker**: `layout.ts` with row computation in background thread
+  - Ping/pong health check
+  - COMPUTE_LAYOUT message handling
+  - Page break detection + pageBoundaryStates generation
+- **WorkerManager**: `computeLayoutAsync()`, `pingLayoutWorker()` methods
+- **Cypress Tests**: 3 tests for ping, row wrapping, page breaks (all passing)
+- Commit: `f241061b`
 
 ### Performance Plan A: Incremental Layout ✅
 - **A.1** Persistent metrics canvas singleton — eliminates GC pressure
