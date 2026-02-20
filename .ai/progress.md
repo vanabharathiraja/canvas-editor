@@ -56,12 +56,20 @@
 - Commit: `9c094472`
 
 ## In Progress
-- **Performance Plan B** — Web Worker async layout computation
-  - Plan A complete: incremental layout implemented with 175x speedup on last-page edits
-  - Plan B.1 complete: Worker infrastructure + message protocol
-  - Plan B.2 next: Async layout dispatch integration
+- **Performance Plan B.3** — Bounded visible layout (next phase)
+  - Only compute layout for visible pages + buffer during typing
+  - Complete full document layout when idle
+  - Expected: 220ms → 30-40ms for mid-document edits
 
 ## Recently Completed
+
+### Performance Plan B.2: Adaptive Debouncing ✅
+- **Adaptive delay**: 100ms base, up to 300ms for rapid typing
+- **Keystroke batching**: Multiple keystrokes → single render call
+- **Defensive null checks**: Fixed runtime error in `getRangeContext()`
+- **Results**: Fewer render calls during rapid typing, but layout still ~220-280ms
+- **Conclusion**: Debouncing alone insufficient; need bounded layout for true responsiveness
+- Commit: `752991af`
 
 ### Performance Plan B.1: Layout Worker Infrastructure ✅
 - **Message Protocol**: `ILayoutWorkerRequest`, `ILayoutWorkerResponse` interfaces
@@ -89,11 +97,11 @@
 - Commits: `798f1492` (main implementation)
 
 ## Upcoming
-- **Performance Plan B** — Web Worker async layout (4 phases):
-  - B.1: Worker infrastructure + message protocol
-  - B.2: Async layout dispatch + debouncing
-  - B.3: Optimistic UI rendering
-  - B.4: Result application + version handling
+- **Performance Plan B.3** — Bounded Visible Layout (NEXT):
+  - Only compute layout for visible pages (~5 pages) during typing
+  - Complete full document layout when user pauses
+  - Expected: 220ms → 30-40ms for mid-document edits
+  - This is how Google Docs achieves responsive typing in large documents
 - **T6: Advanced Table Features** — Alternating colors, style picker, row/col select, toolbar
 - **Paste Improvement** — Word/Docs/Excel paste fidelity (P1-P6 planned)
 - **T6.1**: Alternating row colors (banding)

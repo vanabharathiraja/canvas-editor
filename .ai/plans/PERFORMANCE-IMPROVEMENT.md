@@ -1,8 +1,8 @@
 # Performance Improvement Plan
 
-**Version**: 1.1  
+**Version**: 1.2  
 **Date**: 2026-02-20  
-**Status**: Plan A Complete, Plan B In Progress  
+**Status**: Plan A Complete, Plan B.2 Complete, Plan B.3 Next  
 **Related ADR**: `adr-0005-performance-architecture.md`
 
 ---
@@ -401,16 +401,62 @@ public render(payload: IRenderPayload) {
 
 ### Plan B — Session Breakdown
 
-| Session | Work |
-|---|---|
-| B-1 | Layout worker scaffolding, WorkerManager integration |
-| B-2 | Serialize/deserialize elementList for postMessage |
-| B-3 | OffscreenCanvas text metrics in worker |
-| B-4 | Async render dispatch + keystroke buffering |
-| B-5 | Test correctness — BiDi, tables, images, controls |
-| B-6 | Test edge cases — undo/redo, paste, setValue |
-| B-7 | Performance benchmarking + tuning |
-| B-8 | Worker error recovery (worker crash fallback to sync) |
+| Session | Work | Status |
+|---|---|---|
+| B-1 | Layout worker scaffolding, WorkerManager integration | ✅ Complete |
+| B-2 | Adaptive debouncing + keystroke batching | ✅ Complete |
+| B-3 | **Bounded visible layout** (NEXT) | 🔲 Not started |
+| B-4 | Test correctness — BiDi, tables, images, controls | 🔲 Not started |
+| B-5 | Performance benchmarking + tuning | 🔲 Not started |
+
+### B.2 — Adaptive Debouncing (COMPLETED)
+
+**Problem**: Even with incremental layout, mid-document edits require 220-280ms to compute
+35+ pages of layout. This blocks the main thread and causes typing lag.
+
+**Solution implemented**:
+- Adaptive debounce delay: 100ms base, increases by 20ms per rapid keystroke (up to 300ms)
+- Keystroke batching: Multiple keystrokes → single render call
+- Defensive null checks in `getRangeContext()` to prevent runtime errors
+
+**Results**:
+- Render calls reduced from ~10/sec to ~2-3/sec during rapid typing
+- Layout still takes 220-280ms (unavoidable for 35-page recompute)
+- **Conclusion**: Debouncing alone is insufficient — need bounded layout
+
+### B.3 — Bounded Visible Layout (NEXT PHASE)
+
+**Problem**: Editing page 13 of 47 requires recomputing pages 13-47 (35 pages).
+Even with incremental layout, this takes 220-280ms which is perceptible.
+
+**Solution**: Only compute layout for visible pages + small buffer during typing.
+Complete full document layout when user pauses.
+
+**Implementation outline**:
+
+```typescript
+// During typing (debounced render):
+const visiblePages = this.visiblePageNoList  // e.g. [12, 13, 14]
+const editPage = this.getPageByElementIndex(curIndex)
+
+// Compute layout only for pages: [editPage - 2, ..., editPage + 3]
+// This is ~5-6 pages instead of 35
+const boundedRowList = this.computeRowList({
+  ...normalParams,
+  stopAtPage: editPage + 3  // NEW parameter
+})
+
+// When idle (after 500ms pause):
+// Trigger full document layout in background
+this._scheduleFullLayout()
+```
+
+**Expected results**:
+- Typing response: 220ms → 30-40ms (compute ~5 pages instead of 35)
+- Page count visible in footer may lag briefly during typing
+- Full accuracy restored when typing pauses
+
+**This is how Google Docs achieves responsive typing in large documents.**
 
 ---
 
@@ -459,16 +505,15 @@ Arabic/CJK glyph support → WebGPU upgrade path.
 
 ## Comparison Table
 
-| Metric | Current | Plan A | Plan A+B | Plan C |
-|---|---|---|---|---|
-| 300-page keystroke (ms) | 2 700 | 100–200 | 20–40 | 5–10 |
-| Memory (canvases) | 600 live | 600 live | 600 live | N/A |
-| Memory + A.3 virtualization | — | 12 live | 12 live | — |
-| Architecture change | — | Incremental | Worker | Full rewrite |
-| Public API change | — | None | None | Major |
-| Effort (sessions) | — | 6–8 | +8–10 | +20–30 |
-| Risk | — | Low | Medium | Very High |
-| Recommended? | N/A | **Yes** | Optional | No (defer) |
+| Metric | Current | Plan A | Plan A+B.2 | Plan A+B.3 | Plan C |
+|---|---|---|---|---|---|
+| Last-page keystroke (ms) | 350 | 2 | 2 | 2 | — |
+| Mid-doc keystroke (ms) | 350 | 220 | 220 (batched) | **30-40** | 5–10 |
+| First-page keystroke (ms) | 350 | 350 | 350 (batched) | **30-40** | 5–10 |
+| Memory (canvases) | 600 live | 12 live | 12 live | 12 live | N/A |
+| Architecture change | — | Incremental | + Debounce | + Bounded | Full rewrite |
+| Effort (sessions) | — | 6–8 | +2 | +3 | +20–30 |
+| Status | — | ✅ Done | ✅ Done | **Next** | Defer |
 
 ---
 
