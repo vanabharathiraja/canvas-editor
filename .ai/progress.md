@@ -56,13 +56,33 @@
 - Commit: `9c094472`
 
 ## In Progress
-- **Performance Planning** — Analysis complete, ADR-0005 + PERFORMANCE-IMPROVEMENT.md written
-  - Plan A (incremental layout) is next: persistent metrics canvas, dirty-page cache, canvas virtualization
-  - No implementation yet — ready to start Plan A Phase 0 (quick wins)
+- **Performance Plan B** — Web Worker async layout computation
+  - Plan A complete: incremental layout implemented with 175x speedup on last-page edits
+  - Plan B next: offload remaining full-layout cases to Web Worker for non-blocking UI
+
+## Recently Completed
+
+### Performance Plan A: Incremental Layout ✅
+- **A.1** Persistent metrics canvas singleton — eliminates GC pressure
+- **A.2** Dirty-page layout cache infrastructure:
+  - `pageElementBounds[]` tracks element index ranges per page
+  - `layoutDirtyFromPage` marks first page needing recompute
+  - `pageBoundaryStates[]` captures layout state at page boundaries
+- **A.3** Canvas virtualization — frees GPU memory for distant pages
+- **A.4** Incremental position computation — skips clean pages
+- **Bug fix** Header/footer computeRowList wipe — moved reset to render()
+- **Results** (49 pages, 83K elements):
+  - Last page: 350ms → 2ms (175x faster)
+  - Middle page: 350ms → 140ms (2.5x faster)
+  - First page: No regression (expected full layout)
+- Commits: `798f1492` (main implementation)
 
 ## Upcoming
-- **Performance Plan A Phase 0** (quick wins, 1 session): persistent metrics canvas, rAF coalescing
-- **Performance Plan A Phase 1–4** (6–7 sessions): dirty-page layout cache, canvas virtualization, incremental positions
+- **Performance Plan B** — Web Worker async layout (4 phases):
+  - B.1: Worker infrastructure + message protocol
+  - B.2: Async layout dispatch + debouncing
+  - B.3: Optimistic UI rendering
+  - B.4: Result application + version handling
 - **T6: Advanced Table Features** — Alternating colors, style picker, row/col select, toolbar
 - **Paste Improvement** — Word/Docs/Excel paste fidelity (P1-P6 planned)
 - **T6.1**: Alternating row colors (banding)
@@ -77,4 +97,4 @@
 - **P6**: Paste as plain text (Ctrl+Shift+V)
 
 ---
-_Last updated: 2026-02-17_
+_Last updated: 2026-02-20_

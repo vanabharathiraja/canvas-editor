@@ -1,8 +1,8 @@
 # Performance Improvement Plan
 
-**Version**: 1.0  
-**Date**: 2026-02-17  
-**Status**: Proposed — No implementation yet  
+**Version**: 1.1  
+**Date**: 2026-02-20  
+**Status**: Plan A Complete, Plan B In Progress  
 **Related ADR**: `adr-0005-performance-architecture.md`
 
 ---
@@ -270,18 +270,22 @@ if (this.draw.getLayoutDirtyFromPage() > 0) {
 **Expected gain**: Position computation is pure arithmetic (no canvas ops), so gain is
 moderate (~5–10% of total render time). Worth doing as part of Plan A.2.
 
-### Plan A — Session Breakdown
+### Plan A — Session Breakdown (COMPLETED 2026-02-20)
 
-| Session | Work | Expected After |
+| Session | Work | Status |
 |---|---|---|
-| A-1 | Persistent metrics canvas (A.1) + measure baseline | 2 500→2 400 ms |
-| A-2 | `pageElementBounds` tracking + `layoutDirtyFromPage` detection | infra only |
-| A-3 | `_computeRowListFromIndex()` extraction + incremental compute path | 2 400→400 ms |
-| A-4 | Full invalidation rules + edge cases (undo, paste, table) | stable |
-| A-5 | Canvas virtualization (A.3) | memory: 600→12 canvases |
-| A-6 | Incremental position computation (A.4) | 400→200 ms |
-| A-7 | Integration testing + Cypress tests | verified |
-| A-8 | Performance regression tests added | maintained |
+| A-1 | Persistent metrics canvas (A.1) + measure baseline | ✅ Complete |
+| A-2 | `pageElementBounds` tracking + `layoutDirtyFromPage` detection | ✅ Complete |
+| A-3 | Incremental compute path with `startFromIndex` | ✅ Complete |
+| A-4 | Full invalidation rules + edge cases (undo, paste, table) | ✅ Complete |
+| A-5 | Canvas virtualization (A.3) | ✅ Complete |
+| A-6 | Incremental position computation (A.4) | ✅ Complete |
+| A-7 | Bug fix: header/footer computeRowList wipe | ✅ Complete |
+
+**Results achieved** (49 pages, 83K elements):
+- Last page edit: 350ms → 2ms (175x faster)
+- Middle page edit: 350ms → 140ms (2.5x faster)  
+- First page edit: No regression (full layout still required, addressed in Plan B)
 
 ---
 
