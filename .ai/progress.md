@@ -55,13 +55,30 @@
 - Fixed: dashed style no longer shows double borders on top/left shared edges
 - Commit: `9c094472`
 
+### Performance Plan B.3: Bounded Visible Layout ✅
+- Only compute layout for visible pages + BOUNDED_PAGE_WINDOW=3 buffer during typing
+- Complete full document layout when idle (FULL_LAYOUT_IDLE_MS=500ms)
+- All regressions on 185-page document fixed (11 bugs)
+- Scale + scroll overlap fixed via `_repaintVisiblePages()`
+- Catalog worker deferred during bounded layout (null guard in main.ts)
+- Commit: `4bebd96f`
+
 ## In Progress
-- **Performance Plan B.3** — Bounded visible layout (next phase)
-  - Only compute layout for visible pages + buffer during typing
-  - Complete full document layout when idle
-  - Expected: 220ms → 30-40ms for mid-document edits
+- **Performance Plan B.4** — Correctness testing on 185-page document
+  - Tables, images, controls, BiDi, lists, page breaks, headers/footers
+  - Selection + copy/paste across page boundary
+  - Undo/redo after bounded layout corrects itself
 
 ## Recently Completed
+
+### Performance Plan B.3: Bounded Visible Layout ✅
+- `BOUNDED_PAGE_WINDOW = 3`: dirty page + 2 forward
+- Bounded path: incremental `canIncremental` branch only (not full-layout path)
+- Idle cleanup: `_scheduleFullLayout` → incremental idle from `_boundedLayoutDirtyFrom`
+- `isIdleFullLayout` flag prevents re-entry
+- `_updateCursorIndex()` during debounce window (replaces full re-render)
+- `_repaintVisiblePages()` synchronous repaint after geometry changes
+- Commit: `4bebd96f`
 
 ### Performance Plan B.2: Adaptive Debouncing ✅
 - **Adaptive delay**: 100ms base, up to 300ms for rapid typing
@@ -97,11 +114,11 @@
 - Commits: `798f1492` (main implementation)
 
 ## Upcoming
-- **Performance Plan B.3** — Bounded Visible Layout (NEXT):
-  - Only compute layout for visible pages (~5 pages) during typing
-  - Complete full document layout when user pauses
-  - Expected: 220ms → 30-40ms for mid-document edits
-  - This is how Google Docs achieves responsive typing in large documents
+- **Performance Plan B.4** — Correctness testing (NEXT):
+  - Tables, images, controls, BiDi, lists under bounded layout
+  - Verify all element types render correctly on non-visible pages after idle layout
+- **Performance Plan B.5** — Benchmarking:
+  - Target: last-page <10ms, mid-doc <70ms, first-page <70ms on 185-page doc
 - **T6: Advanced Table Features** — Alternating colors, style picker, row/col select, toolbar
 - **Paste Improvement** — Word/Docs/Excel paste fidelity (P1-P6 planned)
 - **T6.1**: Alternating row colors (banding)
@@ -116,4 +133,4 @@
 - **P6**: Paste as plain text (Ctrl+Shift+V)
 
 ---
-_Last updated: 2026-02-20_
+_Last updated: 2026-02-20 (Session 017)_

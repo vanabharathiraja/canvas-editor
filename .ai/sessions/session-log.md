@@ -4,6 +4,42 @@ Chronological log of all AI-assisted development sessions on this project.
 
 ---
 
+## Session #017 - 2026-02-20
+
+**Machine**: Windows - vraja
+**Goal**: Fix all B.3 bounded-layout regressions on 185-page doc + scale/scroll overlap
+**AI Agent**: GitHub Copilot (Claude Sonnet 4.6)
+
+### Summary
+Diagnosed and fixed 11 distinct bugs in the B.3 bounded visible layout implementation
+that surfaced when testing on a 185-page document. Also fixed the long-standing
+"text overlap after scale + scroll" regression.
+
+Key fixes:
+- Removed `useBoundedFull` — blank pages 9-184 on large documents
+- Added `isIdleFullLayout` flag — broke the 2/sec infinite render loop
+- Replaced debounce `_renderInternal({isCompute:false})` with `_updateCursorIndex()` —
+  eliminated 185ms per-keystroke IntersectionObserver rebuild overhead
+- `_updateCursorIndex()` helper — fixed rapid-backspace deleting wrong character
+- `spliceElementList` crash: `deleteElement?.controlId` optional chain
+- `_scheduleFullLayout` now passes incremental anchor → idle layout 1500ms → 80ms
+- `_shouldDebounceLayout` guards: `isSubmitHistory`, last-layout-time fast-path
+- `BOUNDED_PAGE_WINDOW` reduced to 3 (from 8)
+- `_repaintVisiblePages()` — synchronously repaints visible pages after scale/paper
+  changes, sidesteps IO timing window that caused screenshot overlap
+
+### Commits
+- `4bebd96f` — fix(perf): bounded layout regressions on 185-page document + scale/scroll overlap
+
+### Files Modified
+- `src/editor/core/draw/Draw.ts` — all 11 fixes (+241 lines)
+- `src/editor/interface/Draw.ts` — `isIdleFullLayout?` on IDrawOption
+- `src/editor/core/worker/WorkerManager.ts` — defer getCatalog during bounded layout
+- `src/main.ts` — null guard in updateCatalog()
+- `.ai/sessions/SESSION-017-SUMMARY.md` — this summary
+
+---
+
 ## Session #016 - 2026-02-17
 
 **Machine**: Windows - vraja

@@ -2,7 +2,7 @@
 
 **Version**: 1.2  
 **Date**: 2026-02-20  
-**Status**: Plan A Complete, Plan B.3 Complete, B.4 Testing Next  
+**Status**: Plan A Complete, Plan B.3 Complete (all regressions fixed), B.4 Testing Next  
 **Related ADR**: `adr-0005-performance-architecture.md`
 
 ---
@@ -405,8 +405,8 @@ public render(payload: IRenderPayload) {
 |---|---|---|
 | B-1 | Layout worker scaffolding, WorkerManager integration | ✅ Complete |
 | B-2 | Adaptive debouncing + keystroke batching | ✅ Complete |
-| B-3 | Bounded visible layout | ✅ Complete (`a3f318b0`) |
-| B-4 | Test correctness — BiDi, tables, images, controls | 🔲 Not started |
+| B-3 | Bounded visible layout | ✅ Complete (`4bebd96f` — all regressions fixed) |
+| B-4 | Test correctness — BiDi, tables, images, controls | 🔲 Next |
 | B-5 | Performance benchmarking + tuning | 🔲 Not started |
 
 ### B.2 — Adaptive Debouncing (COMPLETED)
@@ -424,7 +424,7 @@ public render(payload: IRenderPayload) {
 - Layout still takes 220-280ms (unavoidable for 35-page recompute)
 - **Conclusion**: Debouncing alone is insufficient — need bounded layout
 
-### B.3 — Bounded Visible Layout (NEXT PHASE)
+### B.3 — Bounded Visible Layout (COMPLETED `4bebd96f`)
 
 **Problem**: Editing page 13 of 47 requires recomputing pages 13-47 (35 pages).
 Even with incremental layout, this takes 220-280ms which is perceptible.
@@ -432,31 +432,77 @@ Even with incremental layout, this takes 220-280ms which is perceptible.
 **Solution**: Only compute layout for visible pages + small buffer during typing.
 Complete full document layout when user pauses.
 
-**Implementation outline**:
+**Implementation (as shipped)**:
 
 ```typescript
-// During typing (debounced render):
-const visiblePages = this.visiblePageNoList  // e.g. [12, 13, 14]
-const editPage = this.getPageByElementIndex(curIndex)
+// BOUNDED_PAGE_WINDOW = 3 (dirty page + 2 forward)
+// FULL_LAYOUT_IDLE_MS = 500ms (idle timer delay)
 
-// Compute layout only for pages: [editPage - 2, ..., editPage + 3]
-// This is ~5-6 pages instead of 35
-const boundedRowList = this.computeRowList({
-  ...normalParams,
-  stopAtPage: editPage + 3  // NEW parameter
+// During typing (incremental canIncremental path only):
+const candidateStop = dirtyFrom + Draw.BOUNDED_PAGE_WINDOW
+if (useBounded) {
+  // compute only pages dirtyFrom..candidateStop
+  // pad rest with empty pageRowList entries
+  this._boundedLayoutDirtyFrom = dirtyFrom  // saved for idle
+}
+
+// Idle cleanup:
+const idleCurIndex = this.pageElementBounds[savedDirtyFrom][0]
+this._renderInternal({
+  isIdleFullLayout: true,   // prevents re-entry
+  curIndex: idleCurIndex,   // takes incremental path
+  ...                       // computes dirtyFrom..N only
 })
-
-// When idle (after 500ms pause):
-// Trigger full document layout in background
-this._scheduleFullLayout()
 ```
 
-**Expected results**:
-- Typing response: 220ms → 30-40ms (compute ~5 pages instead of 35)
-- Page count visible in footer may lag briefly during typing
-- Full accuracy restored when typing pauses
+**Key guards added**:
+- `useBounded` requires `candidateStop < totalKnownPages - 1` (no-op near end of doc)
+- `!isIdleFullLayout` prevents idle render from re-activating bounded
+- `_shouldDebounceLayout`: `if (!isSubmitHistory) return false` (scale/paper always immediate)
+- `_shouldDebounceLayout`: `if (lastLayout < 20) return false` (last-page stays instant)
 
-**This is how Google Docs achieves responsive typing in large documents.**
+**Regressions fixed** (185-page document, Session 017):
+- Blank pages 9-184: removed `useBoundedFull` from full-layout path
+- Infinite render loop: `isIdleFullLayout` flag
+- 185ms per-keystroke: `_updateCursorIndex()` replaces full `_renderInternal` during debounce
+- Wrong backspace target: `_updateCursorIndex()` patches `.index` without stale lookup
+- `spliceElementList` crash: `deleteElement?.controlId` optional chain
+- 1500ms idle layout: `_scheduleFullLayout` uses `_boundedLayoutDirtyFrom` for incremental
+- Scale + scroll overlap: `_repaintVisiblePages()` synchronous repaint after geometry changes
+
+**Results** (185-page document):
+- Typing response mid-doc: ~220ms → ~30-50ms
+- Last page: 2ms (unchanged)
+- Idle full layout (mid-doc): ~1500ms → ~40-80ms (incremental)
+- No overlap, no blank pages, no cursor jumps
+
+### B.4 — Correctness Testing (NEXT)
+
+Test all element types under bounded layout on a 185-page document:
+
+- [ ] Tables with pagination (multi-page split, rowspan carryover)
+- [ ] Images (inline, float, surround) across page boundaries
+- [ ] Hyperlinks spanning pages
+- [ ] Controls (checkbox, radio, date, select)
+- [ ] BiDi / RTL text blocks
+- [ ] Ordered/unordered lists with multiple levels
+- [ ] Explicit page breaks
+- [ ] Headers and footers (rendering on all pages after idle)
+- [ ] Selection + copy/paste crossing page boundary under bounded layout
+- [ ] Undo/redo after bounded layout has corrected itself
+
+All behaviours should be identical to the Plan A baseline (pre-B.3).
+
+### B.5 — Performance Benchmarking (After B.4)
+
+| Edit Location | Target | Baseline (pre-B.3) |
+|---|---|---|
+| Last page | ≤ 10ms | 2ms |
+| Mid-document (page 90/185) | ≤ 70ms | 220ms |
+| First page (full layout) | ≤ 70ms | 220ms |
+| Idle full layout after mid-doc | ≤ 100ms | 1500ms |
+
+Measurement: `performance.now()` logs already in `_renderInternal()`.
 
 ---
 

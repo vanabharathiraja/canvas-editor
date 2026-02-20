@@ -1,103 +1,139 @@
-# Shape Engine Integration - Quick Start
+# Canvas Editor AI — Quick Start
 
-**Last Updated**: 2026-02-04
+**Last Updated**: 2026-02-20  
+**Current Branch**: `perf/incremental-layout`  
+**Current HEAD**: `4bebd96f`
 
 ## For AI Agents Resuming Work
 
-When starting a new session on this project, follow these steps:
+### 1. Read Context First
+1. **This file** — current state and next steps
+2. [`.ai/sessions/SESSION-017-SUMMARY.md`](.ai/sessions/SESSION-017-SUMMARY.md) — last session detail
+3. [`.ai/plans/PERFORMANCE-IMPROVEMENT.md`](.ai/plans/PERFORMANCE-IMPROVEMENT.md) — full performance plan
+4. [`.ai/progress.md`](.ai/progress.md) — overall project status
 
-### 1. Read Context (Priority Order)
-1. [`.ai/context/current-focus.md`](.ai/context/current-focus.md) - What we're working on NOW
-2. [`.ai/tasks/shape-engine-integration.md`](.ai/tasks/shape-engine-integration.md) - Detailed task list
-3. [`.ai/sessions/session-log.md`](.ai/sessions/session-log.md) - Latest session notes
-4. [`.ai/decisions/adr-0001-shape-engine-integration.md`](.ai/decisions/adr-0001-shape-engine-integration.md) - Architecture decisions
+### 2. Next Work
+**Plan B.4 — Correctness testing on 185-page document**
 
-### 2. Optional Context
-- [`.ai/context/project-overview.md`](.ai/context/project-overview.md) - Project background
-- [`.ai/context/technical-constraints.md`](.ai/context/technical-constraints.md) - Code style & constraints
-- [`.ai/progress/milestones.md`](.ai/progress/milestones.md) - Progress tracking
+Bounded visible layout (B.3) is complete and committed. Test all element types:
+- Tables (multi-page split, rowspan), images, controls, BiDi/RTL, lists, page breaks
+- Selection/copy/paste across page boundary
+- Undo/redo after idle full layout
 
-### 3. Start Working
-Use prompt templates from [`.ai/prompts/templates.md`](.ai/prompts/templates.md)
+**Then B.5 — Benchmark** (mid-doc target: ≤70ms, last-page: ≤10ms)
 
-### 4. Before Ending Session
-- Update task status in [`.ai/tasks/shape-engine-integration.md`](.ai/tasks/shape-engine-integration.md)
-- Add session entry to [`.ai/sessions/session-log.md`](.ai/sessions/session-log.md)
-- Update [`.ai/context/current-focus.md`](.ai/context/current-focus.md) if needed
-- Commit all `.ai/` changes
+### 3. Suggested Resumption Prompt
+
+> "I'm continuing on the perf/incremental-layout branch (HEAD 4bebd96f).
+> Plan B.3 bounded visible layout is complete with all regressions fixed.
+> Start B.4 correctness testing with a 185-page document paste.
+> Read `.ai/sessions/SESSION-017-SUMMARY.md` for full context."  
 
 ---
 
-## Current Status
+## Current Architecture State (as of Session 017)
 
-**Phase**: Phase 0 - POC (Proof of Concept)  
-**Next Task**: Task 0.1 - Research HarfBuzzJS distributions  
-**Blockers**: None
+### Bounded Visible Layout (B.3) — How it works
+
+```
+User types keystroke
+  ↓
+render() → _shouldDebounceLayout()?
+  YES (isSubmitHistory + >5000 elements + last layout ≥20ms)
+    ↓
+  _debouncedRender() [waits 100-300ms]
+  _updateCursorIndex(curIndex) [patches .index only — no canvas ops]
+                                         ↓
+                          [after debounce: _renderInternal]
+                                         ↓
+                          canIncremental = true AND useBounded = true?
+                            YES: compute pages [dirtyFrom .. dirtyFrom+3]
+                                 pad rest with empty pageRowList[]
+                                 save _boundedLayoutDirtyFrom = dirtyFrom
+                                 schedule _scheduleFullLayout(500ms)
+                            NO: full compute (paste/undo/first-page/etc)
+                                         ↓
+                          _lazyRender() → IntersectionObserver per wrapper
+                            → visible page enters viewport
+                            → version check (discard stale callbacks)
+                            → _drawPage() [bounded skip for empty pages]
+
+[After 500ms idle]
+  _scheduleFullLayout fires
+    → _renderInternal({ isIdleFullLayout:true, curIndex:idleCurIndex })
+    → incremental path from _boundedLayoutDirtyFrom
+    → _lazyRender() repaints all pages gradually
+
+[Scale/paper/margin change]
+  setPageScale → resize all canvases → freedPageSet.clear()
+  → _resetBoundedLayoutState()
+  → render({ isSubmitHistory:false }) [NOT debounced]
+  → _repaintVisiblePages() [synchronous, sidesteps IO race]
+```
+
+### Key Constants
+```typescript
+BOUNDED_PAGE_WINDOW = 3      // dirty page + 2 forward
+FULL_LAYOUT_IDLE_MS = 500    // idle timer delay
+ASYNC_LAYOUT_THRESHOLD = 5000 // min elements to use bounded
+CANVAS_VIEWPORT_BUFFER = 3   // pages kept alive around viewport
+```
+
+### Key Private State
+```typescript
+_isBoundedLayoutActive: boolean     // true while bounded window active
+_boundedLayoutMaxPage: number       // last computed page index
+_boundedLayoutDirtyFrom: number     // saved dirty page for idle layout
+_lazyRenderVersion: number          // bump on each _lazyRender() call
+_lastFullPageCount: number          // cached total page count
+freedPageSet: Set<number>           // pages with 1x1 bitmaps (virtualized)
+```
 
 ---
 
 ## Project Overview (TL;DR)
 
-We're integrating HarfBuzzJS + OpenType.js to enable:
-- Complex script rendering (Arabic, Devanagari, Thai, etc.)
-- Proper bidirectional text support
-- Character-level metrics for accurate cursor/selection
-- Partial word styling
+Canvas editor using HTML5 Canvas/SVG. Performance project to bring keystroke
+latency from 2700ms (300 pages) to ≤20ms.
 
-**Why?**: Current Canvas API (`fillText()`) doesn't handle context-dependent character shaping.
+**Done**: Plan A (incremental layout, canvas virtualization, incremental positions),
+Plan B.1 (worker infra), B.2 (adaptive debounce), B.3 (bounded visible layout).
 
-**Approach**: Phased integration (0-8) with backward compatibility.
-
----
-
-## Key Files to Know
-
-### Core Editor (Existing)
-- `src/editor/core/draw/Draw.ts` - Main rendering
-- `src/editor/core/draw/particle/TextParticle.ts` - Text rendering
-- `src/editor/core/draw/interactive/BiDiManager.ts` - Existing BiDi support
-
-### New (To Be Created)
-- `src/editor/core/shaping/ShapeEngine.ts` - Main shaping engine
-- `src/editor/core/shaping/utils/bidi.ts` - BiDi utilities
-- `src/editor/core/shaping/utils/script.ts` - Script detection
+**Next**: B.4 correctness testing, B.5 benchmarking.
 
 ---
 
 ## Quick Commands
 
 ```bash
-# Development
-npm run dev                 # Start dev server
-npm run type:check         # Type check
-npm run lint               # Lint
-
-# Testing
-npm run cypress:open       # Interactive tests
-npm run cypress:run        # Headless tests
-
-# Building
-npm run lib                # Build library
+npm run dev          # Start dev server (port 3000 or 3001)
+npm run type:check   # TypeScript check
+npm run lint         # ESLint (warnings only, 0 errors)
+npm run lib          # Build library
+git log --oneline -5 # Check recent commits
 ```
 
----
-
-## Code Style Reminders
-
+## Code Style
 ```typescript
-// ✓ No semicolons, single quotes, 2-space indent
-const text = 'Hello'
-const items = [1, 2, 3]
-
-function process(input: string): string {
-  return input.trim()
-}
-
-// Arrow functions without parens
-const doubled = items.map(x => x * 2)
+// No semicolons, single quotes, 2-space indent, 80-char lines
+// No trailing commas, arrow functions without parens where possible
+const x = 'hello'
+const f = (a: string) => a.trim()
 ```
 
 ---
+
+## Key Files
+
+| File | Purpose |
+|---|---|
+| `src/editor/core/draw/Draw.ts` | Main render pipeline (~5159 lines) |
+| `src/editor/interface/Draw.ts` | `IDrawOption` interface (incl. `isIdleFullLayout`) |
+| `src/editor/core/worker/WorkerManager.ts` | Catalog defer during bounded layout |
+| `src/editor/core/observer/ScrollObserver.ts` | Viewport tracking, `getPageVisibleInfo()` |
+| `src/main.ts` | Demo app, `updateCatalog()` with null guard |
+| `.ai/plans/PERFORMANCE-IMPROVEMENT.md` | Full performance plan with all phases |
+| `.ai/sessions/SESSION-017-SUMMARY.md` | Last session detail |
 
 ## Useful Links
 
