@@ -2,7 +2,7 @@
 
 **Version**: 1.2  
 **Date**: 2026-02-20  
-**Status**: Plan A Complete, Plan B.2 Complete, Plan B.3 Next  
+**Status**: Plan A Complete, Plan B.3 Complete, B.4 Testing Next  
 **Related ADR**: `adr-0005-performance-architecture.md`
 
 ---
@@ -405,7 +405,7 @@ public render(payload: IRenderPayload) {
 |---|---|---|
 | B-1 | Layout worker scaffolding, WorkerManager integration | ✅ Complete |
 | B-2 | Adaptive debouncing + keystroke batching | ✅ Complete |
-| B-3 | **Bounded visible layout** (NEXT) | 🔲 Not started |
+| B-3 | Bounded visible layout | ✅ Complete (`a3f318b0`) |
 | B-4 | Test correctness — BiDi, tables, images, controls | 🔲 Not started |
 | B-5 | Performance benchmarking + tuning | 🔲 Not started |
 

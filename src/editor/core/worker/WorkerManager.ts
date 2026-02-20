@@ -27,6 +27,10 @@ export class WorkerManager {
   private valueWorker: Worker
   private layoutWorker: Worker
   private layoutRequestId = 0
+  // Cache the last successfully computed catalog so we can return it
+  // during bounded-layout windows (positionList shorter than elementList)
+  // instead of returning null and clearing the catalog panel.
+  private _lastCatalog: ICatalog | null = null
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -54,25 +58,26 @@ export class WorkerManager {
 
   public getCatalog(): Promise<ICatalog | null> {
     return new Promise((resolve, reject) => {
-      this.catalogWorker.onmessage = evt => {
-        resolve(evt.data)
-      }
-
-      this.catalogWorker.onerror = evt => {
-        reject(evt)
-      }
-
       const elementList = this.draw.getOriginalMainElementList()
       const positionList = this.draw.getPosition().getOriginalMainPositionList()
       // During bounded visible layout the positionList only covers the
       // computed pages, not the full document. Sending mismatched arrays
       // to the worker causes "Cannot read properties of undefined
-      // (reading 'pageNo')" crashes. Defer the catalog update — the full
-      // idle layout fires after FULL_LAYOUT_IDLE_MS and will trigger
-      // another contentChange which re-requests the catalog.
+      // (reading 'pageNo')" crashes.
+      // Return the last successfully computed catalog so the panel keeps
+      // showing accurate (slightly stale) headings during rapid typing.
+      // The full idle-layout fires after FULL_LAYOUT_IDLE_MS and the next
+      // contentChange will re-request with a complete positionList.
       if (positionList.length < elementList.length) {
-        resolve(null)
+        resolve(this._lastCatalog)
         return
+      }
+      this.catalogWorker.onmessage = evt => {
+        this._lastCatalog = evt.data
+        resolve(evt.data)
+      }
+      this.catalogWorker.onerror = evt => {
+        reject(evt)
       }
       this.catalogWorker.postMessage({
         elementList,

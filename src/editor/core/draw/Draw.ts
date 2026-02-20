@@ -234,6 +234,13 @@ export class Draw {
   private visiblePageNoList: number[]
   private intersectionPageNo: number
   private lazyRenderIntersectionObserver: IntersectionObserver | null
+  // Monotonically increasing version number. Stamped into each IntersectionObserver
+  // callback closure when _lazyRender() runs. If a new layout fires before the
+  // callback executes (possible because observer callbacks are async microtasks),
+  // the version check discards the stale draw and prevents:
+  //   a) overlap from double-rendering without canvas clear
+  //   b) positionList index-out-of-bounds crash in drawRow
+  private _lazyRenderVersion = 0
   private printModeData: Required<Omit<IEditorData, 'graffiti'>> | null
 
   // Canvas virtualization — tracks pages whose canvas bitmaps have been
@@ -278,6 +285,9 @@ export class Draw {
   private asyncLayoutPending = false
   // Threshold element count above which async layout is attempted
   private static readonly ASYNC_LAYOUT_THRESHOLD = 5000
+  // Dirty page saved when bounded layout activates, so the idle full
+  // layout can resume from that page (incremental) instead of page 0.
+  private _boundedLayoutDirtyFrom = -1
 
   // Layout debounce for rapid typing — defers expensive layout computation
   // while keeping UI responsive. Adaptive delay: longer when typing fast.
@@ -293,7 +303,10 @@ export class Draw {
   // Bounded visible layout (Plan B.3) — during typing, only compute
   // layout for visible pages ± BOUNDED_PAGE_WINDOW. Schedule a full
   // layout after FULL_LAYOUT_IDLE_MS of inactivity so accuracy is restored.
-  private static readonly BOUNDED_PAGE_WINDOW = 8
+  // 3 pages: dirty page + 2 forward. Small enough to stay under 20ms on a
+  // 185-page document while still covering the most common case of text
+  // reflowing from the edit page onto the next page or two.
+  private static readonly BOUNDED_PAGE_WINDOW = 3
   private static readonly FULL_LAYOUT_IDLE_MS = 500
   private _isBoundedLayoutActive = false
   // Last page whose layout was computed in bounded mode (-1 = full layout)
@@ -426,6 +439,7 @@ export class Draw {
     this.pageBoundaryStates = []
     this._isBoundedLayoutActive = false
     this._boundedLayoutMaxPage = -1
+    this._boundedLayoutDirtyFrom = -1
     this._lastFullPageCount = 0
     this._fullLayoutTimer = null
 
@@ -1050,7 +1064,7 @@ export class Draw {
             deleteElement?.area?.hide ||
             (tdDeletable !== false &&
               deleteElement?.control?.deletable !== false &&
-              (!deleteElement.controlId ||
+              (!deleteElement?.controlId ||
                 this.mode !== EditorMode.FORM ||
                 !modeRule[this.mode].controlDeletableDisabled) &&
               deleteElement?.title?.deletable !== false &&
@@ -1313,12 +1327,28 @@ export class Draw {
     })
     // Resize selection canvases + wrappers
     this._resizeSelectionLayer(width, height, dpr)
+    // setPageScale resizes every canvas directly (including previously freed
+    // ones). The freedPageSet is now stale — all pages are at full size and
+    // their contexts have been reinitialised. Clear it so that
+    // _ensurePageCanvasAlive doesn't attempt a redundant resize and, more
+    // importantly, so _freePageCanvasBitmap's "already freed" early-return
+    // doesn't skip pages that need to be freed after the upcoming render.
+    this.freedPageSet.clear()
+    // Scale change invalidates all cached layout state — row heights, text
+    // metrics, page boundary states are all scale-dependent. Cancel any
+    // pending bounded layout and force a clean full recompute.
+    this._resetBoundedLayoutState()
     const cursorPosition = this.position.getCursorPosition()
     this.render({
       isSubmitHistory: false,
       isSetCursor: !!cursorPosition,
       curIndex: cursorPosition?.index
     })
+    // After a scale change the layout and positionList are fresh.
+    // Synchronously repaint any page that is currently visible so the user
+    // never sees stale (old-scale) content, regardless of when the async
+    // IntersectionObserver delivers its callbacks.
+    this._repaintVisiblePages()
     if (this.listener.pageScaleChange) {
       this.listener.pageScaleChange(payload)
     }
@@ -1353,10 +1383,14 @@ export class Draw {
     })
     // Resize selection canvases + wrappers
     this._resizeSelectionLayer(width, height, dpr)
+    // All canvases have been restored to full size by the loop above.
+    this.freedPageSet.clear()
+    this._resetBoundedLayoutState()
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
     })
+    this._repaintVisiblePages()
   }
 
   public setPaperSize(width: number, height: number) {
@@ -1375,10 +1409,14 @@ export class Draw {
     })
     // Resize selection canvases + wrappers
     this._resizeSelectionLayer(realWidth, realHeight, dpr)
+    // All canvases restored to the new paper dimensions.
+    this.freedPageSet.clear()
+    this._resetBoundedLayoutState()
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
     })
+    this._repaintVisiblePages()
   }
 
   public setPaperDirection(payload: PaperDirection) {
@@ -1396,18 +1434,24 @@ export class Draw {
     })
     // Resize selection canvases + wrappers
     this._resizeSelectionLayer(width, height, dpr)
+    // All canvases restored to the new paper dimensions.
+    this.freedPageSet.clear()
+    this._resetBoundedLayoutState()
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
     })
+    this._repaintVisiblePages()
   }
 
   public setPaperMargin(payload: IMargin) {
     this.options.margins = payload
+    this._resetBoundedLayoutState()
     this.render({
       isSubmitHistory: false,
       isSetCursor: false
     })
+    this._repaintVisiblePages()
   }
 
   public getOriginValue(
@@ -4270,17 +4314,51 @@ export class Draw {
     }
   }
 
+  /**
+   * Synchronously repaint all pages currently visible in the viewport.
+   * Used after operations that change the canvas geometry (scale, paper size,
+   * margins) to guarantee the user immediately sees correct content without
+   * waiting for the async IntersectionObserver to deliver its callbacks.
+   *
+   * This is the only reliable fix for the "overlap after scale + scroll"
+   * regression: stale IO callbacks queued before the scale render may still
+   * fire (browser spec allows delivery even after disconnect()), and the
+   * version check is only effective for truly superseded callbacks. By
+   * force-drawing visible pages synchronously we sidestep the timing window
+   * entirely.
+   */
+  private _repaintVisiblePages() {
+    if (!this.getIsPagingMode()) return
+    const { visiblePageNoList } = this.scrollObserver.getPageVisibleInfo()
+    if (!visiblePageNoList.length) return
+    const positionList = this.position.getOriginalMainPositionList()
+    const elementList = this.getOriginalMainElementList()
+    for (const pageNo of visiblePageNoList) {
+      const rowList = this.pageRowList[pageNo]
+      if (!rowList?.length) continue
+      this._drawPage({ elementList, positionList, rowList, pageNo })
+    }
+  }
+
   private _disconnectLazyRender() {
     this.lazyRenderIntersectionObserver?.disconnect()
   }
 
   private _lazyRender() {
-    const positionList = this.position.getOriginalMainPositionList()
-    const elementList = this.getOriginalMainElementList()
     this._disconnectLazyRender()
+    // Bump version — any callbacks still queued from the previous observer
+    // will see a version mismatch and discard their draw.
+    const version = ++this._lazyRenderVersion
     this.lazyRenderIntersectionObserver = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
+          // Discard callbacks from a superseded observer. This can happen when:
+          //  - A new layout (scale change, idle full layout) runs before the
+          //    browser delivers a previously queued callback.
+          //  - The old observer was already disconnected in _lazyRender().
+          // Drawing with stale row indices against a new positionList causes
+          // the "ascent is undefined" crash and text overlap.
+          if (version !== this._lazyRenderVersion) return
           const index = Number((<HTMLDivElement>entry.target).dataset.index)
           // Bounded layout: skip pages beyond the computed range.
           // Their pageRowList entries are empty padding — drawing them
@@ -4296,10 +4374,22 @@ export class Draw {
             if (!this._fullLayoutTimer) this._scheduleFullLayout()
             return
           }
+          const rowList = this.pageRowList[index]
+          // Guard: if this page has no rows (empty page or bounded padding),
+          // skip drawing rather than crashing with an undefined position access.
+          if (!rowList?.length) return
+          // Always fetch positionList and elementList fresh at draw time.
+          // Do NOT capture these in the outer closure: a scale change, idle
+          // full layout, or incremental render may replace both arrays while
+          // this IntersectionObserver is still alive. Using a stale snapshot
+          // causes positionList[curRow.startIndex + j] to be undefined and
+          // produces a crash inside drawRow.
+          const positionList = this.position.getOriginalMainPositionList()
+          const elementList = this.getOriginalMainElementList()
           this._drawPage({
             elementList,
             positionList,
-            rowList: this.pageRowList[index],
+            rowList,
             pageNo: index
           })
         }
@@ -4411,15 +4501,33 @@ export class Draw {
    */
   private _shouldDebounceLayout(payload?: IDrawOption): boolean {
     if (!payload) return false
-    const { isCompute = true, curIndex, isInit, isSourceHistory, isFirstRender } = payload
+    const {
+      isCompute = true,
+      curIndex,
+      isInit,
+      isSourceHistory,
+      isFirstRender,
+      isSubmitHistory = true
+    } = payload
     // Don't debounce non-compute, init, history, or first renders
     if (!isCompute || isInit || isSourceHistory || isFirstRender) return false
+    // Structural renders (scale change, paper size, margins) pass
+    // isSubmitHistory=false. These must run immediately and with a full
+    // layout — debouncing them leaves canvases resized but content stale.
+    if (!isSubmitHistory) return false
     // Only debounce when we have a cursor index (typing operation)
     if (curIndex === undefined) return false
     // Only debounce for large documents where layout is expensive
     if (this.elementList.length < Draw.ASYNC_LAYOUT_THRESHOLD) return false
     // Only debounce in paging mode (non-paging is typically fast)
     if (!this.getIsPagingMode()) return false
+    // Skip debounce when the last layout was fast (< 20ms) — e.g. last-page
+    // editing where incremental layout only recomputes 1-2 pages. Debouncing
+    // when layout is already fast just hides keystrokes from the user.
+    if (this.layoutTimes.length > 0) {
+      const lastLayout = this.layoutTimes[this.layoutTimes.length - 1]
+      if (lastLayout < 20) return false
+    }
     return true
   }
 
@@ -4489,7 +4597,8 @@ export class Draw {
       isLazy = true,
       isInit = false,
       isSourceHistory = false,
-      isFirstRender = false
+      isFirstRender = false,
+      isIdleFullLayout = false
     } = payload || {}
     let { curIndex } = payload || {}
     const innerWidth = this.getInnerWidth()
@@ -4594,19 +4703,29 @@ export class Draw {
           })
         } else {
           // Bounded visible layout (Plan B.3):
-          // During rapid typing in large documents, only compute layout for
-          // the visible pages ± BOUNDED_PAGE_WINDOW. Far-away pages are padded
-          // with empty rowList entries and skipped by _lazyRender. A full
-          // layout is scheduled to fire after FULL_LAYOUT_IDLE_MS of silence.
+          // Only compute pages within a window of BOUNDED_PAGE_WINDOW beyond
+          // the dirty page. Pages outside the window are padded with empty
+          // rowList entries and skipped by _lazyRender. A full layout fires
+          // after FULL_LAYOUT_IDLE_MS of user silence.
+          //
+          // Guard: only activate bounded when the window actually cuts work —
+          // i.e. when there are pages BEYOND the window. Editing near the end
+          // of the document would compute the whole remaining slice anyway, so
+          // activating bounded there just adds a redundant full-layout timer.
+          const totalKnownPages = this._lastFullPageCount > 0
+            ? this._lastFullPageCount
+            : this.pageRowList.length
+          const candidateStop = dirtyFrom + Draw.BOUNDED_PAGE_WINDOW
           const useBounded = isPagingMode
             && this.elementList.length >= Draw.ASYNC_LAYOUT_THRESHOLD
             && !isFirstRender && !isSourceHistory && !isInit
-          const boundedStop = useBounded
-            ? dirtyFrom + Draw.BOUNDED_PAGE_WINDOW
-            : undefined
+            && !isIdleFullLayout  // never re-activate bounded during idle cleanup
+            && candidateStop < totalKnownPages - 1  // window saves real work
+          const boundedStop = useBounded ? candidateStop : undefined
           if (useBounded) {
             this._isBoundedLayoutActive = true
             this._boundedLayoutMaxPage = boundedStop!
+            this._boundedLayoutDirtyFrom = dirtyFrom  // saved for idle layout
           } else {
             this._isBoundedLayoutActive = false
             this._boundedLayoutMaxPage = -1
@@ -4628,10 +4747,16 @@ export class Draw {
           })
         }
       } else {
-        // Full layout compute
-        this.fullLayoutCount++
+        // Full layout compute (dirty page = 0 or unknown cursor position).
+        // NOTE: Bounded layout must NOT be applied here. This path is taken
+        // for paste, large inserts, undo/redo, and page-1 edits — all cases
+        // where the full document is dirty. Bounded here would blank out
+        // pages beyond the window with no valid cached rows to fall back on.
+        // Bounded optimisation only applies in the canIncremental=true path
+        // above, where clean-page rows are genuinely preserved.
         this._isBoundedLayoutActive = false
         this._boundedLayoutMaxPage = -1
+        this.fullLayoutCount++
         this.rowList = this.computeRowList({
           startX,
           startY,
@@ -4838,11 +4963,34 @@ export class Draw {
     // Check if this render should be debounced for performance
     if (this._shouldDebounceLayout(payload)) {
       this._debouncedRender(payload!)
+      // Update only the cursor index so that operations which read
+      // getCursorPosition().index (e.g. rapid backspace) use the correct
+      // element slot. We do NOT call a full _renderInternal here because
+      //   a) it rebuilds the IntersectionObserver for all pages (~185ms), and
+      //   b) it calls setCursor with a stale positionList, jumping the cursor.
+      // Instead we clone the current cursorPosition object, patch its .index,
+      // and write it back. The x/y coordinates stay unchanged so neither the
+      // cursor DOM element nor the canvas repaints.
+      this._updateCursorIndex(payload!.curIndex)
       return
     }
 
     // Normal render path — execute immediately
     this._renderInternal(payload)
+  }
+
+  /**
+   * Update the .index field of the current cursor position without changing
+   * its visual x/y coordinates. Used during debounce to keep the element
+   * index accurate for operations like backspace that read cursorPosition.index,
+   * while avoiding a stale-positionList cursor jump.
+   */
+  private _updateCursorIndex(curIndex: number | undefined) {
+    if (curIndex === undefined) return
+    const curPos = this.position.getCursorPosition()
+    if (!curPos) return
+    // Shallow-clone so we don't corrupt the positionList entry
+    this.position.setCursorPosition({ ...curPos, index: curIndex })
   }
 
   public setCursor(curIndex: number | undefined) {
@@ -4897,6 +5045,22 @@ export class Draw {
   }
 
   /**
+   * Reset all bounded-layout state and cancel any pending idle timer.
+   * Must be called before anything that invalidates the page geometry:
+   * scale change, paper size/direction/margin change. These changes make
+   * pageBoundaryStates, pageElementBounds, and lastFullPageCount stale,
+   * so every cached value must be discarded before the next render.
+   */
+  private _resetBoundedLayoutState() {
+    this._cancelFullLayoutTimer()
+    this._isBoundedLayoutActive = false
+    this._boundedLayoutMaxPage = -1
+    this._lastFullPageCount = 0
+    this.pageBoundaryStates = []
+    this.invalidateAllLayout()
+  }
+
+  /**
    * Schedule a complete document layout after FULL_LAYOUT_IDLE_MS of silence.
    * Only effective when a bounded layout is active. Ensures that pages beyond
    * the bounded window are laid out accurately after the user stops typing.
@@ -4906,19 +5070,42 @@ export class Draw {
     this._fullLayoutTimer = setTimeout(() => {
       this._fullLayoutTimer = null
       if (!this._isBoundedLayoutActive) return
-      // Mark bounded layout as done before calling _renderInternal so that
-      // the full layout path is taken (canIncremental will be false because
-      // layoutDirtyFromPage is -1 after the last bounded render reset it).
       this._isBoundedLayoutActive = false
       this._boundedLayoutMaxPage = -1
-      // Do NOT pass curIndex here. Omitting it forces needsFullLayout = true
-      // (via the `|| curIndex === undefined` branch), which takes the full
-      // layout path and avoids re-entering the bounded layout cycle.
-      this._renderInternal({
-        isCompute: true,
-        isSetCursor: false,
-        isSubmitHistory: false
-      })
+      // Reuse the dirty page from the bounded render so the idle layout
+      // takes the incremental path (only pages dirtyFrom..N recomputed)
+      // instead of a full 0..N recompute.
+      // Requires: pageBoundaryStates[dirtyFrom] is still valid (it is, because
+      // no full layout ran between the bounded render and this timer firing).
+      const savedDirtyFrom = this._boundedLayoutDirtyFrom
+      this._boundedLayoutDirtyFrom = -1
+      if (
+        savedDirtyFrom > 0 &&
+        this.pageBoundaryStates[savedDirtyFrom] &&
+        this.pageElementBounds.length > savedDirtyFrom
+      ) {
+        // Pass the first element of the dirty page as curIndex so that
+        // _renderInternal takes needsFullLayout=false → incremental path.
+        // isSetCursor:false means the cursor won't jump to that element.
+        // isIdleFullLayout:true prevents useBounded from re-activating.
+        const idleCurIndex = this.pageElementBounds[savedDirtyFrom][0]
+        this.setLayoutDirtyFromPage(savedDirtyFrom)
+        this._renderInternal({
+          isCompute: true,
+          isSetCursor: false,
+          isSubmitHistory: false,
+          isIdleFullLayout: true,
+          curIndex: idleCurIndex
+        })
+      } else {
+        // Fallback: no valid incremental anchor — full recompute.
+        this._renderInternal({
+          isCompute: true,
+          isSetCursor: false,
+          isSubmitHistory: false,
+          isIdleFullLayout: true
+        })
+      }
     }, delayMs)
   }
 

@@ -1386,6 +1386,10 @@ window.onload = function () {
 
   async function updateCatalog() {
     const catalog = await instance.command.getCatalog()
+    // null means getCatalog was skipped (bounded layout in progress —
+    // positionList is incomplete). Keep the existing panel content so the
+    // catalog doesn't flicker empty during typing.
+    if (catalog === null) return
     const catalogMainDom =
       document.querySelector<HTMLDivElement>('.catalog__main')!
     catalogMainDom.innerHTML = ''

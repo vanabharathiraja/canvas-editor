@@ -12,6 +12,9 @@ export interface IDrawOption {
   isInit?: boolean
   isSourceHistory?: boolean
   isFirstRender?: boolean
+  /** Set by _scheduleFullLayout to prevent bounded layout from re-activating
+   * during the idle cleanup render, which would cause an infinite loop. */
+  isIdleFullLayout?: boolean
 }
 
 export interface IForceUpdateOption {
