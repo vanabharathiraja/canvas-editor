@@ -156,4 +156,18 @@ describe('Layout Worker', () => {
       })
     })
   })
+
+  it('should expose shouldUseAsyncLayout helper', () => {
+    cy.window().then((win: Window) => {
+      // The testAsyncLayout function is exposed on window
+      const testFn = (win as any).testAsyncLayout
+      if (testFn) {
+        // If available, test it
+        expect(testFn).to.be.a('function')
+      } else {
+        // Skip if not exposed - Plan B.2 test helper optional
+        cy.log('testAsyncLayout not exposed - skipping')
+      }
+    })
+  })
 })

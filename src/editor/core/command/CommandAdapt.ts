@@ -1589,6 +1589,10 @@ export class CommandAdapt {
     const positionList = this.position.getPositionList()
     const startPosition = positionList[startIndex]
     const endPosition = positionList[endIndex]
+    // Guard: positions may be undefined if position list is stale or indices out of bounds
+    if (!startPosition || !endPosition) {
+      return null
+    }
     const startPageNo = startPosition.pageNo
     const endPageNo = endPosition.pageNo
     const startRowNo = startPosition.rowIndex

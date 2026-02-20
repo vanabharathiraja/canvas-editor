@@ -90,6 +90,11 @@ import {
   normalizeTableColWidths
 } from '../../utils/element'
 import { WorkerManager } from '../worker/WorkerManager'
+import {
+  IWorkerElement,
+  ILayoutOptions,
+  IWorkerRow
+} from '../worker/interface/Layout'
 import { Previewer } from './particle/previewer/Previewer'
 import { DateParticle } from './particle/date/DateParticle'
 import { IMargin } from '../../interface/Margin'
@@ -265,6 +270,25 @@ export class Draw {
   // Track how many layouts used the incremental path
   private incrementalLayoutCount = 0
   private fullLayoutCount = 0
+
+  // Async layout tracking (Plan B) — Web Worker offloading for full layouts
+  // Version number incremented on each layout request; stale results discarded
+  private asyncLayoutVersion = 0
+  // Whether an async layout is currently pending
+  private asyncLayoutPending = false
+  // Threshold element count above which async layout is attempted
+  private static readonly ASYNC_LAYOUT_THRESHOLD = 5000
+
+  // Layout debounce for rapid typing — defers expensive layout computation
+  // while keeping UI responsive. Adaptive delay: longer when typing fast.
+  private layoutDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  private layoutDebounceDelay = 100 // ms - base delay
+  private pendingRenderPayload: IDrawOption | null = null
+  // Tracks pending curIndex for debounced layout (saves last cursor position)
+  private pendingCurIndex: number | undefined = undefined
+  // Track last keystroke time for adaptive debouncing
+  private lastKeystrokeTime = 0
+  private keystrokeCount = 0
 
   constructor(
     rootContainer: HTMLElement,
@@ -1637,6 +1661,281 @@ export class Draw {
       ratio *
       (el.rowMargin ?? defaultRowMargin) *
       scale
+    )
+  }
+
+  /**
+   * Pre-measure all elements and convert to worker-compatible format.
+   * This extracts the measurement phase from computeRowList so it can
+   * be done on main thread before sending to worker.
+   */
+  private preMeasureElements(
+    elementList: IElement[],
+    innerWidth: number
+  ): IWorkerElement[] {
+    const ctx = this.metricsCtx
+    const {
+      scale,
+      defaultSize,
+      checkbox,
+      radio,
+      defaultTabWidth,
+      separator: { lineWidth }
+    } = this.options
+    // Default image width (when element.width is undefined)
+    const defaultImageWidth = 50
+
+    // Precompute contextual widths for complex scripts
+    this.textParticle.precomputeContextualWidths(ctx, elementList, 0)
+
+    const availableWidth = innerWidth * scale
+    const workerElements: IWorkerElement[] = []
+
+    for (let i = 0; i < elementList.length; i++) {
+      const element = elementList[i]
+      const metrics: IWorkerElement['metrics'] = {
+        width: 0,
+        height: 0,
+        boundingBoxAscent: 0,
+        boundingBoxDescent: 0
+      }
+
+      const rowMargin = this.getElementRowMargin(element)
+
+      // Set font for measurement
+      ctx.font = this.getElementFont(element, scale)
+
+      // Compute metrics based on element type (simplified version of computeRowList logic)
+      if (
+        element.type === ElementType.IMAGE ||
+        element.type === ElementType.LATEX
+      ) {
+        const elementWidth = element.width || defaultImageWidth
+        const elementHeight = element.height || defaultImageWidth
+        metrics.width = elementWidth * scale
+        metrics.height = elementHeight * scale
+        metrics.boundingBoxDescent = 0
+        metrics.boundingBoxAscent = metrics.height
+      } else if (element.type === ElementType.TABLE) {
+        // Tables are handled as-is, metrics not needed for worker
+        metrics.width = 0
+        metrics.height = 0
+      } else if (element.type === ElementType.SEPARATOR) {
+        metrics.width = availableWidth
+        metrics.height = lineWidth * scale
+        metrics.boundingBoxAscent = -rowMargin
+        metrics.boundingBoxDescent = -rowMargin + metrics.height
+      } else if (element.type === ElementType.PAGE_BREAK) {
+        element.width = innerWidth
+        metrics.width = availableWidth
+        metrics.height = defaultSize
+      } else if (
+        element.type === ElementType.RADIO ||
+        element.controlComponent === ControlComponent.RADIO
+      ) {
+        const elementWidth = radio.width + radio.gap * 2
+        metrics.width = elementWidth * scale
+        metrics.height = radio.height * scale
+      } else if (
+        element.type === ElementType.CHECKBOX ||
+        element.controlComponent === ControlComponent.CHECKBOX
+      ) {
+        const elementWidth = checkbox.width + checkbox.gap * 2
+        metrics.width = elementWidth * scale
+        metrics.height = checkbox.height * scale
+      } else if (element.type === ElementType.TAB) {
+        metrics.width = defaultTabWidth * scale
+        metrics.height = defaultSize * scale
+        metrics.boundingBoxDescent = 0
+        metrics.boundingBoxAscent =
+          this.textParticle.getBasisWordBoundingBoxAscent(ctx, ctx.font)
+      } else if (element.type === ElementType.BLOCK) {
+        if (!element.width) {
+          metrics.width = availableWidth
+        } else {
+          metrics.width = Math.min(element.width * scale, availableWidth)
+        }
+        metrics.height = element.height! * scale
+        metrics.boundingBoxDescent = metrics.height
+        metrics.boundingBoxAscent = 0
+      } else {
+        // Text elements - most common case
+        const size = element.size || defaultSize
+        if (
+          element.type === ElementType.SUPERSCRIPT ||
+          element.type === ElementType.SUBSCRIPT
+        ) {
+          element.actualSize = Math.ceil(size * 0.6)
+        }
+        metrics.height = (element.actualSize || size) * scale
+        ctx.font = this.getElementFont(element, scale)
+        const fontMetrics = this.textParticle.measureText(ctx, element)
+        metrics.width = fontMetrics.width * scale
+        if (element.letterSpacing) {
+          metrics.width += element.letterSpacing * scale
+        }
+        const basisMetrics = this.textParticle.measureBasisWord(ctx, element.font!)
+        metrics.boundingBoxAscent = basisMetrics.actualBoundingBoxAscent * scale
+        metrics.boundingBoxDescent = basisMetrics.actualBoundingBoxDescent * scale
+        if (element.type === ElementType.SUPERSCRIPT) {
+          metrics.boundingBoxAscent += metrics.height / 2
+        } else if (element.type === ElementType.SUBSCRIPT) {
+          metrics.boundingBoxDescent += metrics.height / 2
+        }
+      }
+
+      // Create worker element
+      const workerElement: IWorkerElement = {
+        index: i,
+        value: element.value,
+        metrics,
+        type: element.type,
+        rowFlex: element.rowFlex,
+        rowMargin: element.rowMargin,
+        hide: element.hide,
+        listId: element.listId,
+        listLevel: element.listLevel,
+        titleId: element.titleId,
+        level: element.level as number | undefined,
+        groupIds: element.groupIds,
+        controlComponent: element.controlComponent as number | undefined
+      }
+
+      workerElements.push(workerElement)
+    }
+
+    return workerElements
+  }
+
+  /**
+   * Compute row layout asynchronously using Web Worker.
+   * Returns a Promise that resolves to the computed rows.
+   * Main thread continues to be responsive during computation.
+   */
+  public async computeRowListAsync(payload: IComputeRowListPayload): Promise<IRow[]> {
+    const {
+      innerWidth,
+      elementList,
+      isPagingMode = false,
+      startX = 0,
+      startY = 0,
+      pageHeight = 0,
+      mainOuterHeight = 0
+    } = payload
+
+    // Increment version to track this request
+    const requestVersion = ++this.asyncLayoutVersion
+    this.asyncLayoutPending = true
+
+    try {
+      // Pre-measure elements on main thread (Canvas API required)
+      const workerElements = this.preMeasureElements(elementList, innerWidth)
+
+      // Prepare layout options for worker
+      const layoutOptions: ILayoutOptions = {
+        innerWidth,
+        startX,
+        startY,
+        pageHeight,
+        mainOuterHeight,
+        scale: this.options.scale,
+        isPagingMode,
+        defaultRowMargin: this.options.defaultRowMargin,
+        defaultTabWidth: this.options.defaultTabWidth
+      }
+
+      // Send to worker
+      const result = await this.workerManager.computeLayoutAsync(
+        workerElements,
+        layoutOptions
+      )
+
+      // Check if this result is still relevant (newer request may have been issued)
+      if (requestVersion !== this.asyncLayoutVersion) {
+        console.log('[Async Layout] Discarding stale result (version mismatch)')
+        return [] // Return empty, will be superseded by newer result
+      }
+
+      // Reconstruct IRow[] from worker result
+      const rows = this.reconstructRowsFromWorker(
+        result.rows,
+        elementList
+      )
+
+      console.log(
+        `[Async Layout] Worker completed in ${result.computeTimeMs.toFixed(1)}ms, ` +
+        `${rows.length} rows from ${elementList.length} elements`
+      )
+
+      return rows
+    } finally {
+      this.asyncLayoutPending = false
+    }
+  }
+
+  /**
+   * Reconstruct IRow[] from worker result.
+   * Maps element indices back to actual element references.
+   */
+  private reconstructRowsFromWorker(
+    workerRows: IWorkerRow[],
+    elementList: IElement[]
+  ): IRow[] {
+    const { scale } = this.options
+
+    return workerRows.map(wr => {
+      // Map element indices to actual elements with metrics
+      const rowElements: IRowElement[] = wr.elementIndices.map(idx => {
+        const element = elementList[idx]
+        // Reconstruct IRowElement - element should already have metrics
+        // from preMeasureElements, but we need to verify
+        return Object.assign(element, {
+          metrics: {
+            width: (element as any).metrics?.width || 0,
+            height: (element as any).metrics?.height || 0,
+            boundingBoxAscent: (element as any).metrics?.boundingBoxAscent || 0,
+            boundingBoxDescent: (element as any).metrics?.boundingBoxDescent || 0
+          },
+          style: this.getElementFont(element, scale),
+          left: 0
+        }) as IRowElement
+      })
+
+      const row: IRow = {
+        width: wr.width,
+        height: wr.height,
+        ascent: wr.ascent,
+        rowFlex: wr.rowFlex as RowFlex | undefined,
+        startIndex: wr.startIndex,
+        isPageBreak: wr.isPageBreak,
+        isList: wr.isList,
+        listIndex: wr.listIndex,
+        listLevel: wr.listLevel,
+        listHierarchy: wr.listHierarchy,
+        offsetX: wr.offsetX,
+        offsetY: wr.offsetY,
+        elementList: rowElements,
+        isWidthNotEnough: wr.isWidthNotEnough,
+        rowIndex: wr.rowIndex,
+        isSurround: wr.isSurround,
+        isRTL: wr.isRTL,
+        bidiLevels: wr.bidiLevels,
+        visualOrder: wr.visualOrder,
+        isBidiMixed: wr.isBidiMixed
+      }
+
+      return row
+    })
+  }
+
+  /**
+   * Check if async layout should be used for the given element count.
+   */
+  public shouldUseAsyncLayout(elementCount: number): boolean {
+    // Use async for large documents, but not when already pending
+    return (
+      elementCount >= Draw.ASYNC_LAYOUT_THRESHOLD &&
+      !this.asyncLayoutPending
     )
   }
 
@@ -4068,7 +4367,75 @@ export class Draw {
     }
   }
 
-  public render(payload?: IDrawOption) {
+  /**
+   * Check if a render should be debounced for performance.
+   * Returns true for rapid typing scenarios where layout is expensive.
+   */
+  private _shouldDebounceLayout(payload?: IDrawOption): boolean {
+    if (!payload) return false
+    const { isCompute = true, curIndex, isInit, isSourceHistory, isFirstRender } = payload
+    // Don't debounce non-compute, init, history, or first renders
+    if (!isCompute || isInit || isSourceHistory || isFirstRender) return false
+    // Only debounce when we have a cursor index (typing operation)
+    if (curIndex === undefined) return false
+    // Only debounce for large documents where layout is expensive
+    if (this.elementList.length < Draw.ASYNC_LAYOUT_THRESHOLD) return false
+    // Only debounce in paging mode (non-paging is typically fast)
+    if (!this.getIsPagingMode()) return false
+    return true
+  }
+
+  /**
+   * Execute debounced render — schedules layout computation after typing pauses.
+   * Uses adaptive delay: longer when typing fast to batch more keystrokes.
+   */
+  private _debouncedRender(payload: IDrawOption) {
+    // Clear existing debounce timer
+    if (this.layoutDebounceTimer) {
+      clearTimeout(this.layoutDebounceTimer)
+    }
+
+    // Update pending state
+    this.pendingRenderPayload = payload
+    this.pendingCurIndex = payload.curIndex
+
+    // Adaptive debounce: if typing rapidly, use longer delay to batch more
+    const now = performance.now()
+    const timeSinceLastKey = now - this.lastKeystrokeTime
+    this.lastKeystrokeTime = now
+    
+    // Count rapid keystrokes (< 150ms apart)
+    if (timeSinceLastKey < 150) {
+      this.keystrokeCount++
+    } else {
+      this.keystrokeCount = 1
+    }
+    
+    // Adaptive delay: 100ms base, up to 300ms for rapid typing
+    const adaptiveDelay = Math.min(
+      this.layoutDebounceDelay + (this.keystrokeCount * 20),
+      300
+    )
+
+    // Schedule full layout computation after adaptive delay
+    this.layoutDebounceTimer = setTimeout(() => {
+      this.layoutDebounceTimer = null
+      const pendingPayload = this.pendingRenderPayload
+      this.pendingRenderPayload = null
+      this.keystrokeCount = 0
+
+      if (pendingPayload) {
+        pendingPayload.curIndex = this.pendingCurIndex
+        this._renderInternal(pendingPayload)
+      }
+    }, adaptiveDelay)
+  }
+
+  /**
+   * Internal render implementation — the actual render logic.
+   * Called directly for non-debounced renders, or after debounce delay.
+   */
+  private _renderInternal(payload?: IDrawOption) {
 
     const renderStart = performance.now()
 
@@ -4121,6 +4488,7 @@ export class Draw {
         && this.pageBoundaryStates[dirtyFrom]
         && this.pageElementBounds.length > dirtyFrom
         && isPagingMode
+      
       // Element index where the dirty region starts (0 if full recompute)
       const dirtyStartIdx = canIncremental
         ? this.pageElementBounds[dirtyFrom][0]
@@ -4383,7 +4751,20 @@ export class Draw {
     }
   }
 
-  
+  /**
+   * Public render method — entry point for all render calls.
+   * Decides whether to debounce (for rapid typing) or render immediately.
+   */
+  public render(payload?: IDrawOption) {
+    // Check if this render should be debounced for performance
+    if (this._shouldDebounceLayout(payload)) {
+      this._debouncedRender(payload!)
+      return
+    }
+
+    // Normal render path — execute immediately
+    this._renderInternal(payload)
+  }
 
   public setCursor(curIndex: number | undefined) {
     const positionContext = this.position.getPositionContext()
