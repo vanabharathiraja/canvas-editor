@@ -68,6 +68,75 @@ window.onload = function () {
   // For Cypress testing
   Reflect.set(window, 'editor', instance)
 
+  // Layout worker test helper (for Plan B testing)
+  // Import and directly instantiate a test worker
+  import('./editor/core/worker/works/layout?worker&inline').then(LayoutWorkerModule => {
+    const LayoutWorker = LayoutWorkerModule.default
+    const testWorker = new LayoutWorker()
+
+    const testHelper = async () => {
+      console.log('[LayoutWorker Test] Starting...')
+      try {
+        // Test 1: Ping
+        console.log('[LayoutWorker Test] Pinging worker...')
+        const pingResult = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Ping timeout')), 5000)
+          testWorker.onmessage = (evt: MessageEvent) => {
+            clearTimeout(timeout)
+            if (evt.data.type === 'PONG') resolve(true)
+            else reject(new Error('Unexpected response'))
+          }
+          testWorker.postMessage({ type: 'PING' })
+        })
+        console.log('[LayoutWorker Test] Ping result:', pingResult)
+
+        // Test 2: Send a simple layout request
+        console.log('[LayoutWorker Test] Sending layout request...')
+        const testElements = [
+          { index: 0, value: 'H', metrics: { width: 10, height: 20, boundingBoxAscent: 15, boundingBoxDescent: 5 } },
+          { index: 1, value: 'e', metrics: { width: 8, height: 20, boundingBoxAscent: 15, boundingBoxDescent: 5 } },
+          { index: 2, value: 'l', metrics: { width: 6, height: 20, boundingBoxAscent: 15, boundingBoxDescent: 5 } },
+          { index: 3, value: 'l', metrics: { width: 6, height: 20, boundingBoxAscent: 15, boundingBoxDescent: 5 } },
+          { index: 4, value: 'o', metrics: { width: 8, height: 20, boundingBoxAscent: 15, boundingBoxDescent: 5 } }
+        ]
+        const testOptions = {
+          innerWidth: 100,
+          startX: 10,
+          startY: 10,
+          pageHeight: 800,
+          mainOuterHeight: 700,
+          scale: 1,
+          isPagingMode: true,
+          defaultRowMargin: 2,
+          defaultTabWidth: 32
+        }
+
+        const result = await new Promise((resolve, reject) => {
+          testWorker.onmessage = (evt: MessageEvent) => {
+            if (evt.data.type === 'LAYOUT_RESULT') resolve(evt.data)
+            else if (evt.data.type === 'LAYOUT_ERROR') reject(new Error(evt.data.error))
+          }
+          testWorker.postMessage({
+            type: 'COMPUTE_LAYOUT',
+            requestId: 1,
+            elements: testElements,
+            options: testOptions
+          })
+        })
+        console.log('[LayoutWorker Test] Layout result:', result)
+        console.log('[LayoutWorker Test] SUCCESS!')
+        return result
+      } catch (error) {
+        console.error('[LayoutWorker Test] FAILED:', error)
+        throw error
+      }
+    }
+
+    Reflect.set(window, 'testLayoutWorker', testHelper)
+    Reflect.set(window, 'layoutTestWorker', testWorker)
+    console.log('[LayoutWorker] Test function available: window.testLayoutWorker()')
+  })
+
   // Menu popup destroy
   window.addEventListener(
     'click',
